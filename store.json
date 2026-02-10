@@ -1,0 +1,286 @@
+{
+  "version": "1.0",
+  "last_updated": "2024-02-11",
+  "apps": [
+    {
+      "id": "doom64",
+      "name": "Doom 64",
+      "author": "id Software",
+      "version": "2.1",
+      "category": "games",
+      "description": "Classic FPS shooter ported to Xbox with enhanced graphics",
+      "size": 5242880,
+      "state": 2
+    },
+    {
+      "id": "halo-ce",
+      "name": "Halo Combat Evolved",
+      "author": "Bungie",
+      "version": "1.5",
+      "category": "games",
+      "description": "The legendary FPS that defined a generation",
+      "size": 15728640,
+      "state": 3
+    },
+    {
+      "id": "quake3",
+      "name": "Quake III Arena",
+      "author": "id Software",
+      "version": "1.32",
+      "category": "games",
+      "description": "Fast-paced arena shooter",
+      "size": 8388608,
+      "state": 0
+    },
+    {
+      "id": "duke3d",
+      "name": "Duke Nukem 3D",
+      "author": "3D Realms",
+      "version": "1.0",
+      "category": "games",
+      "description": "Hail to the king baby!",
+      "size": 6291456,
+      "state": 0
+    },
+    {
+      "id": "openxcom",
+      "name": "OpenXcom",
+      "author": "OpenXcom Team",
+      "version": "1.0",
+      "category": "games",
+      "description": "Open-source clone of UFO: Enemy Unknown",
+      "size": 4194304,
+      "state": 0
+    },
+    {
+      "id": "snes9x",
+      "name": "SNES9x",
+      "author": "SNES9x Team",
+      "version": "1.43",
+      "category": "emulators",
+      "description": "Super Nintendo Entertainment System emulator",
+      "size": 2097152,
+      "state": 1
+    },
+    {
+      "id": "fceu",
+      "name": "FCEU Ultra",
+      "author": "NES Team",
+      "version": "2.0",
+      "category": "emulators",
+      "description": "Nintendo Entertainment System emulator",
+      "size": 1048576,
+      "state": 0
+    },
+    {
+      "id": "genesis-plus",
+      "name": "Genesis Plus",
+      "author": "Eke-Eke",
+      "version": "1.7",
+      "category": "emulators",
+      "description": "Sega Genesis/Mega Drive emulator",
+      "size": 1572864,
+      "state": 2
+    },
+    {
+      "id": "gpsp",
+      "name": "gpSP",
+      "author": "Exophase",
+      "version": "0.9",
+      "category": "emulators",
+      "description": "Game Boy Advance emulator",
+      "size": 2621440,
+      "state": 0
+    },
+    {
+      "id": "pcsxbox",
+      "name": "PCSXbox",
+      "author": "PCSX Team",
+      "version": "1.5",
+      "category": "emulators",
+      "description": "PlayStation 1 emulator for Xbox",
+      "size": 5242880,
+      "state": 0
+    },
+    {
+      "id": "mame",
+      "name": "MAMEoX",
+      "author": "MAME Team",
+      "version": "0.84",
+      "category": "emulators",
+      "description": "Arcade machine emulator",
+      "size": 7340032,
+      "state": 0
+    },
+    {
+      "id": "ftp-server",
+      "name": "FTP Server",
+      "author": "XBTools",
+      "version": "3.2",
+      "category": "tools",
+      "description": "Transfer files to and from your Xbox over network",
+      "size": 524288,
+      "state": 2
+    },
+    {
+      "id": "file-manager",
+      "name": "Xbox File Manager",
+      "author": "XBDev",
+      "version": "1.8",
+      "category": "tools",
+      "description": "Browse and manage files on your Xbox",
+      "size": 819200,
+      "state": 0
+    },
+    {
+      "id": "hexen",
+      "name": "Hexen II",
+      "author": "HeXen Team",
+      "version": "2.1",
+      "category": "tools",
+      "description": "Xbox dashboard and file explorer",
+      "size": 2097152,
+      "state": 0
+    },
+    {
+      "id": "unleashx",
+      "name": "UnleashX",
+      "author": "UnleashX Team",
+      "version": "0.39",
+      "category": "tools",
+      "description": "Popular Xbox dashboard replacement",
+      "size": 1572864,
+      "state": 3
+    },
+    {
+      "id": "evox",
+      "name": "EvoX Dashboard",
+      "author": "EvoX Team",
+      "version": "3.7",
+      "category": "tools",
+      "description": "Classic Xbox dashboard",
+      "size": 1310720,
+      "state": 0
+    },
+    {
+      "id": "xbmc",
+      "name": "XBMC",
+      "author": "XBMC Team",
+      "version": "3.5",
+      "category": "media",
+      "description": "Xbox Media Center - the ultimate media player",
+      "size": 20971520,
+      "state": 2
+    },
+    {
+      "id": "music-player",
+      "name": "XBMP",
+      "author": "XBAudio Team",
+      "version": "2.2",
+      "category": "media",
+      "description": "Xbox Music Player for MP3, OGG, and more",
+      "size": 3145728,
+      "state": 1
+    },
+    {
+      "id": "dvd-player",
+      "name": "DVD Player",
+      "author": "Xbox Team",
+      "version": "1.0",
+      "category": "media",
+      "description": "Play DVD movies on your Xbox",
+      "size": 4194304,
+      "state": 0
+    },
+    {
+      "id": "streaming-client",
+      "name": "Stream Client",
+      "author": "StreamDev",
+      "version": "1.3",
+      "category": "media",
+      "description": "Stream media from your PC to Xbox",
+      "size": 2621440,
+      "state": 0
+    },
+    {
+      "id": "photo-viewer",
+      "name": "Photo Viewer",
+      "author": "XBMedia",
+      "version": "2.0",
+      "category": "media",
+      "description": "View photos and slideshows",
+      "size": 1048576,
+      "state": 0
+    },
+    {
+      "id": "trainer-maker",
+      "name": "Game Trainer Studio",
+      "author": "CheatDev",
+      "version": "1.5",
+      "category": "misc",
+      "description": "Create and manage game trainers",
+      "size": 1572864,
+      "state": 0
+    },
+    {
+      "id": "save-manager",
+      "name": "Save Game Manager",
+      "author": "SaveTools",
+      "version": "2.1",
+      "category": "misc",
+      "description": "Backup and restore game saves",
+      "size": 655360,
+      "state": 0
+    },
+    {
+      "id": "metal-slug-save",
+      "name": "Metal Slug 4 Complete",
+      "author": "Bob",
+      "version": "1.0",
+      "category": "saves",
+      "description": "Save game with everything unlocked",
+      "size": 65536,
+      "state": 0
+    },
+    {
+      "id": "halo2-save",
+      "name": "Halo 2 All Skulls",
+      "author": "SaveDev",
+      "version": "1.0",
+      "category": "saves",
+      "description": "Save with all skulls unlocked",
+      "size": 32768,
+      "state": 0
+    },
+    {
+      "id": "system-info",
+      "name": "System Info",
+      "author": "XBDiag",
+      "version": "1.0",
+      "category": "misc",
+      "description": "View detailed Xbox hardware information",
+      "size": 327680,
+      "state": 2
+    },
+    {
+      "id": "network-test",
+      "name": "Network Tester",
+      "author": "NetTools",
+      "version": "1.2",
+      "category": "misc",
+      "description": "Test network speed and connectivity",
+      "size": 524288,
+      "state": 0
+    },
+    {
+      "id": "homebrew-launcher",
+      "name": "Homebrew Launcher",
+      "author": "HBDev",
+      "version": "2.0",
+      "category": "misc",
+      "description": "Launch homebrew apps and games",
+      "size": 1048576,
+      "state": 0
+    }
+  ]
+}
