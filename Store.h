@@ -19,23 +19,32 @@ enum UIState
     UI_SETTINGS
 };
 
+// Version info structure
+struct VersionInfo
+{
+    char szVersion[16];
+    char szChangelog[512];
+    char szReleaseDate[32];  // "2024-02-11" or "Feb 11, 2024"
+    DWORD dwSize;
+    int nState;  // Download state for this specific version
+};
+
+#define MAX_VERSIONS 10
+
 // Store item structure
 struct StoreItem
 {
     char szName[64];
     char szDescription[256];
-    char szVersion[16];
     char szAuthor[64];
-    DWORD dwSize;           // Size in bytes
     int nCategoryIndex;     // Index into categories array
     
-    // Download/install state
-    enum State {
-        STATE_NOT_DOWNLOADED = 0,
-        STATE_DOWNLOADED,
-        STATE_INSTALLED,
-        STATE_UPDATE_AVAILABLE
-    } eState;
+    // Multi-version support
+    VersionInfo aVersions[MAX_VERSIONS];
+    int nVersionCount;
+    int nSelectedVersion;   // Which version is currently selected/highlighted
+    int nVersionScrollOffset; // For scrolling version list
+    BOOL bViewingVersionDetail; // TRUE when viewing a specific version's detail
     
     LPDIRECT3DTEXTURE8 pIcon;
 };
