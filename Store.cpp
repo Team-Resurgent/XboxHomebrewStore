@@ -14,6 +14,7 @@
 #define COLOR_TEXT_GRAY     0xFFB0B0B0
 #define COLOR_SUCCESS       0xFF4CAF50  // Green for installed
 #define COLOR_DOWNLOAD      0xFF2196F3  // Blue for download
+#define COLOR_NEW           0xFFFF1744  // Bright red for NEW items
 #define COLOR_SIDEBAR       0xFFD81B60  // Sidebar pink
 #define COLOR_SIDEBAR_HOVER 0xFFC2185B  // Darker pink for selected
 
@@ -100,6 +101,15 @@ const char* Store::FindJSONValue( const char* json, const char* key )
             value[i++] = *colonPos++;
         }
         value[i] = '\0';
+    }
+    // Handle boolean values (true/false)
+    else if( strncmp( colonPos, "true", 4 ) == 0 )
+    {
+        strcpy( value, "true" );
+    }
+    else if( strncmp( colonPos, "false", 5 ) == 0 )
+    {
+        strcpy( value, "false" );
     }
     // Handle numeric values
     else
@@ -311,6 +321,7 @@ BOOL Store::LoadCatalogFromFile( const char* filename )
             strcpy( item->szName, FindJSONValue( objData, "name" ) );
             strcpy( item->szAuthor, FindJSONValue( objData, "author" ) );
             strcpy( item->szDescription, FindJSONValue( objData, "description" ) );
+            strcpy( item->szGUID, FindJSONValue( objData, "guid" ) );
             
             item->nCategoryIndex = GetOrCreateCategory( FindJSONValue( objData, "category" ) );
             item->pIcon = NULL;
@@ -318,6 +329,15 @@ BOOL Store::LoadCatalogFromFile( const char* filename )
             item->nSelectedVersion = 0;
             item->nVersionScrollOffset = 0;
             item->bViewingVersionDetail = FALSE;
+            
+            // Parse "new" flag (handle both "true" and "True")
+            const char* newFlag = FindJSONValue( objData, "new" );
+            item->bNew = (strcmp( newFlag, "true" ) == 0 || strcmp( newFlag, "True" ) == 0);
+            
+            // Debug output
+            char szNewDebug[256];
+            sprintf( szNewDebug, "App: %s, new flag='%s', bNew=%d\n", item->szName, newFlag, item->bNew );
+            OutputDebugString( szNewDebug );
             
             // Parse versions array
             const char* versionsStart = strstr( objData, "\"versions\"" );
@@ -344,6 +364,8 @@ BOOL Store::LoadCatalogFromFile( const char* filename )
                             strcpy( ver->szVersion, FindJSONValue( vObjData, "version" ) );
                             strcpy( ver->szChangelog, FindJSONValue( vObjData, "changelog" ) );
                             strcpy( ver->szReleaseDate, FindJSONValue( vObjData, "release_date" ) );
+                            strcpy( ver->szTitleID, FindJSONValue( vObjData, "title_id" ) );
+                            strcpy( ver->szRegion, FindJSONValue( vObjData, "region" ) );
                             ver->dwSize = atoi( FindJSONValue( vObjData, "size" ) );
                             ver->nState = atoi( FindJSONValue( vObjData, "state" ) );
                             
@@ -365,6 +387,8 @@ BOOL Store::LoadCatalogFromFile( const char* filename )
                 strcpy( ver->szVersion, FindJSONValue( objData, "version" ) );
                 strcpy( ver->szChangelog, "No changelog available" );
                 strcpy( ver->szReleaseDate, "" );
+                strcpy( ver->szTitleID, "" );
+                strcpy( ver->szRegion, "" );
                 ver->dwSize = atoi( FindJSONValue( objData, "size" ) );
                 ver->nState = atoi( FindJSONValue( objData, "state" ) );
                 item->nVersionCount = 1;
@@ -447,6 +471,8 @@ HRESULT Store::Initialize( LPDIRECT3DDEVICE8 pd3dDevice )
         sprintf( m_pItems[0].szName, "Doom 64" );
         sprintf( m_pItems[0].szDescription, "Classic FPS" );
         sprintf( m_pItems[0].szAuthor, "id Software" );
+        strcpy( m_pItems[0].szGUID, "" );
+        m_pItems[0].bNew = FALSE;
         m_pItems[0].nCategoryIndex = gamesIdx;
         m_pItems[0].pIcon = NULL;
         m_pItems[0].nVersionCount = 1;
@@ -456,12 +482,16 @@ HRESULT Store::Initialize( LPDIRECT3DDEVICE8 pd3dDevice )
         strcpy( m_pItems[0].aVersions[0].szVersion, "2.1" );
         strcpy( m_pItems[0].aVersions[0].szChangelog, "Initial release" );
         strcpy( m_pItems[0].aVersions[0].szReleaseDate, "" );
+        strcpy( m_pItems[0].aVersions[0].szTitleID, "" );
+        strcpy( m_pItems[0].aVersions[0].szRegion, "" );
         m_pItems[0].aVersions[0].dwSize = 5 * 1024 * 1024;
         m_pItems[0].aVersions[0].nState = 2;
         
         sprintf( m_pItems[1].szName, "XBMC" );
         sprintf( m_pItems[1].szDescription, "Media Center" );
         sprintf( m_pItems[1].szAuthor, "XBMC Team" );
+        strcpy( m_pItems[1].szGUID, "" );
+        m_pItems[1].bNew = FALSE;
         m_pItems[1].nCategoryIndex = mediaIdx;
         m_pItems[1].pIcon = NULL;
         m_pItems[1].nVersionCount = 1;
@@ -471,12 +501,16 @@ HRESULT Store::Initialize( LPDIRECT3DDEVICE8 pd3dDevice )
         strcpy( m_pItems[1].aVersions[0].szVersion, "3.5" );
         strcpy( m_pItems[1].aVersions[0].szChangelog, "Initial release" );
         strcpy( m_pItems[1].aVersions[0].szReleaseDate, "" );
+        strcpy( m_pItems[1].aVersions[0].szTitleID, "" );
+        strcpy( m_pItems[1].aVersions[0].szRegion, "" );
         m_pItems[1].aVersions[0].dwSize = 20 * 1024 * 1024;
         m_pItems[1].aVersions[0].nState = 0;
         
         sprintf( m_pItems[2].szName, "FTP Server" );
         sprintf( m_pItems[2].szDescription, "File Transfer" );
         sprintf( m_pItems[2].szAuthor, "XBDev" );
+        strcpy( m_pItems[2].szGUID, "" );
+        m_pItems[2].bNew = FALSE;
         m_pItems[2].nCategoryIndex = toolsIdx;
         m_pItems[2].pIcon = NULL;
         m_pItems[2].nVersionCount = 1;
@@ -486,6 +520,8 @@ HRESULT Store::Initialize( LPDIRECT3DDEVICE8 pd3dDevice )
         strcpy( m_pItems[2].aVersions[0].szVersion, "3.2" );
         strcpy( m_pItems[2].aVersions[0].szChangelog, "Initial release" );
         strcpy( m_pItems[2].aVersions[0].szReleaseDate, "" );
+        strcpy( m_pItems[2].aVersions[0].szTitleID, "" );
+        strcpy( m_pItems[2].aVersions[0].szRegion, "" );
         m_pItems[2].aVersions[0].dwSize = 512 * 1024;
         m_pItems[2].aVersions[0].nState = 1;
         
@@ -723,6 +759,24 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
         sprintf( szTemp, "%.1f MB", pCurrentVersion->dwSize / (1024.0f * 1024.0f) );
         DrawText( pd3dDevice, szTemp, sidebarX + 15.0f, metaY, COLOR_WHITE );
         metaY += 40.0f;
+        
+        // Title ID
+        if( pCurrentVersion->szTitleID[0] != '\0' )
+        {
+            DrawText( pd3dDevice, "Title ID:", sidebarX + 15.0f, metaY, COLOR_WHITE );
+            metaY += 20.0f;
+            DrawText( pd3dDevice, pCurrentVersion->szTitleID, sidebarX + 15.0f, metaY, COLOR_WHITE );
+            metaY += 40.0f;
+        }
+        
+        // Region
+        if( pCurrentVersion->szRegion[0] != '\0' )
+        {
+            DrawText( pd3dDevice, "Region:", sidebarX + 15.0f, metaY, COLOR_WHITE );
+            metaY += 20.0f;
+            DrawText( pd3dDevice, pCurrentVersion->szRegion, sidebarX + 15.0f, metaY, COLOR_WHITE );
+            metaY += 40.0f;
+        }
         
         // Status
         const char* statusText;
@@ -1112,7 +1166,7 @@ void Store::DrawText( LPDIRECT3DDEVICE8 pd3dDevice, const char* text, float x, f
 //-----------------------------------------------------------------------------
 void Store::DrawAppCard( LPDIRECT3DDEVICE8 pd3dDevice, StoreItem* pItem, float x, float y, BOOL bSelected )
 {
-    // Card background
+    // Card background - normal color always
     DWORD cardColor = bSelected ? COLOR_SECONDARY : COLOR_CARD_BG;
     DrawRect( pd3dDevice, x, y, m_fCardWidth, m_fCardHeight, cardColor );
     
@@ -1122,7 +1176,7 @@ void Store::DrawAppCard( LPDIRECT3DDEVICE8 pd3dDevice, StoreItem* pItem, float x
         DrawRect( pd3dDevice, x - 3, y - 3, m_fCardWidth + 6, m_fCardHeight + 6, COLOR_PRIMARY );
         DrawRect( pd3dDevice, x, y, m_fCardWidth, m_fCardHeight, cardColor );
     }
-
+    
     // App icon/thumbnail area (square, as large as possible)
     float thumbSize = m_fCardWidth - 20.0f;
     if( thumbSize > m_fCardHeight - 60.0f ) // Leave room for text
@@ -1130,24 +1184,34 @@ void Store::DrawAppCard( LPDIRECT3DDEVICE8 pd3dDevice, StoreItem* pItem, float x
     
     DrawRect( pd3dDevice, x + 10, y + 10, thumbSize, thumbSize, COLOR_BG );
     
-    // Status badge (top-right corner) - varies by state
+    // Status badge (top-right corner) - RED if new, otherwise varies by state
     DWORD badgeColor;
-    int state = (pItem->nVersionCount > 0) ? pItem->aVersions[0].nState : 0;
     
-    switch( state )
+    if( pItem->bNew )
     {
-        case 2: // STATE_INSTALLED
-            badgeColor = COLOR_SUCCESS; // Green checkmark
-            break;
-        case 1: // STATE_DOWNLOADED
-            badgeColor = COLOR_DOWNLOAD; // Blue - ready to install
-            break;
-        case 3: // STATE_UPDATE_AVAILABLE
-            badgeColor = 0xFFFF9800; // Orange - update available
-            break;
-        default: // STATE_NOT_DOWNLOADED
-            badgeColor = COLOR_TEXT_GRAY; // Gray - not downloaded
-            break;
+        // NEW items get bright red badge
+        badgeColor = COLOR_NEW;
+    }
+    else
+    {
+        // Normal state colors
+        int state = (pItem->nVersionCount > 0) ? pItem->aVersions[0].nState : 0;
+        
+        switch( state )
+        {
+            case 2: // STATE_INSTALLED
+                badgeColor = COLOR_SUCCESS; // Green checkmark
+                break;
+            case 1: // STATE_DOWNLOADED
+                badgeColor = COLOR_DOWNLOAD; // Blue - ready to install
+                break;
+            case 3: // STATE_UPDATE_AVAILABLE
+                badgeColor = 0xFFFF9800; // Orange - update available
+                break;
+            default: // STATE_NOT_DOWNLOADED
+                badgeColor = COLOR_TEXT_GRAY; // Gray - not downloaded
+                break;
+        }
     }
     DrawRect( pd3dDevice, x + m_fCardWidth - 35, y + 10, 25, 25, badgeColor );
 
@@ -1225,6 +1289,9 @@ void Store::HandleInput()
                 int actualItemIndex = m_aFilteredIndices[m_nSelectedItem];
                 if( actualItemIndex >= 0 && actualItemIndex < m_nItemCount )
                 {
+                    // Clear NEW flag when user views the app
+                    m_pItems[actualItemIndex].bNew = FALSE;
+                    
                     if( m_pItems[actualItemIndex].nVersionCount == 1 )
                         m_pItems[actualItemIndex].bViewingVersionDetail = TRUE;
                     else

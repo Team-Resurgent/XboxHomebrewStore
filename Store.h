@@ -25,6 +25,8 @@ struct VersionInfo
     char szVersion[16];
     char szChangelog[512];
     char szReleaseDate[32];  // "2024-02-11" or "Feb 11, 2024"
+    char szTitleID[16];      // Xbox title ID (e.g., "45410026")
+    char szRegion[16];       // Region code (e.g., "USA", "PAL", "JPN", "GLO")
     DWORD dwSize;
     int nState;  // Download state for this specific version
 };
@@ -37,7 +39,9 @@ struct StoreItem
     char szName[64];
     char szDescription[256];
     char szAuthor[64];
+    char szGUID[32];        // Global ID for cover art/media (e.g., "1000020")
     int nCategoryIndex;     // Index into categories array
+    BOOL bNew;              // TRUE = Show red NEW badge, auto-clears on view
     
     // Multi-version support
     VersionInfo aVersions[MAX_VERSIONS];

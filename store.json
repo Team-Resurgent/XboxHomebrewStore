@@ -8,13 +8,17 @@
       "author": "id Software",
       "category": "games",
       "description": "Classic FPS shooter ported to Xbox with enhanced graphics",
+      "new": false,
+      "guid": "2250750",
       "versions": [
         {
           "version": "2.1",
           "size": 5242880,
           "state": 2,
           "release_date": "Jan 16, 2024",
-          "changelog": "Initial release with core gameplay"
+          "changelog": "Initial release with core gameplay",
+          "title_id": "D8914832",
+          "region": "USA-PAL"
         }
       ]
     },
@@ -24,13 +28,17 @@
       "author": "Bungie",
       "category": "games",
       "description": "The legendary FPS that defined a generation",
+      "new": false,
+      "guid": "7251681",
       "versions": [
         {
           "version": "1.5",
           "size": 15728640,
           "state": 3,
           "release_date": "Aug 24, 2023",
-          "changelog": "Improved controls and stability"
+          "changelog": "Improved controls and stability",
+          "title_id": "7E6860E8",
+          "region": "USA-PAL"
         }
       ]
     },
@@ -40,13 +48,17 @@
       "author": "id Software",
       "category": "games",
       "description": "Fast-paced arena shooter",
+      "new": false,
+      "guid": "9736988",
       "versions": [
         {
           "version": "1.32",
           "size": 8388608,
           "state": 0,
           "release_date": "Dec 29, 2024",
-          "changelog": "Initial release with core gameplay"
+          "changelog": "Initial release with core gameplay",
+          "title_id": "C2A8943D",
+          "region": "JPN"
         }
       ]
     },
@@ -56,13 +68,17 @@
       "author": "3D Realms",
       "category": "games",
       "description": "Hail to the king baby!",
+      "new": false,
+      "guid": "1509450",
       "versions": [
         {
           "version": "1.0",
           "size": 6291456,
           "state": 0,
           "release_date": "Mar 26, 2024",
-          "changelog": "Performance improvements and bug fixes"
+          "changelog": "Performance improvements and bug fixes",
+          "title_id": "CA632279",
+          "region": "GLO"
         }
       ]
     },
@@ -72,13 +88,17 @@
       "author": "OpenXcom Team",
       "category": "games",
       "description": "Open-source clone of UFO: Enemy Unknown",
+      "new": false,
+      "guid": "4142086",
       "versions": [
         {
           "version": "1.0",
           "size": 4194304,
           "state": 0,
           "release_date": "Jul 06, 2023",
-          "changelog": "Enhanced graphics and gameplay"
+          "changelog": "Enhanced graphics and gameplay",
+          "title_id": "849309B7",
+          "region": "USA-PAL"
         }
       ]
     },
@@ -88,13 +108,17 @@
       "author": "SNES9x Team",
       "category": "emulators",
       "description": "Super Nintendo Entertainment System emulator",
+      "new": false,
+      "guid": "1699649",
       "versions": [
         {
           "version": "1.43",
           "size": 2097152,
           "state": 1,
           "release_date": "Nov 14, 2023",
-          "changelog": "Updated core to latest version"
+          "changelog": "Updated core to latest version",
+          "title_id": "540897EF",
+          "region": "GLO"
         }
       ]
     },
@@ -104,13 +128,17 @@
       "author": "NES Team",
       "category": "emulators",
       "description": "Nintendo Entertainment System emulator",
+      "new": false,
+      "guid": "8090617",
       "versions": [
         {
           "version": "2.0",
           "size": 1048576,
           "state": 0,
           "release_date": "Jul 28, 2024",
-          "changelog": "Better performance and accuracy"
+          "changelog": "Better performance and accuracy",
+          "title_id": "A868A392",
+          "region": "USA-PAL"
         }
       ]
     },
@@ -120,13 +148,17 @@
       "author": "Eke-Eke",
       "category": "emulators",
       "description": "Sega Genesis/Mega Drive emulator",
+      "new": false,
+      "guid": "6535068",
       "versions": [
         {
           "version": "1.7",
           "size": 1572864,
           "state": 2,
           "release_date": "Sep 10, 2024",
-          "changelog": "Improved compatibility with more games"
+          "changelog": "Improved compatibility with more games",
+          "title_id": "BB150D54",
+          "region": "USA-JPN"
         }
       ]
     },
@@ -136,13 +168,17 @@
       "author": "Exophase",
       "category": "emulators",
       "description": "Game Boy Advance emulator",
+      "new": false,
+      "guid": "5862146",
       "versions": [
         {
           "version": "0.9",
           "size": 2621440,
           "state": 0,
           "release_date": "May 14, 2024",
-          "changelog": "Improved compatibility with more games"
+          "changelog": "Improved compatibility with more games",
+          "title_id": "98EBFF67",
+          "region": "USA"
         }
       ]
     },
@@ -152,13 +188,17 @@
       "author": "PCSX Team",
       "category": "emulators",
       "description": "PlayStation 1 emulator for Xbox",
+      "new": false,
+      "guid": "2036253",
       "versions": [
         {
           "version": "1.5",
           "size": 5242880,
           "state": 0,
           "release_date": "Jul 03, 2024",
-          "changelog": "Improved compatibility with more games"
+          "changelog": "Improved compatibility with more games",
+          "title_id": "F53361E7",
+          "region": "PAL"
         }
       ]
     },
@@ -168,13 +208,17 @@
       "author": "MAME Team",
       "category": "emulators",
       "description": "Arcade machine emulator",
+      "new": false,
+      "guid": "3622267",
       "versions": [
         {
           "version": "0.84",
           "size": 7340032,
           "state": 0,
           "release_date": "Nov 16, 2024",
-          "changelog": "Updated core to latest version"
+          "changelog": "Updated core to latest version",
+          "title_id": "3EB70F46",
+          "region": "USA-JPN"
         }
       ]
     },
@@ -184,13 +228,17 @@
       "author": "XBTools",
       "category": "tools",
       "description": "Transfer files to and from your Xbox over network",
+      "new": false,
+      "guid": "2486826",
       "versions": [
         {
           "version": "3.2",
           "size": 524288,
           "state": 2,
           "release_date": "Jun 19, 2024",
-          "changelog": "Bug fixes and stability improvements"
+          "changelog": "Bug fixes and stability improvements",
+          "title_id": "F5553A61",
+          "region": "GLO"
         }
       ]
     },
@@ -200,13 +248,17 @@
       "author": "XBDev",
       "category": "tools",
       "description": "Browse and manage files on your Xbox",
+      "new": false,
+      "guid": "2009796",
       "versions": [
         {
           "version": "1.8",
           "size": 819200,
           "state": 0,
           "release_date": "May 22, 2024",
-          "changelog": "Initial stable release"
+          "changelog": "Initial stable release",
+          "title_id": "781D59BD",
+          "region": "JPN"
         }
       ]
     },
@@ -216,13 +268,17 @@
       "author": "HeXen Team",
       "category": "tools",
       "description": "Xbox dashboard and file explorer",
+      "new": false,
+      "guid": "5890031",
       "versions": [
         {
           "version": "2.1",
           "size": 2097152,
           "state": 0,
           "release_date": "Nov 29, 2023",
-          "changelog": "Bug fixes and stability improvements"
+          "changelog": "Bug fixes and stability improvements",
+          "title_id": "A1F54AF5",
+          "region": "USA"
         }
       ]
     },
@@ -232,13 +288,17 @@
       "author": "UnleashX Team",
       "category": "tools",
       "description": "Popular Xbox dashboard replacement",
+      "new": false,
+      "guid": "7929405",
       "versions": [
         {
           "version": "0.39",
           "size": 1572864,
           "state": 3,
           "release_date": "Oct 04, 2023",
-          "changelog": "Performance optimizations"
+          "changelog": "Performance optimizations",
+          "title_id": "787D591C",
+          "region": "USA-JPN"
         }
       ]
     },
@@ -248,13 +308,17 @@
       "author": "EvoX Team",
       "category": "tools",
       "description": "Classic Xbox dashboard",
+      "new": true,
+      "guid": "4053041",
       "versions": [
         {
           "version": "3.7",
           "size": 1310720,
           "state": 0,
           "release_date": "Jul 19, 2024",
-          "changelog": "Initial stable release"
+          "changelog": "Initial stable release",
+          "title_id": "44CADB89",
+          "region": "USA-PAL"
         }
       ]
     },
@@ -264,34 +328,44 @@
       "author": "XBMC Team",
       "category": "media",
       "description": "Xbox Media Center - the ultimate media player",
+      "new": false,
+      "guid": "4854554",
       "versions": [
         {
           "version": "3.5",
           "size": 20971520,
-          "state": 3,
+          "state": 2,
           "release_date": "Mar 15, 2024",
-          "changelog": "Added support for new codecs, improved UI performance, fixed streaming bugs"
+          "changelog": "Added support for new codecs, improved UI performance, fixed streaming bugs",
+          "title_id": "FA39BA14",
+          "region": "PAL"
         },
         {
           "version": "3.4",
           "size": 19922944,
-          "state": 2,
+          "state": 0,
           "release_date": "Jan 8, 2024",
-          "changelog": "Updated skin engine, added Python scripting support"
+          "changelog": "Updated skin engine, added Python scripting support",
+          "title_id": "9317DC08",
+          "region": "JPN"
         },
         {
           "version": "3.2",
           "size": 18874368,
           "state": 0,
           "release_date": "Nov 22, 2023",
-          "changelog": "Initial stable release with DVD playback and music library"
+          "changelog": "Initial stable release with DVD playback and music library",
+          "title_id": "85962D71",
+          "region": "USA"
         },
         {
           "version": "3.0",
           "size": 17825792,
           "state": 0,
           "release_date": "Sep 5, 2023",
-          "changelog": "Major rewrite with new media library system"
+          "changelog": "Major rewrite with new media library system",
+          "title_id": "A593A5FD",
+          "region": "USA-JPN"
         }
       ]
     },
@@ -301,13 +375,17 @@
       "author": "XBAudio Team",
       "category": "media",
       "description": "Xbox Music Player for MP3, OGG, and more",
+      "new": false,
+      "guid": "7948110",
       "versions": [
         {
           "version": "2.2",
           "size": 3145728,
           "state": 1,
           "release_date": "Mar 31, 2024",
-          "changelog": "Enhanced UI and navigation"
+          "changelog": "Enhanced UI and navigation",
+          "title_id": "96A4F140",
+          "region": "USA-JPN"
         }
       ]
     },
@@ -317,13 +395,17 @@
       "author": "Xbox Team",
       "category": "media",
       "description": "Play DVD movies on your Xbox",
+      "new": false,
+      "guid": "1001774",
       "versions": [
         {
           "version": "1.0",
           "size": 4194304,
           "state": 0,
           "release_date": "Apr 23, 2024",
-          "changelog": "Added support for new codecs"
+          "changelog": "Added support for new codecs",
+          "title_id": "9D7D6797",
+          "region": "GLO"
         }
       ]
     },
@@ -333,13 +415,17 @@
       "author": "StreamDev",
       "category": "media",
       "description": "Stream media from your PC to Xbox",
+      "new": false,
+      "guid": "8415496",
       "versions": [
         {
           "version": "1.3",
           "size": 2621440,
           "state": 0,
           "release_date": "Jul 19, 2024",
-          "changelog": "Initial release"
+          "changelog": "Initial release",
+          "title_id": "DCD20E9B",
+          "region": "GLO"
         }
       ]
     },
@@ -349,13 +435,17 @@
       "author": "XBMedia",
       "category": "media",
       "description": "View photos and slideshows",
+      "new": false,
+      "guid": "4405216",
       "versions": [
         {
           "version": "2.0",
           "size": 1048576,
           "state": 0,
           "release_date": "Sep 24, 2023",
-          "changelog": "Improved playback performance"
+          "changelog": "Improved playback performance",
+          "title_id": "A9F3D05D",
+          "region": "PAL"
         }
       ]
     },
@@ -365,13 +455,17 @@
       "author": "CheatDev",
       "category": "misc",
       "description": "Create and manage game trainers",
+      "new": false,
+      "guid": "9507725",
       "versions": [
         {
           "version": "1.5",
           "size": 1572864,
           "state": 0,
           "release_date": "Oct 09, 2023",
-          "changelog": "Enhanced functionality"
+          "changelog": "Enhanced functionality",
+          "title_id": "E9A13E95",
+          "region": "PAL"
         }
       ]
     },
@@ -381,13 +475,17 @@
       "author": "SaveTools",
       "category": "misc",
       "description": "Backup and restore game saves",
+      "new": false,
+      "guid": "2438346",
       "versions": [
         {
           "version": "2.1",
           "size": 655360,
           "state": 0,
           "release_date": "Dec 14, 2023",
-          "changelog": "Initial release"
+          "changelog": "Initial release",
+          "title_id": "AA926D18",
+          "region": "USA-JPN"
         }
       ]
     },
@@ -397,13 +495,17 @@
       "author": "Bob",
       "category": "saves",
       "description": "Save game with everything unlocked",
+      "new": false,
+      "guid": "8547888",
       "versions": [
         {
           "version": "1.0",
           "size": 65536,
           "state": 0,
           "release_date": "Apr 23, 2024",
-          "changelog": "Complete save with all unlockables"
+          "changelog": "Complete save with all unlockables",
+          "title_id": "CE426B83",
+          "region": "USA"
         }
       ]
     },
@@ -413,13 +515,17 @@
       "author": "SaveDev",
       "category": "saves",
       "description": "Save with all skulls unlocked",
+      "new": false,
+      "guid": "6993066",
       "versions": [
         {
           "version": "1.0",
           "size": 32768,
           "state": 0,
           "release_date": "Sep 26, 2023",
-          "changelog": "100% completion save"
+          "changelog": "100% completion save",
+          "title_id": "D73F12DD",
+          "region": "GLO"
         }
       ]
     },
@@ -429,13 +535,17 @@
       "author": "XBDiag",
       "category": "misc",
       "description": "View detailed Xbox hardware information",
+      "new": false,
+      "guid": "4830888",
       "versions": [
         {
           "version": "1.0",
           "size": 327680,
           "state": 2,
           "release_date": "Aug 29, 2024",
-          "changelog": "Initial release"
+          "changelog": "Initial release",
+          "title_id": "58DFECAE",
+          "region": "JPN"
         }
       ]
     },
@@ -445,13 +555,17 @@
       "author": "NetTools",
       "category": "misc",
       "description": "Test network speed and connectivity",
+      "new": false,
+      "guid": "2025125",
       "versions": [
         {
           "version": "1.2",
           "size": 524288,
           "state": 0,
           "release_date": "Nov 29, 2024",
-          "changelog": "Bug fixes"
+          "changelog": "Bug fixes",
+          "title_id": "BAC60C42",
+          "region": "JPN"
         }
       ]
     },
@@ -461,13 +575,17 @@
       "author": "HBDev",
       "category": "misc",
       "description": "Launch homebrew apps and games",
+      "new": false,
+      "guid": "2020819",
       "versions": [
         {
           "version": "2.0",
           "size": 1048576,
           "state": 0,
           "release_date": "Jul 04, 2023",
-          "changelog": "Enhanced functionality"
+          "changelog": "Enhanced functionality",
+          "title_id": "6500DB14",
+          "region": "USA-JPN"
         }
       ]
     }
