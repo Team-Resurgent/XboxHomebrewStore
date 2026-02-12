@@ -27,6 +27,7 @@ struct VersionInfo
     char szReleaseDate[32];  // "2024-02-11" or "Feb 11, 2024"
     char szTitleID[16];      // Xbox title ID (e.g., "45410026")
     char szRegion[16];       // Region code (e.g., "USA", "PAL", "JPN", "GLO")
+    char szInstallPath[128]; // Install location (e.g., "E:\\Apps\\XBMC35")
     DWORD dwSize;
     int nState;  // Download state for this specific version
 };
@@ -80,6 +81,17 @@ private:
     void RenderDownloading( LPDIRECT3DDEVICE8 pd3dDevice );
     void RenderSettings( LPDIRECT3DDEVICE8 pd3dDevice );
     void RenderCategorySidebar( LPDIRECT3DDEVICE8 pd3dDevice );
+    
+    // User state management
+    BOOL LoadUserState( const char* filename );
+    BOOL SaveUserState( const char* filename );
+    void MergeUserStateWithCatalog();
+    void MarkAppAsViewed( const char* appId );
+    void SetVersionState( const char* appId, const char* version, int state );
+    
+    // Update detection helpers
+    BOOL HasUpdateAvailable( StoreItem* pItem );
+    int GetDisplayState( StoreItem* pItem, int versionIndex );
     
     // Helper functions
     void DrawRect( LPDIRECT3DDEVICE8 pd3dDevice, float x, float y, float w, float h, DWORD color );

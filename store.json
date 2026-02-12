@@ -14,7 +14,7 @@
         {
           "version": "2.1",
           "size": 5242880,
-          "state": 2,
+          "state": 0,
           "release_date": "Jan 16, 2024",
           "changelog": "Initial release with core gameplay",
           "title_id": "D8914832",
@@ -34,7 +34,7 @@
         {
           "version": "1.5",
           "size": 15728640,
-          "state": 3,
+          "state": 0,
           "release_date": "Aug 24, 2023",
           "changelog": "Improved controls and stability",
           "title_id": "7E6860E8",
@@ -114,7 +114,7 @@
         {
           "version": "1.43",
           "size": 2097152,
-          "state": 1,
+          "state": 0,
           "release_date": "Nov 14, 2023",
           "changelog": "Updated core to latest version",
           "title_id": "540897EF",
@@ -154,7 +154,7 @@
         {
           "version": "1.7",
           "size": 1572864,
-          "state": 2,
+          "state": 0,
           "release_date": "Sep 10, 2024",
           "changelog": "Improved compatibility with more games",
           "title_id": "BB150D54",
@@ -234,7 +234,7 @@
         {
           "version": "3.2",
           "size": 524288,
-          "state": 2,
+          "state": 0,
           "release_date": "Jun 19, 2024",
           "changelog": "Bug fixes and stability improvements",
           "title_id": "F5553A61",
@@ -294,7 +294,7 @@
         {
           "version": "0.39",
           "size": 1572864,
-          "state": 3,
+          "state": 0,
           "release_date": "Oct 04, 2023",
           "changelog": "Performance optimizations",
           "title_id": "787D591C",
@@ -334,7 +334,7 @@
         {
           "version": "3.5",
           "size": 20971520,
-          "state": 2,
+          "state": 0,
           "release_date": "Mar 15, 2024",
           "changelog": "Added support for new codecs, improved UI performance, fixed streaming bugs",
           "title_id": "FA39BA14",
@@ -381,7 +381,7 @@
         {
           "version": "2.2",
           "size": 3145728,
-          "state": 1,
+          "state": 0,
           "release_date": "Mar 31, 2024",
           "changelog": "Enhanced UI and navigation",
           "title_id": "96A4F140",
@@ -541,7 +541,7 @@
         {
           "version": "1.0",
           "size": 327680,
-          "state": 2,
+          "state": 0,
           "release_date": "Aug 29, 2024",
           "changelog": "Initial release",
           "title_id": "58DFECAE",
@@ -561,6 +561,26 @@
         {
           "version": "1.2",
           "size": 524288,
+          "state": 0,
+          "release_date": "Nov 29, 2024",
+          "changelog": "Bug fixes",
+          "title_id": "BAC60C42",
+          "region": "JPN"
+        }
+      ]
+    },
+	{
+      "id": "Porn-Hub",
+      "name": "Porn-Hub",
+      "author": "NetTools",
+      "category": "Porn",
+      "description": "Test network speed and connectivity",
+      "new": true,
+      "guid": "696969",
+      "versions": [
+        {
+          "version": "6.9",
+          "size": 5242884552,
           "state": 0,
           "release_date": "Nov 29, 2024",
           "changelog": "Bug fixes",

@@ -18,6 +18,10 @@
 #define COLOR_SIDEBAR       0xFFD81B60  // Sidebar pink
 #define COLOR_SIDEBAR_HOVER 0xFFC2185B  // Darker pink for selected
 
+// File paths
+#define CATALOG_PATH        "D:\\store.json"
+#define USER_STATE_PATH     "T:\\user_state.json"
+
 //-----------------------------------------------------------------------------
 // Constructor
 //-----------------------------------------------------------------------------
@@ -366,6 +370,7 @@ BOOL Store::LoadCatalogFromFile( const char* filename )
                             strcpy( ver->szReleaseDate, FindJSONValue( vObjData, "release_date" ) );
                             strcpy( ver->szTitleID, FindJSONValue( vObjData, "title_id" ) );
                             strcpy( ver->szRegion, FindJSONValue( vObjData, "region" ) );
+                            ver->szInstallPath[0] = '\0';  // Will be set when installed
                             ver->dwSize = atoi( FindJSONValue( vObjData, "size" ) );
                             ver->nState = atoi( FindJSONValue( vObjData, "state" ) );
                             
@@ -389,6 +394,7 @@ BOOL Store::LoadCatalogFromFile( const char* filename )
                 strcpy( ver->szReleaseDate, "" );
                 strcpy( ver->szTitleID, "" );
                 strcpy( ver->szRegion, "" );
+                ver->szInstallPath[0] = '\0';
                 ver->dwSize = atoi( FindJSONValue( objData, "size" ) );
                 ver->nState = atoi( FindJSONValue( objData, "state" ) );
                 item->nVersionCount = 1;
@@ -425,6 +431,365 @@ BOOL Store::LoadCatalogFromFile( const char* filename )
     OutputDebugString( szDebug );
     
     return TRUE;
+    }
+
+//-----------------------------------------------------------------------------
+// LoadUserState - Load user's personal state from T:\user_state.json
+//-----------------------------------------------------------------------------
+BOOL Store::LoadUserState( const char* filename )
+{
+    OutputDebugString( "Loading user state...\n" );
+    
+    FILE* f = fopen( filename, "rb" );
+    if( !f )
+    {
+        OutputDebugString( "No user state file found - this is normal on first run\n" );
+        return FALSE;
+    }
+    
+    fseek( f, 0, SEEK_END );
+    long fileSize = ftell( f );
+    fseek( f, 0, SEEK_SET );
+    
+    char* fileData = new char[fileSize + 1];
+    fread( fileData, 1, fileSize, f );
+    fileData[fileSize] = '\0';
+    fclose( f );
+    
+    // Parse app states
+    for( int i = 0; i < m_nItemCount; i++ )
+    {
+        // Generate app ID
+        char appId[64];
+        int j = 0;
+        for( const char* s = m_pItems[i].szName; *s && j < 63; s++ )
+        {
+            if( *s != ' ' )
+                appId[j++] = (*s >= 'A' && *s <= 'Z') ? (*s + 32) : *s;
+        }
+        appId[j] = '\0';
+        
+        // Find this app in JSON
+        char searchStr[128];
+        sprintf( searchStr, "\"%s\"", appId );
+        const char* appPos = strstr( fileData, searchStr );
+        if( !appPos ) continue;
+        
+        // Check viewed flag
+        const char* viewedPos = strstr( appPos, "\"viewed\"" );
+        if( viewedPos )
+        {
+            if( strstr( viewedPos, "true" ) )
+                m_pItems[i].bNew = FALSE;
+        }
+        
+        // Parse version states
+        for( int v = 0; v < m_pItems[i].nVersionCount; v++ )
+        {
+            char verSearch[128];
+            sprintf( verSearch, "\"%s\"", m_pItems[i].aVersions[v].szVersion );
+            const char* verPos = strstr( appPos, verSearch );
+            if( verPos )
+            {
+                const char* statePos = strstr( verPos, "\"state\"" );
+                if( statePos )
+                {
+                    const char* colonPos = strchr( statePos, ':' );
+                    if( colonPos )
+                    {
+                        m_pItems[i].aVersions[v].nState = atoi( colonPos + 1 );
+                    }
+                }
+                
+                // Load install path if present
+                const char* pathPos = strstr( verPos, "\"path\"" );
+                if( pathPos )
+                {
+                    const char* pathColon = strchr( pathPos, ':' );
+                    if( pathColon )
+                    {
+                        pathColon++;
+                        while( *pathColon == ' ' || *pathColon == '"' ) pathColon++;
+                        
+                        const char* pathEnd = strchr( pathColon, '"' );
+                        if( pathEnd )
+                        {
+                            int pathLen = pathEnd - pathColon;
+                            if( pathLen >= 128 ) pathLen = 127;
+                            strncpy( m_pItems[i].aVersions[v].szInstallPath, pathColon, pathLen );
+                            m_pItems[i].aVersions[v].szInstallPath[pathLen] = '\0';
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    delete[] fileData;
+    OutputDebugString( "User state applied\n" );
+    return TRUE;
+}
+//-----------------------------------------------------------------------------
+// SaveUserState - Save user's state to T:\user_state.json
+//-----------------------------------------------------------------------------
+BOOL Store::SaveUserState( const char* filename )
+{
+    OutputDebugString( "Saving user state...\n" );
+    
+    FILE* f = fopen( filename, "wb" );
+    if( !f )
+    {
+        char szError[256];
+        sprintf( szError, "Failed to create user state file: %s\n", filename );
+        OutputDebugString( szError );
+        return FALSE;
+    }
+    
+    // Write JSON manually (simple format)
+    fprintf( f, "{\n" );
+    fprintf( f, "  \"version\": \"1.0\",\n" );
+    fprintf( f, "  \"last_updated\": \"2026-02-12\",\n" );
+    
+    // Write each app's state
+    for( int i = 0; i < m_nItemCount; i++ )
+    {
+        StoreItem* pItem = &m_pItems[i];
+        
+        // Generate app ID (lowercase name, no spaces)
+        char appId[64];
+        int j = 0;
+        for( const char* s = pItem->szName; *s && j < 63; s++ )
+        {
+            if( *s != ' ' )
+                appId[j++] = (*s >= 'A' && *s <= 'Z') ? (*s + 32) : *s;
+        }
+        appId[j] = '\0';
+        
+        // Only save if user has interacted with this app
+        BOOL hasState = FALSE;
+        BOOL viewed = !pItem->bNew;  // If not NEW, user must have viewed it
+        
+        // Check if any version has non-default state
+        for( int v = 0; v < pItem->nVersionCount; v++ )
+        {
+            if( pItem->aVersions[v].nState != 0 )
+            {
+                hasState = TRUE;
+                break;
+            }
+        }
+        
+        if( viewed || hasState )
+        {
+            fprintf( f, "  \"%s\": {\n", appId );
+            fprintf( f, "    \"viewed\": %s,\n", viewed ? "true" : "false" );
+            fprintf( f, "    \"versions\": {\n" );
+            
+            // Write version states
+            for( int v = 0; v < pItem->nVersionCount; v++ )
+            {
+                fprintf( f, "      \"%s\": {\"state\": %d",
+                        pItem->aVersions[v].szVersion,
+                        pItem->aVersions[v].nState );
+                
+                // Save install path if installed
+                if( pItem->aVersions[v].nState == 2 && pItem->aVersions[v].szInstallPath[0] != '\0' )
+                {
+                    fprintf( f, ", \"path\": \"%s\"", pItem->aVersions[v].szInstallPath );
+                }
+                
+                fprintf( f, "}" );
+                
+                if( v < pItem->nVersionCount - 1 )
+                    fprintf( f, "," );
+                fprintf( f, "\n" );
+            }
+            
+            fprintf( f, "    }\n" );
+            fprintf( f, "  }" );
+            
+            if( i < m_nItemCount - 1 )
+                fprintf( f, "," );
+            fprintf( f, "\n" );
+        }
+    }
+    
+    fprintf( f, "}\n" );
+    fclose( f );
+    
+    OutputDebugString( "User state saved\n" );
+    return TRUE;
+}
+
+//-----------------------------------------------------------------------------
+// MergeUserStateWithCatalog - Apply smart logic for NEW badges and updates
+//-----------------------------------------------------------------------------
+void Store::MergeUserStateWithCatalog()
+{
+    OutputDebugString( "Merging user state with catalog...\n" );
+    
+    // Note: We DON'T change states here anymore
+    // Update detection will be done at display time by comparing versions
+    // This way we don't overwrite the user's installed state (state=2)
+    
+    OutputDebugString( "Merge complete\n" );
+}
+
+//-----------------------------------------------------------------------------
+// MarkAppAsViewed - Clear NEW flag and save state
+//-----------------------------------------------------------------------------
+void Store::MarkAppAsViewed( const char* appId )
+{
+    // Find app by ID (for now, using name)
+    for( int i = 0; i < m_nItemCount; i++ )
+    {
+        // Generate ID from name
+        char id[64];
+        int j = 0;
+        for( const char* s = m_pItems[i].szName; *s && j < 63; s++ )
+        {
+            if( *s != ' ' )
+                id[j++] = (*s >= 'A' && *s <= 'Z') ? (*s + 32) : *s;
+        }
+        id[j] = '\0';
+        
+        if( strcmp( id, appId ) == 0 )
+        {
+            m_pItems[i].bNew = FALSE;
+            SaveUserState( USER_STATE_PATH );
+            
+            char szDebug[256];
+            sprintf( szDebug, "Marked %s as viewed\n", m_pItems[i].szName );
+            OutputDebugString( szDebug );
+            return;
+        }
+    }
+}
+
+//-----------------------------------------------------------------------------
+// SetVersionState - Change version state and save
+//-----------------------------------------------------------------------------
+void Store::SetVersionState( const char* appId, const char* version, int state )
+{
+    // Find app
+    for( int i = 0; i < m_nItemCount; i++ )
+    {
+        char id[64];
+        int j = 0;
+        for( const char* s = m_pItems[i].szName; *s && j < 63; s++ )
+        {
+            if( *s != ' ' )
+                id[j++] = (*s >= 'A' && *s <= 'Z') ? (*s + 32) : *s;
+        }
+        id[j] = '\0';
+        
+        if( strcmp( id, appId ) == 0 )
+        {
+            // Find version
+            for( int v = 0; v < m_pItems[i].nVersionCount; v++ )
+            {
+                if( strcmp( m_pItems[i].aVersions[v].szVersion, version ) == 0 )
+                {
+                    m_pItems[i].aVersions[v].nState = state;
+                    SaveUserState( USER_STATE_PATH );
+                    
+                    char szDebug[256];
+                    sprintf( szDebug, "Set %s v%s state to %d\n", 
+                            m_pItems[i].szName, version, state );
+                    OutputDebugString( szDebug );
+                    return;
+                }
+            }
+        }
+    }
+}
+
+BOOL Store::HasUpdateAvailable( StoreItem* pItem )
+{
+    if( !pItem || pItem->nVersionCount < 2 )
+        return FALSE;
+    
+    // Check if any version is installed
+    int installedIndex = -1;
+    for( int v = 0; v < pItem->nVersionCount; v++ )
+    {
+        if( pItem->aVersions[v].nState == 2 )  // INSTALLED
+        {
+            installedIndex = v;
+            break;
+        }
+    }
+    
+    if( installedIndex == -1 )
+        return FALSE;  // Nothing installed
+    
+    // If installed version is not the first (latest), update available
+    return (installedIndex > 0);
+}
+
+//-----------------------------------------------------------------------------
+// GetDisplayState - Get state to display (with update detection)
+// RULE: Only show UPDATE if user actually has the app installed
+//-----------------------------------------------------------------------------
+int Store::GetDisplayState( StoreItem* pItem, int versionIndex )
+{
+    if( !pItem || versionIndex < 0 || versionIndex >= pItem->nVersionCount )
+        return 0;
+    
+    int actualState = pItem->aVersions[versionIndex].nState;
+    
+    // Card badge (versionIndex == 0): Show best state across ALL versions
+    if( versionIndex == 0 )
+    {
+        // Priority order:
+        // 1. Latest version installed -> GREEN
+        // 2. Any old version installed -> ORANGE (update available)
+        // 3. Any version downloaded -> BLUE
+        // 4. Nothing -> GRAY
+        
+        BOOL hasDownloaded = FALSE;
+        int installedIndex = -1;
+        
+        // Check all versions
+        for( int v = 0; v < pItem->nVersionCount; v++ )
+        {
+            if( pItem->aVersions[v].nState == 2 )  // INSTALLED
+            {
+                installedIndex = v;
+                break;  // Found installed, stop looking
+            }
+            else if( pItem->aVersions[v].nState == 1 )  // DOWNLOADED
+            {
+                hasDownloaded = TRUE;
+            }
+        }
+        
+        // If something is installed
+        if( installedIndex >= 0 )
+        {
+            // If latest version (index 0) is installed -> GREEN
+            if( installedIndex == 0 )
+                return 2;  // INSTALLED
+            
+            // If older version is installed -> ORANGE (update available)
+            return 3;  // UPDATE_AVAILABLE
+        }
+        
+        // Nothing installed, but something downloaded -> BLUE
+        if( hasDownloaded )
+            return 1;  // DOWNLOADED
+        
+        // Nothing at all -> GRAY
+        return 0;  // NOT_DOWNLOADED
+    }
+    
+    // Version list: If this is an old version and it's installed, show UPDATE
+    if( actualState == 2 && versionIndex > 0 )
+    {
+        return 3;  // UPDATE_AVAILABLE
+    }
+    
+    return actualState;
 }
 
 //-----------------------------------------------------------------------------
@@ -456,7 +821,7 @@ HRESULT Store::Initialize( LPDIRECT3DDEVICE8 pd3dDevice )
     XBInput_CreateGamepads( &m_pGamepads );
 
     // Load app catalog from JSON file
-    if( !LoadCatalogFromFile( "D:\\store.json" ) )
+    if( !LoadCatalogFromFile( CATALOG_PATH ) )
     {
         OutputDebugString( "Failed to load store.json, using fallback data\n" );
         
@@ -484,6 +849,7 @@ HRESULT Store::Initialize( LPDIRECT3DDEVICE8 pd3dDevice )
         strcpy( m_pItems[0].aVersions[0].szReleaseDate, "" );
         strcpy( m_pItems[0].aVersions[0].szTitleID, "" );
         strcpy( m_pItems[0].aVersions[0].szRegion, "" );
+        m_pItems[0].aVersions[0].szInstallPath[0] = '\0';
         m_pItems[0].aVersions[0].dwSize = 5 * 1024 * 1024;
         m_pItems[0].aVersions[0].nState = 2;
         
@@ -503,6 +869,7 @@ HRESULT Store::Initialize( LPDIRECT3DDEVICE8 pd3dDevice )
         strcpy( m_pItems[1].aVersions[0].szReleaseDate, "" );
         strcpy( m_pItems[1].aVersions[0].szTitleID, "" );
         strcpy( m_pItems[1].aVersions[0].szRegion, "" );
+        m_pItems[1].aVersions[0].szInstallPath[0] = '\0';
         m_pItems[1].aVersions[0].dwSize = 20 * 1024 * 1024;
         m_pItems[1].aVersions[0].nState = 0;
         
@@ -522,11 +889,16 @@ HRESULT Store::Initialize( LPDIRECT3DDEVICE8 pd3dDevice )
         strcpy( m_pItems[2].aVersions[0].szReleaseDate, "" );
         strcpy( m_pItems[2].aVersions[0].szTitleID, "" );
         strcpy( m_pItems[2].aVersions[0].szRegion, "" );
+        m_pItems[2].aVersions[0].szInstallPath[0] = '\0';
         m_pItems[2].aVersions[0].dwSize = 512 * 1024;
         m_pItems[2].aVersions[0].nState = 1;
         
         BuildCategoryList();
     }
+    
+    // Load user state and merge with catalog
+    LoadUserState( USER_STATE_PATH );
+    MergeUserStateWithCatalog();
 
     return S_OK;
 }
@@ -778,10 +1150,11 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
             metaY += 40.0f;
         }
         
-        // Status
+        // Status - use display state for update detection
+        int displayState = GetDisplayState( pItem, pItem->nSelectedVersion );
         const char* statusText;
         DWORD statusColor;
-        switch( pCurrentVersion->nState )
+        switch( displayState )
         {
             case 2: statusText = "INSTALLED"; statusColor = COLOR_SUCCESS; break;
             case 1: statusText = "DOWNLOADED"; statusColor = COLOR_DOWNLOAD; break;
@@ -791,8 +1164,31 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
         DrawText( pd3dDevice, "Status:", sidebarX + 15.0f, metaY, COLOR_WHITE );
         metaY += 20.0f;
         DrawText( pd3dDevice, statusText, sidebarX + 15.0f, metaY, statusColor );
+        metaY += 40.0f;
         
-        // Action buttons
+        // Show install path if installed
+        if( pCurrentVersion->nState == 2 && pCurrentVersion->szInstallPath[0] != '\0' )
+        {
+            DrawText( pd3dDevice, "Installed:", sidebarX + 15.0f, metaY, COLOR_WHITE );
+            metaY += 20.0f;
+            
+            // Wrap path if too long - show last part
+            const char* pathToShow = pCurrentVersion->szInstallPath;
+            if( strlen( pathToShow ) > 20 )
+            {
+                // Show "E:\Apps\..." format
+                char shortPath[64];
+                sprintf( shortPath, "...%s", pathToShow + strlen(pathToShow) - 15 );
+                DrawText( pd3dDevice, shortPath, sidebarX + 15.0f, metaY, COLOR_TEXT_GRAY );
+            }
+            else
+            {
+                DrawText( pd3dDevice, pathToShow, sidebarX + 15.0f, metaY, COLOR_TEXT_GRAY );
+            }
+            metaY += 40.0f;
+        }
+        
+        // Action buttons - use ACTUAL state for buttons, not display state
         float actionBarY = m_fScreenHeight - actionBarH;
         DrawRect( pd3dDevice, 0, actionBarY, m_fScreenWidth, actionBarH, COLOR_SECONDARY );
         
@@ -801,9 +1197,12 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
         float btnSpacing = 20.0f;
         float btnStartX = 40.0f;
         
-        switch( pCurrentVersion->nState )
+        // Use actual state for buttons (not displayState which shows UPDATE)
+        int actualState = pCurrentVersion->nState;
+        
+        switch( actualState )
         {
-            case 0:
+            case 0: // NOT_DOWNLOADED
             {
                 float btnW = (m_fScreenWidth - btnStartX * 2 - btnSpacing) / 2.0f;
                 DrawRect( pd3dDevice, btnStartX, btnY, btnW, btnH, COLOR_DOWNLOAD );
@@ -812,7 +1211,7 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
                 DrawText( pd3dDevice, "(B) Back", btnStartX + btnW + btnSpacing + 40.0f, btnY + 12.0f, COLOR_WHITE );
                 break;
             }
-            case 1:
+            case 1: // DOWNLOADED
             {
                 float btnW = (m_fScreenWidth - btnStartX * 2 - btnSpacing * 2) / 3.0f;
                 DrawRect( pd3dDevice, btnStartX, btnY, btnW, btnH, COLOR_SUCCESS );
@@ -823,24 +1222,15 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
                 DrawText( pd3dDevice, "(B) Back", btnStartX + (btnW + btnSpacing) * 2 + 20.0f, btnY + 12.0f, COLOR_WHITE );
                 break;
             }
-            case 2:
+            case 2: // INSTALLED
             {
+                // If this is an old version (displayState shows UPDATE), show Launch + Uninstall
+                // If this is latest version, show Launch + Uninstall
                 float btnW = (m_fScreenWidth - btnStartX * 2 - btnSpacing * 2) / 3.0f;
                 DrawRect( pd3dDevice, btnStartX, btnY, btnW, btnH, COLOR_SUCCESS );
                 DrawText( pd3dDevice, "(A) Launch", btnStartX + 15.0f, btnY + 12.0f, COLOR_WHITE );
                 DrawRect( pd3dDevice, btnStartX + btnW + btnSpacing, btnY, btnW, btnH, 0xFFD32F2F );
                 DrawText( pd3dDevice, "(X) Uninstall", btnStartX + btnW + btnSpacing + 8.0f, btnY + 12.0f, COLOR_WHITE );
-                DrawRect( pd3dDevice, btnStartX + (btnW + btnSpacing) * 2, btnY, btnW, btnH, COLOR_CARD_BG );
-                DrawText( pd3dDevice, "(B) Back", btnStartX + (btnW + btnSpacing) * 2 + 20.0f, btnY + 12.0f, COLOR_WHITE );
-                break;
-            }
-            case 3: // UPDATE_AVAILABLE
-            {
-                float btnW = (m_fScreenWidth - btnStartX * 2 - btnSpacing * 2) / 3.0f;
-                DrawRect( pd3dDevice, btnStartX, btnY, btnW, btnH, 0xFFFF9800 );
-                DrawText( pd3dDevice, "(A) Update", btnStartX + 15.0f, btnY + 12.0f, COLOR_WHITE );
-                DrawRect( pd3dDevice, btnStartX + btnW + btnSpacing, btnY, btnW, btnH, COLOR_SUCCESS );
-                DrawText( pd3dDevice, "(Y) Launch", btnStartX + btnW + btnSpacing + 15.0f, btnY + 12.0f, COLOR_WHITE );
                 DrawRect( pd3dDevice, btnStartX + (btnW + btnSpacing) * 2, btnY, btnW, btnH, COLOR_CARD_BG );
                 DrawText( pd3dDevice, "(B) Back", btnStartX + (btnW + btnSpacing) * 2 + 20.0f, btnY + 12.0f, COLOR_WHITE );
                 break;
@@ -1194,8 +1584,8 @@ void Store::DrawAppCard( LPDIRECT3DDEVICE8 pd3dDevice, StoreItem* pItem, float x
     }
     else
     {
-        // Normal state colors
-        int state = (pItem->nVersionCount > 0) ? pItem->aVersions[0].nState : 0;
+        // Normal state colors - use display state for update detection
+        int state = (pItem->nVersionCount > 0) ? GetDisplayState( pItem, 0 ) : 0;
         
         switch( state )
         {
@@ -1292,6 +1682,9 @@ void Store::HandleInput()
                     // Clear NEW flag when user views the app
                     m_pItems[actualItemIndex].bNew = FALSE;
                     
+                    // Save user state (app viewed)
+                    SaveUserState( USER_STATE_PATH );
+                    
                     if( m_pItems[actualItemIndex].nVersionCount == 1 )
                         m_pItems[actualItemIndex].bViewingVersionDetail = TRUE;
                     else
@@ -1350,9 +1743,42 @@ void Store::HandleInput()
                     switch( pVer->nState )
                     {
                         case 0: m_CurrentState = UI_DOWNLOADING; break; // Download
-                        case 1: pVer->nState = 2; break; // Install
+                        case 1:  // Install (this IS the update if newer version exists!)
+                        {
+                            // Generate install path: E:\Apps\AppName_Version
+                            char appName[64];
+                            // Remove spaces and special chars from app name
+                            int j = 0;
+                            for( const char* s = pItem->szName; *s && j < 63; s++ )
+                            {
+                                if( (*s >= 'A' && *s <= 'Z') || (*s >= 'a' && *s <= 'z') || (*s >= '0' && *s <= '9') )
+                                    appName[j++] = *s;
+                            }
+                            appName[j] = '\0';
+                            
+                            // Remove dots from version for path
+                            char verClean[16];
+                            j = 0;
+                            for( const char* s = pVer->szVersion; *s && j < 15; s++ )
+                            {
+                                if( *s != '.' && *s != ' ' )
+                                    verClean[j++] = *s;
+                            }
+                            verClean[j] = '\0';
+                            
+                            // Create install path
+                            sprintf( pVer->szInstallPath, "E:\\Apps\\%s_%s", appName, verClean );
+                            
+                            // Mark as installed
+                            pVer->nState = 2;
+                            SaveUserState( USER_STATE_PATH );
+                            
+                            char szDebug[256];
+                            sprintf( szDebug, "Installed to: %s\n", pVer->szInstallPath );
+                            OutputDebugString( szDebug );
+                            break;
+                        }
                         case 2: /* Launch */ break;
-                        case 3: m_CurrentState = UI_DOWNLOADING; break; // Update
                     }
                 }
                 
@@ -1360,7 +1786,14 @@ void Store::HandleInput()
                 if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_X] )
                 {
                     if( pVer->nState == 1 || pVer->nState == 2 )
+                    {
+                        // TODO: Actually delete folder at pVer->szInstallPath
+                        pVer->szInstallPath[0] = '\0';  // Clear install path
                         pVer->nState = 0;
+                        SaveUserState( USER_STATE_PATH );
+                        
+                        OutputDebugString( "Uninstalled and deleted folder\n" );
+                    }
                 }
             }
             // If viewing version list
@@ -1396,23 +1829,76 @@ void Store::HandleInput()
                     switch( pVer->nState )
                     {
                         case 0: m_CurrentState = UI_DOWNLOADING; break;
-                        case 1: pVer->nState = 2; break;
+                        case 1:  // Install
+                        {
+                            // Generate install path
+                            char appName[64];
+                            int j = 0;
+                            for( const char* s = pItem->szName; *s && j < 63; s++ )
+                            {
+                                if( (*s >= 'A' && *s <= 'Z') || (*s >= 'a' && *s <= 'z') || (*s >= '0' && *s <= '9') )
+                                    appName[j++] = *s;
+                            }
+                            appName[j] = '\0';
+                            
+                            char verClean[16];
+                            j = 0;
+                            for( const char* s = pVer->szVersion; *s && j < 15; s++ )
+                            {
+                                if( *s != '.' && *s != ' ' )
+                                    verClean[j++] = *s;
+                            }
+                            verClean[j] = '\0';
+                            
+                            sprintf( pVer->szInstallPath, "E:\\Apps\\%s_%s", appName, verClean );
+                            pVer->nState = 2;
+                            SaveUserState( USER_STATE_PATH );
+                            break;
+                        }
                         case 2: /* Launch */ break;
-                        case 3: m_CurrentState = UI_DOWNLOADING; break;
                     }
                 }
                 
                 if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_X] )
                 {
                     if( pVer->nState == 1 || pVer->nState == 2 )
+                    {
+                        pVer->szInstallPath[0] = '\0';
                         pVer->nState = 0;
+                        SaveUserState( USER_STATE_PATH );
+                    }
                 }
             }
         }
     }
     else if( m_CurrentState == UI_DOWNLOADING )
     {
-        // TODO: Handle download completion
+        // Simulate download completion (in real app, this would be async)
+        // For now, B button completes download
+        if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_B] )
+        {
+            // Get currently selected item
+            if( m_nSelectedItem >= 0 && m_nSelectedItem < m_nFilteredCount )
+            {
+                int actualItemIndex = m_aFilteredIndices[m_nSelectedItem];
+                if( actualItemIndex >= 0 && actualItemIndex < m_nItemCount )
+                {
+                    StoreItem* pItem = &m_pItems[actualItemIndex];
+                    
+                    // Mark selected version as downloaded
+                    if( pItem->nSelectedVersion >= 0 && pItem->nSelectedVersion < pItem->nVersionCount )
+                    {
+                        pItem->aVersions[pItem->nSelectedVersion].nState = 1;  // DOWNLOADED
+                        SaveUserState( USER_STATE_PATH );
+                        
+                        OutputDebugString( "Download complete - marked as DOWNLOADED\n" );
+                    }
+                }
+            }
+            
+            // Return to details
+            m_CurrentState = UI_ITEM_DETAILS;
+        }
     }
     else if( m_CurrentState == UI_SETTINGS )
     {
