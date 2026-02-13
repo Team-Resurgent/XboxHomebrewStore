@@ -37,6 +37,7 @@ Store::Store()
     m_pVB = NULL;
     m_pGamepads = NULL;
     m_dwLastButtons = 0;
+	m_pFilteredIndices = NULL;
     
     // Will be set in Initialize
     m_fScreenWidth = 640.0f;
@@ -61,6 +62,9 @@ Store::~Store()
         m_pVB->Release();
     
     m_Font.Destroy();
+
+	if (m_pFilteredIndices)
+		delete[] m_pFilteredIndices;
 
     if( m_pItems )
     {
@@ -95,17 +99,33 @@ const char* Store::FindJSONValue( const char* json, const char* key )
     colonPos++;
     while( *colonPos == ' ' || *colonPos == '\t' ) colonPos++;
     
-    // Handle string values (in quotes)
-    if( *colonPos == '"' )
-    {
-        colonPos++;
-        int i = 0;
-        while( *colonPos && *colonPos != '"' && i < 510 )
-        {
-            value[i++] = *colonPos++;
-        }
-        value[i] = '\0';
-    }
+    // Handle string values (in quotes) - NOW WITH ESCAPE SUPPORT!
+	if( *colonPos == '"' )
+	{
+		colonPos++;
+		int i = 0;
+		while( *colonPos && i < 510 )
+		{
+			// Handle escaped characters
+			if( *colonPos == '\\' && *(colonPos + 1) )
+			{
+				// Copy the backslash and the next character as-is
+				value[i++] = *colonPos++;
+				if( i < 510 && *colonPos )
+					value[i++] = *colonPos++;
+			}
+			// Stop at unescaped quote
+			else if( *colonPos == '"' )
+			{
+				break;  // Only stop at REAL end quote
+			}
+			else
+			{
+				value[i++] = *colonPos++;
+			}
+		}
+		value[i] = '\0';
+	}
     // Handle boolean values (true/false)
     else if( strncmp( colonPos, "true", 4 ) == 0 )
     {
@@ -130,38 +150,243 @@ const char* Store::FindJSONValue( const char* json, const char* key )
 }
 
 //-----------------------------------------------------------------------------
-// GetOrCreateCategory - Find or create a category index
+// SafeCopy - Safe string copy with null termination
 //-----------------------------------------------------------------------------
-int Store::GetOrCreateCategory( const char* catID )
+void Store::SafeCopy(char* dest, const char* src, int maxLen)
 {
-    // Check if category already exists
-    for( int i = 1; i < m_nCategoryCount; i++ ) // Start at 1 to skip "All Apps"
+    if (!dest || maxLen <= 0)
+        return;
+
+    if (!src)
     {
-        if( strcmp( m_aCategories[i].szID, catID ) == 0 )
+        dest[0] = '\0';
+        return;
+    }
+
+    strncpy(dest, src, maxLen - 1);
+    dest[maxLen - 1] = '\0';
+}
+
+//-----------------------------------------------------------------------------
+// SafeCopyUTF8 - UTF-8 aware string copy
+//-----------------------------------------------------------------------------
+void Store::SafeCopyUTF8(char* dest, const char* src, int maxBytes)
+{
+    if (!dest || maxBytes <= 0)
+        return;
+    
+    if (!src)
+    {
+        dest[0] = '\0';
+        return;
+    }
+    
+    int bytesWritten = 0;
+    const unsigned char* s = (const unsigned char*)src;
+    
+    while (*s && bytesWritten < maxBytes - 4)  // -4 for max UTF-8 char size
+    {
+        if (*s < 0x80)
+        {
+            // ASCII (1 byte)
+            dest[bytesWritten++] = *s++;
+        }
+        else if ((*s & 0xE0) == 0xC0)
+        {
+            // 2-byte UTF-8
+            if (bytesWritten + 2 < maxBytes && s[1])
+            {
+                dest[bytesWritten++] = *s++;
+                dest[bytesWritten++] = *s++;
+            }
+            else break;
+        }
+        else if ((*s & 0xF0) == 0xE0)
+        {
+            // 3-byte UTF-8
+            if (bytesWritten + 3 < maxBytes && s[1] && s[2])
+            {
+                dest[bytesWritten++] = *s++;
+                dest[bytesWritten++] = *s++;
+                dest[bytesWritten++] = *s++;
+            }
+            else break;
+        }
+        else if ((*s & 0xF8) == 0xF0)
+        {
+            // 4-byte UTF-8
+            if (bytesWritten + 4 < maxBytes && s[1] && s[2] && s[3])
+            {
+                dest[bytesWritten++] = *s++;
+                dest[bytesWritten++] = *s++;
+                dest[bytesWritten++] = *s++;
+                dest[bytesWritten++] = *s++;
+            }
+            else break;
+        }
+        else
+        {
+            // Invalid UTF-8, skip
+            s++;
+        }
+    }
+    
+    dest[bytesWritten] = '\0';
+}
+
+//-----------------------------------------------------------------------------
+// UnescapeJSON - Handle JSON escape sequences
+//-----------------------------------------------------------------------------
+void Store::UnescapeJSON(char* dest, const char* src, int maxLen)
+{
+    if (!dest || !src || maxLen <= 0)
+    {
+        if (dest && maxLen > 0)
+            dest[0] = '\0';
+        return;
+    }
+    
+    int j = 0;
+    for (int i = 0; src[i] && j < maxLen - 1; i++)
+    {
+        if (src[i] == '\\' && src[i+1])
+        {
+            switch (src[i+1])
+            {
+                case 'n':  dest[j++] = '\n'; i++; break;
+                case 't':  dest[j++] = '\t'; i++; break;
+                case 'r':  dest[j++] = '\r'; i++; break;
+                case '\\': dest[j++] = '\\'; i++; break;
+                case '"':  dest[j++] = '"';  i++; break;
+                case '/':  dest[j++] = '/';  i++; break;
+                case 'b':  dest[j++] = '\b'; i++; break;
+                case 'f':  dest[j++] = '\f'; i++; break;
+                default:   dest[j++] = src[i]; break;
+            }
+        }
+        else
+        {
+            dest[j++] = src[i];
+        }
+    }
+    dest[j] = '\0';
+}
+
+//-----------------------------------------------------------------------------
+// FindJSONValueUnescaped - Get JSON value with escapes handled
+//-----------------------------------------------------------------------------
+const char* Store::FindJSONValueUnescaped(const char* json, const char* key)
+{
+    static char unescaped[1024];
+    const char* escaped = FindJSONValue(json, key);
+    UnescapeJSON(unescaped, escaped, sizeof(unescaped));
+    return unescaped;
+}
+
+
+//-----------------------------------------------------------------------------
+// SafeParseInt - Safe integer parsing with bounds checking
+//-----------------------------------------------------------------------------
+long Store::SafeParseInt(const char* str, long defaultVal, long minVal, long maxVal)
+{
+    if (!str || !str[0])
+        return defaultVal;
+    
+    // Skip whitespace
+    while (*str == ' ' || *str == '\t') str++;
+    
+    // Check for valid number
+    const char* p = str;
+    if (*p == '-' || *p == '+') p++;
+    
+    BOOL hasDigit = FALSE;
+    while (*p)
+    {
+        if (*p >= '0' && *p <= '9')
+        {
+            hasDigit = TRUE;
+            p++;
+        }
+        else
+        {
+            return defaultVal;  // Invalid character
+        }
+    }
+    
+    if (!hasDigit)
+        return defaultVal;
+    
+    // Parse
+    char* endPtr;
+    long val = strtol(str, &endPtr, 10);
+    
+    // Clamp to range
+    if (val < minVal) return minVal;
+    if (val > maxVal) return maxVal;
+    
+    return val;
+}
+
+
+//-----------------------------------------------------------------------------
+// GenerateAppID - Create lowercase no-space ID from name
+//-----------------------------------------------------------------------------
+void Store::GenerateAppID(const char* name, char* outID, int maxLen)
+{
+    if (!name || !outID || maxLen <= 0)
+        return;
+
+    int j = 0;
+
+    for (const char* s = name; *s && j < maxLen - 1; s++)
+    {
+        if (*s != ' ')
+        {
+            if (*s >= 'A' && *s <= 'Z')
+                outID[j++] = *s + 32;
+            else
+                outID[j++] = *s;
+        }
+    }
+
+    outID[j] = '\0';
+}
+
+//-----------------------------------------------------------------------------
+// GetOrCreateCategory - Find or create a category index (SAFE)
+//-----------------------------------------------------------------------------
+int Store::GetOrCreateCategory(const char* catID)
+{
+    if (!catID || catID[0] == '\0')
+        return 0;
+
+    // Check existing categories (skip 0 - "All Apps")
+    for (int i = 1; i < m_nCategoryCount; i++)
+    {
+        if (strcmp(m_aCategories[i].szID, catID) == 0)
             return i;
     }
-    
-    // Create new category if we have room
-    if( m_nCategoryCount >= MAX_CATEGORIES )
+
+    if (m_nCategoryCount >= MAX_CATEGORIES)
     {
-        OutputDebugString( "Warning: Max categories reached\n" );
-        return 1; // Return first category after "All"
+        OutputDebugString("Warning: Max categories reached\n");
+        return 1;
     }
-    
+
     int newIndex = m_nCategoryCount++;
-    strcpy( m_aCategories[newIndex].szID, catID );
-    
-    // Capitalize first letter for display name
-    strcpy( m_aCategories[newIndex].szName, catID );
-    if( m_aCategories[newIndex].szName[0] >= 'a' && m_aCategories[newIndex].szName[0] <= 'z' )
-        m_aCategories[newIndex].szName[0] -= 32; // Uppercase first letter
-    
+
+    SafeCopy(m_aCategories[newIndex].szID, catID, sizeof(m_aCategories[newIndex].szID));
+    SafeCopy(m_aCategories[newIndex].szName, catID, sizeof(m_aCategories[newIndex].szName));
+
+    // Capitalize first letter
+    if (m_aCategories[newIndex].szName[0] >= 'a' &&
+        m_aCategories[newIndex].szName[0] <= 'z')
+    {
+        m_aCategories[newIndex].szName[0] -= 32;
+    }
+
     m_aCategories[newIndex].nAppCount = 0;
-    
-    char szDebug[256];
-    sprintf( szDebug, "Created new category: %s (index %d)\n", catID, newIndex );
-    OutputDebugString( szDebug );
-    
+
     return newIndex;
 }
 
@@ -197,112 +422,149 @@ void Store::BuildCategoryList()
 //-----------------------------------------------------------------------------
 // LoadCatalogFromFile - Load and parse store.json
 //-----------------------------------------------------------------------------
-BOOL Store::LoadCatalogFromFile( const char* filename )
+BOOL Store::LoadCatalogFromFile(const char* filename)
 {
-    // Read entire file into memory
-    FILE* f = fopen( filename, "rb" );
-    if( !f )
+    FILE* f = fopen(filename, "rb");
+    if (!f)
     {
-        OutputDebugString( "Failed to open catalog file\n" );
+        OutputDebugString("Failed to open catalog file\n");
         return FALSE;
     }
-    
-    fseek( f, 0, SEEK_END );
-    long fileSize = ftell( f );
-    fseek( f, 0, SEEK_SET );
-    
-    char* jsonData = new char[fileSize + 1];
-    fread( jsonData, 1, fileSize, f );
-    jsonData[fileSize] = '\0';
-    fclose( f );
-    
-    OutputDebugString( "Loaded catalog file\n" );
-    
-    // Find "apps" array
-    const char* appsStart = strstr( jsonData, "\"apps\"" );
-    if( !appsStart )
+
+    fseek(f, 0, SEEK_END);
+    long fileSize = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    if (fileSize <= 0 || fileSize > 10 * 1024 * 1024)
     {
-        delete[] jsonData;
+        fclose(f);
         return FALSE;
     }
-    
-    // Find opening bracket of apps array
-    const char* arrayStart = strchr( appsStart, '[' );
-    if( !arrayStart )
+
+	char* jsonData = new char[fileSize + 1];
+	if (!jsonData)
+	{
+		OutputDebugString("ERROR: Out of memory loading catalog\n");
+		fclose(f);
+		return FALSE;
+	}
+	fread(jsonData, 1, fileSize, f);
+
+    const char* appsStart = strstr(jsonData, "\"apps\"");
+    if (!appsStart)
     {
         delete[] jsonData;
         return FALSE;
     }
-    
-    // Count apps (skip nested objects in versions arrays)
+
+    const char* arrayStart = strchr(appsStart, '[');
+    if (!arrayStart)
+    {
+        delete[] jsonData;
+        return FALSE;
+    }
+
+    // -------------------------------------------------
+    // PASS 1: COUNT TOP-LEVEL APP OBJECTS
+    // -------------------------------------------------
     int appCount = 0;
-    const char* p = arrayStart;
+    const char* p = arrayStart + 1;
     int depth = 0;
-    BOOL inVersionsArray = FALSE;
-    
-    while( *p && appCount < 100 )
+
+    while (*p)
     {
-        // Check if we're entering a "versions" array
-        if( !inVersionsArray && strncmp( p, "\"versions\"", 10 ) == 0 )
+        if (*p == '{')
         {
-            inVersionsArray = TRUE;
-        }
-        
-        if( *p == '{' )
-        {
+            if (depth == 0)
+                appCount++;  // Only count direct children of apps array
+
             depth++;
-            // Only count top-level app objects (depth 1, not in versions)
-            if( depth == 1 && !inVersionsArray )
-            {
-                appCount++;
-            }
         }
-        else if( *p == '}' )
+        else if (*p == '}')
         {
             depth--;
         }
-        else if( *p == ']' && inVersionsArray )
+        else if (*p == ']' && depth == 0)
         {
-            // Exiting versions array
-            inVersionsArray = FALSE;
+            break;
         }
-        
+
         p++;
     }
+
+    // Safety limit check
+    #define MAX_CATALOG_APPS 3000
     
-    OutputDebugString( "Found apps in catalog\n" );
-    
-    // Allocate items
+    if (appCount <= 0)
+    {
+        delete[] jsonData;
+        return FALSE;
+    }
+
+    if (appCount > MAX_CATALOG_APPS)
+    {
+        char szErr[256];
+        sprintf(szErr, "ERROR: Catalog has %d apps, max supported is %d\n", 
+                appCount, MAX_CATALOG_APPS);
+        OutputDebugString(szErr);
+        delete[] jsonData;
+        return FALSE;
+    }
+
     m_nItemCount = appCount;
     m_pItems = new StoreItem[m_nItemCount];
-    
-    // Parse each app
-    p = arrayStart + 1; // Skip opening [
+    if (!m_pItems)
+    {
+        OutputDebugString("CRITICAL: Out of memory allocating items\n");
+        m_nItemCount = 0;
+        delete[] jsonData;
+        return FALSE;
+    }
+
+    // Zero-initialize for safety
+    memset(m_pItems, 0, sizeof(StoreItem) * m_nItemCount);
+
+    // Allocate filtered index buffer
+    if (m_pFilteredIndices)
+    {
+        delete[] m_pFilteredIndices;
+        m_pFilteredIndices = NULL;
+    }
+
+    m_pFilteredIndices = new int[m_nItemCount];
+    if (!m_pFilteredIndices)
+    {
+        OutputDebugString("CRITICAL: Out of memory allocating filtered indices\n");
+        delete[] m_pItems;
+        m_pItems = NULL;
+        m_nItemCount = 0;
+        delete[] jsonData;
+        return FALSE;
+    }
+
+    // -------------------------------------------------
+    // PASS 2: PARSE EACH APP OBJECT
+    // -------------------------------------------------
+    p = arrayStart + 1;
     int itemIndex = 0;
     depth = 0;
-    
-    while( *p && itemIndex < appCount )
+
+    while (*p && itemIndex < m_nItemCount)
     {
-        // Skip whitespace
-        while( *p && (*p == ' ' || *p == '\n' || *p == '\r' || *p == '\t' || *p == ',') ) p++;
-        
-        if( *p == '{' )
+        if (*p == '{' && depth == 0)
         {
-            // This should be an app object
             const char* objStart = p;
-            
-            // Find matching closing brace for this app
             int braceDepth = 0;
             const char* scan = p;
             const char* objEnd = NULL;
-            
-            while( *scan )
+
+            while (*scan)
             {
-                if( *scan == '{' ) braceDepth++;
-                else if( *scan == '}' )
+                if (*scan == '{') braceDepth++;
+                else if (*scan == '}')
                 {
                     braceDepth--;
-                    if( braceDepth == 0 )
+                    if (braceDepth == 0)
                     {
                         objEnd = scan;
                         break;
@@ -310,129 +572,131 @@ BOOL Store::LoadCatalogFromFile( const char* filename )
                 }
                 scan++;
             }
-            
-            if( !objEnd ) break;
-            
-            // Extract this object
+
+            if (!objEnd)
+                break;
+
             int objLen = objEnd - objStart + 1;
             char* objData = new char[objLen + 1];
-            memcpy( objData, objStart, objLen );
+            memcpy(objData, objStart, objLen);
             objData[objLen] = '\0';
-            
-            // Parse fields
+
             StoreItem* item = &m_pItems[itemIndex];
-            
-            strcpy( item->szName, FindJSONValue( objData, "name" ) );
-            strcpy( item->szAuthor, FindJSONValue( objData, "author" ) );
-            strcpy( item->szDescription, FindJSONValue( objData, "description" ) );
-            strcpy( item->szGUID, FindJSONValue( objData, "guid" ) );
-            
-            item->nCategoryIndex = GetOrCreateCategory( FindJSONValue( objData, "category" ) );
+
+            // Use UTF-8 aware copy for names and descriptions (international support)
+            SafeCopyUTF8(item->szName, FindJSONValueUnescaped(objData, "name"), sizeof(item->szName));
+            SafeCopyUTF8(item->szAuthor, FindJSONValueUnescaped(objData, "author"), sizeof(item->szAuthor));
+            SafeCopyUTF8(item->szDescription, FindJSONValueUnescaped(objData, "description"), sizeof(item->szDescription));
+            SafeCopy(item->szGUID, FindJSONValue(objData, "guid"), sizeof(item->szGUID));
+			SafeCopy(item->szID, FindJSONValue(objData, "id"), sizeof(item->szID));
+
+            item->nCategoryIndex = GetOrCreateCategory(FindJSONValue(objData, "category"));
             item->pIcon = NULL;
             item->nVersionCount = 0;
             item->nSelectedVersion = 0;
             item->nVersionScrollOffset = 0;
             item->bViewingVersionDetail = FALSE;
-            
-            // Parse "new" flag (handle both "true" and "True")
-            const char* newFlag = FindJSONValue( objData, "new" );
-            item->bNew = (strcmp( newFlag, "true" ) == 0 || strcmp( newFlag, "True" ) == 0);
-            
-            // Debug output
-            char szNewDebug[256];
-            sprintf( szNewDebug, "App: %s, new flag='%s', bNew=%d\n", item->szName, newFlag, item->bNew );
-            OutputDebugString( szNewDebug );
-            
-            // Parse versions array
-            const char* versionsStart = strstr( objData, "\"versions\"" );
-            if( versionsStart )
+
+            const char* newFlag = FindJSONValue(objData, "new");
+            item->bNew = (strcmp(newFlag, "true") == 0 || strcmp(newFlag, "True") == 0);
+
+            // -------------------------
+            // Parse Versions
+            // -------------------------
+            const char* versionsStart = strstr(objData, "\"versions\"");
+            if (versionsStart)
             {
-                const char* arrayStart = strchr( versionsStart, '[' );
-                if( arrayStart )
+                const char* verArray = strchr(versionsStart, '[');
+                if (verArray)
                 {
-                    const char* vp = arrayStart + 1;
-                    while( *vp && item->nVersionCount < MAX_VERSIONS )
+                    const char* vp = verArray + 1;
+
+                    while (*vp && item->nVersionCount < MAX_VERSIONS)
                     {
-                        if( *vp == '{' )
+                        if (*vp == '{')
                         {
-                            const char* vObjStart = vp;
-                            const char* vObjEnd = strchr( vp + 1, '}' );
-                            if( !vObjEnd ) break;
-                            
-                            int vObjLen = vObjEnd - vObjStart + 1;
-                            char* vObjData = new char[vObjLen + 1];
-                            memcpy( vObjData, vObjStart, vObjLen );
-                            vObjData[vObjLen] = '\0';
-                            
+                            const char* vStart = vp;
+                            int vDepth = 0;
+                            const char* vScan = vp;
+                            const char* vEnd = NULL;
+
+                            while (*vScan)
+                            {
+                                if (*vScan == '{') vDepth++;
+                                else if (*vScan == '}')
+                                {
+                                    vDepth--;
+                                    if (vDepth == 0)
+                                    {
+                                        vEnd = vScan;
+                                        break;
+                                    }
+                                }
+                                vScan++;
+                            }
+
+                            if (!vEnd)
+                                break;
+
+                            int vLen = vEnd - vStart + 1;
+                            char* vData = new char[vLen + 1];
+                            memcpy(vData, vStart, vLen);
+                            vData[vLen] = '\0';
+
                             VersionInfo* ver = &item->aVersions[item->nVersionCount];
-                            strcpy( ver->szVersion, FindJSONValue( vObjData, "version" ) );
-                            strcpy( ver->szChangelog, FindJSONValue( vObjData, "changelog" ) );
-                            strcpy( ver->szReleaseDate, FindJSONValue( vObjData, "release_date" ) );
-                            strcpy( ver->szTitleID, FindJSONValue( vObjData, "title_id" ) );
-                            strcpy( ver->szRegion, FindJSONValue( vObjData, "region" ) );
-                            ver->szInstallPath[0] = '\0';  // Will be set when installed
-                            ver->dwSize = atoi( FindJSONValue( vObjData, "size" ) );
-                            ver->nState = atoi( FindJSONValue( vObjData, "state" ) );
-                            
-                            delete[] vObjData;
+
+                            SafeCopy(ver->szVersion, FindJSONValue(vData, "version"), sizeof(ver->szVersion));
+
+							// FIXED: Proper changelog parsing with escapes
+							const char* changelog = FindJSONValue(vData, "changelog");
+							char unescapedChangelog[256];
+							UnescapeJSON(unescapedChangelog, changelog, sizeof(unescapedChangelog));
+							SafeCopyUTF8(ver->szChangelog, unescapedChangelog, sizeof(ver->szChangelog));
+
+							SafeCopy(ver->szReleaseDate, FindJSONValue(vData, "release_date"), sizeof(ver->szReleaseDate));
+							SafeCopy(ver->szTitleID, FindJSONValue(vData, "title_id"), sizeof(ver->szTitleID));
+							SafeCopy(ver->szRegion, FindJSONValue(vData, "region"), sizeof(ver->szRegion));
+							SafeCopy(ver->szGUID, FindJSONValue(vData, "guid"), sizeof(ver->szGUID));
+
+							ver->szInstallPath[0] = '\0';
+                            ver->dwSize = SafeParseInt(FindJSONValue(vData, "size"), 0, 0, 2000000000);
+                            ver->nState = SafeParseInt(FindJSONValue(vData, "state"), 0, 0, 3);
+
+                            delete[] vData;
                             item->nVersionCount++;
-                            vp = vObjEnd + 1;
+
+                            vp = vEnd + 1;
                         }
+                        else if (*vp == ']')
+                            break;
                         else
-                        {
                             vp++;
-                        }
                     }
                 }
             }
-            else
-            {
-                // Fallback: old format with single version
-                VersionInfo* ver = &item->aVersions[0];
-                strcpy( ver->szVersion, FindJSONValue( objData, "version" ) );
-                strcpy( ver->szChangelog, "No changelog available" );
-                strcpy( ver->szReleaseDate, "" );
-                strcpy( ver->szTitleID, "" );
-                strcpy( ver->szRegion, "" );
-                ver->szInstallPath[0] = '\0';
-                ver->dwSize = atoi( FindJSONValue( objData, "size" ) );
-                ver->nState = atoi( FindJSONValue( objData, "state" ) );
-                item->nVersionCount = 1;
-            }
-            
+
             delete[] objData;
-            
-            // Debug: Show what we loaded
-            char szItemDebug[256];
-            sprintf( szItemDebug, "Loaded: %s (%d versions)\n", item->szName, item->nVersionCount );
-            OutputDebugString( szItemDebug );
-            
             itemIndex++;
             p = objEnd + 1;
         }
-        else if( *p == ']' )
-        {
-            // End of apps array
-            break;
-        }
         else
         {
+            if (*p == '{') depth++;
+            else if (*p == '}') depth--;
             p++;
         }
     }
-    
-    delete[] jsonData;
-    
-    // Build category list and count apps
-    BuildCategoryList();
-    
-    char szDebug[256];
-    sprintf( szDebug, "Loaded %d apps from catalog\n", m_nItemCount );
-    OutputDebugString( szDebug );
-    
-    return TRUE;
-    }
 
+    delete[] jsonData;
+
+    BuildCategoryList();
+
+    char dbg[128];
+    sprintf(dbg, "Loaded %d apps from catalog\n", m_nItemCount);
+    OutputDebugString(dbg);
+
+    return TRUE;
+}
 //-----------------------------------------------------------------------------
 // LoadUserState - Load user's personal state from T:\user_state.json
 //-----------------------------------------------------------------------------
@@ -451,23 +715,29 @@ BOOL Store::LoadUserState( const char* filename )
     long fileSize = ftell( f );
     fseek( f, 0, SEEK_SET );
     
-    char* fileData = new char[fileSize + 1];
-    fread( fileData, 1, fileSize, f );
-    fileData[fileSize] = '\0';
-    fclose( f );
-    
+	char* fileData = new char[fileSize + 1];
+	if (!fileData)
+	{
+		OutputDebugString("ERROR: Out of memory loading user state\n");
+		fclose(f);
+		return FALSE;
+	}
+	fread( fileData, 1, fileSize, f );
+	fileData[fileSize] = '\0';
+	fclose(f);
+
     // Parse app states
     for( int i = 0; i < m_nItemCount; i++ )
     {
-        // Generate app ID
-        char appId[64];
-        int j = 0;
-        for( const char* s = m_pItems[i].szName; *s && j < 63; s++ )
-        {
-            if( *s != ' ' )
-                appId[j++] = (*s >= 'A' && *s <= 'Z') ? (*s + 32) : *s;
-        }
-        appId[j] = '\0';
+		// Use ID as app identifier (unique per app, safe to expose)
+		const char* appId = m_pItems[i].szID;
+		if (!appId || appId[0] == '\0')
+		{
+			// Fallback to GUID if no ID (backwards compatibility)
+			appId = m_pItems[i].szGUID;
+			if (!appId || appId[0] == '\0')
+				continue;
+		}
         
         // Find this app in JSON
         char searchStr[128];
@@ -555,15 +825,15 @@ BOOL Store::SaveUserState( const char* filename )
     {
         StoreItem* pItem = &m_pItems[i];
         
-        // Generate app ID (lowercase name, no spaces)
-        char appId[64];
-        int j = 0;
-        for( const char* s = pItem->szName; *s && j < 63; s++ )
-        {
-            if( *s != ' ' )
-                appId[j++] = (*s >= 'A' && *s <= 'Z') ? (*s + 32) : *s;
-        }
-        appId[j] = '\0';
+		// Use ID as app identifier (not GUID - keeps download URLs secret)
+		const char* appId = pItem->szID;
+		if (!appId || appId[0] == '\0')
+		{
+			// Fallback to GUID (backwards compatibility)
+			appId = pItem->szGUID;
+			if (!appId || appId[0] == '\0')
+				continue;
+		}
         
         // Only save if user has interacted with this app
         BOOL hasState = FALSE;
@@ -643,15 +913,14 @@ void Store::MarkAppAsViewed( const char* appId )
     // Find app by ID (for now, using name)
     for( int i = 0; i < m_nItemCount; i++ )
     {
-        // Generate ID from name
-        char id[64];
-        int j = 0;
-        for( const char* s = m_pItems[i].szName; *s && j < 63; s++ )
-        {
-            if( *s != ' ' )
-                id[j++] = (*s >= 'A' && *s <= 'Z') ? (*s + 32) : *s;
-        }
-        id[j] = '\0';
+        // Use ID for unique identification
+		const char* id = m_pItems[i].szID;
+		if (!id || id[0] == '\0')
+		{
+			id = m_pItems[i].szGUID;  // Fallback
+			if (!id || id[0] == '\0')
+				continue;
+		}
         
         if( strcmp( id, appId ) == 0 )
         {
@@ -674,14 +943,13 @@ void Store::SetVersionState( const char* appId, const char* version, int state )
     // Find app
     for( int i = 0; i < m_nItemCount; i++ )
     {
-        char id[64];
-        int j = 0;
-        for( const char* s = m_pItems[i].szName; *s && j < 63; s++ )
-        {
-            if( *s != ' ' )
-                id[j++] = (*s >= 'A' && *s <= 'Z') ? (*s + 32) : *s;
-        }
-        id[j] = '\0';
+        const char* id = m_pItems[i].szID;
+		if (!id || id[0] == '\0')
+		{
+			id = m_pItems[i].szGUID;  // Fallback
+			if (!id || id[0] == '\0')
+				continue;
+		}
         
         if( strcmp( id, appId ) == 0 )
         {
@@ -994,12 +1262,12 @@ void Store::RenderMainGrid( LPDIRECT3DDEVICE8 pd3dDevice )
     
     // Build filtered indices array for current category
     m_nFilteredCount = 0;
-    for( int i = 0; i < m_nItemCount && m_nFilteredCount < 100; i++ )
+    for( int i = 0; i < m_nItemCount; i++ )
     {
         // "All Apps" (index 0) shows everything
         if( m_nSelectedCategory == 0 || m_pItems[i].nCategoryIndex == m_nSelectedCategory )
         {
-            m_aFilteredIndices[m_nFilteredCount++] = i;
+            m_pFilteredIndices[m_nFilteredCount++] = i;
         }
     }
     
@@ -1021,7 +1289,7 @@ void Store::RenderMainGrid( LPDIRECT3DDEVICE8 pd3dDevice )
                 break;
                 
             // Get actual item index from filtered array
-            int actualItemIndex = m_aFilteredIndices[gridIndex];
+            int actualItemIndex = m_pFilteredIndices[gridIndex];
             
             float x = m_fGridStartX + col * (m_fCardWidth + 20.0f);
             float y = m_fGridStartY + row * (m_fCardHeight + 20.0f);
@@ -1049,7 +1317,7 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
     if( m_nSelectedItem < 0 || m_nSelectedItem >= m_nFilteredCount )
         return;
         
-    int actualItemIndex = m_aFilteredIndices[m_nSelectedItem];
+    int actualItemIndex = m_pFilteredIndices[m_nSelectedItem];
     if( actualItemIndex < 0 || actualItemIndex >= m_nItemCount )
         return;
 
@@ -1375,7 +1643,7 @@ void Store::RenderDownloading( LPDIRECT3DDEVICE8 pd3dDevice )
     // App name from filtered index
     if( m_nSelectedItem >= 0 && m_nSelectedItem < m_nFilteredCount )
     {
-        int actualItemIndex = m_aFilteredIndices[m_nSelectedItem];
+        int actualItemIndex = m_pFilteredIndices[m_nSelectedItem];
         if( actualItemIndex >= 0 && actualItemIndex < m_nItemCount )
         {
             DrawText( pd3dDevice, m_pItems[actualItemIndex].szName, panelX + 20.0f, panelY + 20.0f, COLOR_WHITE );
@@ -1676,7 +1944,7 @@ void Store::HandleInput()
             // For single-version apps, go straight to detail view
             if( m_nSelectedItem >= 0 && m_nSelectedItem < m_nFilteredCount )
             {
-                int actualItemIndex = m_aFilteredIndices[m_nSelectedItem];
+                int actualItemIndex = m_pFilteredIndices[m_nSelectedItem];
                 if( actualItemIndex >= 0 && actualItemIndex < m_nItemCount )
                 {
                     // Clear NEW flag when user views the app
@@ -1705,7 +1973,7 @@ void Store::HandleInput()
         // Get actual item index
         if( m_nSelectedItem >= 0 && m_nSelectedItem < m_nFilteredCount )
         {
-            int actualItemIndex = m_aFilteredIndices[m_nSelectedItem];
+            int actualItemIndex = m_pFilteredIndices[m_nSelectedItem];
             StoreItem* pItem = &m_pItems[actualItemIndex];
             
             // B button - back
@@ -1880,7 +2148,7 @@ void Store::HandleInput()
             // Get currently selected item
             if( m_nSelectedItem >= 0 && m_nSelectedItem < m_nFilteredCount )
             {
-                int actualItemIndex = m_aFilteredIndices[m_nSelectedItem];
+                int actualItemIndex = m_pFilteredIndices[m_nSelectedItem];
                 if( actualItemIndex >= 0 && actualItemIndex < m_nItemCount )
                 {
                     StoreItem* pItem = &m_pItems[actualItemIndex];

@@ -55,7 +55,8 @@
 				Name="XboxImageTool"
 				StackSize="65536"
 				IncludeDebugInfo="TRUE"
-				NoLibWarn="TRUE"/>
+				NoLibWarn="TRUE"
+				TitleID="0x54520099"/>
 		</Configuration>
 		<Configuration
 			Name="Profile|Xbox"

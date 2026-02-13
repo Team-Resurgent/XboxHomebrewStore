@@ -23,16 +23,17 @@ enum UIState
 struct VersionInfo
 {
     char szVersion[16];
-    char szChangelog[512];
+    char szChangelog[128];
     char szReleaseDate[32];  // "2024-02-11" or "Feb 11, 2024"
     char szTitleID[16];      // Xbox title ID (e.g., "45410026")
     char szRegion[16];       // Region code (e.g., "USA", "PAL", "JPN", "GLO")
     char szInstallPath[128]; // Install location (e.g., "E:\\Apps\\XBMC35")
+    char szGUID[32];         // ADDED: Version-specific download ID (server-side only)
     DWORD dwSize;
     int nState;  // Download state for this specific version
 };
 
-#define MAX_VERSIONS 10
+#define MAX_VERSIONS 32
 
 // Store item structure
 struct StoreItem
@@ -40,7 +41,8 @@ struct StoreItem
     char szName[64];
     char szDescription[256];
     char szAuthor[64];
-    char szGUID[32];        // Global ID for cover art/media (e.g., "1000020")
+    char szGUID[32];        // Legacy: Global ID for cover art/media (backwards compat)
+    char szID[64];          // ADDED: App-level unique ID (safe for user_state.json)
     int nCategoryIndex;     // Index into categories array
     BOOL bNew;              // TRUE = Show red NEW badge, auto-clears on view
     
@@ -55,7 +57,7 @@ struct StoreItem
 };
 
 // Dynamic category system
-#define MAX_CATEGORIES 20
+#define MAX_CATEGORIES 128
 
 struct CategoryInfo
 {
@@ -88,6 +90,12 @@ private:
     void MergeUserStateWithCatalog();
     void MarkAppAsViewed( const char* appId );
     void SetVersionState( const char* appId, const char* version, int state );
+
+    // UTF-8 and JSON helpers
+    void SafeCopyUTF8( char* dest, const char* src, int maxBytes );
+    const char* FindJSONValueUnescaped( const char* json, const char* key );
+    void UnescapeJSON( char* dest, const char* src, int maxLen );
+    long SafeParseInt( const char* str, long defaultVal, long minVal, long maxVal );
     
     // Update detection helpers
     BOOL HasUpdateAvailable( StoreItem* pItem );
@@ -115,7 +123,7 @@ private:
     StoreItem* m_pItems;
     int m_nItemCount;
     int m_nSelectedItem;
-    int m_aFilteredIndices[100]; // Maps grid position to actual item index
+    int* m_pFilteredIndices; // Maps grid position to actual item index
     int m_nFilteredCount;
     UIState m_CurrentState;
     
@@ -144,6 +152,10 @@ private:
     // Controller state
     XBGAMEPAD* m_pGamepads;
     DWORD m_dwLastButtons;
+
+    // SafeCopy
+    void SafeCopy(char* dest, const char* src, int maxLen);
+    void GenerateAppID(const char* name, char* outID, int maxLen);
 };
 
 // Vertex format for 2D rendering
