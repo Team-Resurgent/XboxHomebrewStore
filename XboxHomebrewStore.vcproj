@@ -172,6 +172,7 @@
 				Optimization="3"
 				OmitFramePointers="TRUE"
 				OptimizeForProcessor="2"
+				AdditionalIncludeDirectories="&quot;C:\Program Files\Microsoft Xbox SDK\Samples\Xbox\Common\Include&quot;"
 				PreprocessorDefinitions="NDEBUG;_XBOX"
 				StringPooling="TRUE"
 				RuntimeLibrary="0"
@@ -208,7 +209,8 @@
 				Name="XboxDeploymentTool"/>
 			<Tool
 				Name="XboxImageTool"
-				StackSize="65536"/>
+				StackSize="65536"
+				TitleID="0x54520099"/>
 		</Configuration>
 		<Configuration
 			Name="Release_LTCG|Xbox"
