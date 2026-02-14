@@ -4,6 +4,7 @@
 
 #include "Main.h"
 #include "Store.h"
+#include "WebManager.h"
 
 // Colors - Modern clean theme inspired by Switch store
 #define COLOR_PRIMARY       0xFFE91E63  // Pink/Red accent
@@ -19,7 +20,6 @@
 #define COLOR_SIDEBAR_HOVER 0xFFC2185B  // Darker pink for selected
 
 // File paths
-#define CATALOG_PATH        "D:\\Media\\store.json"
 #define USER_STATE_PATH     "T:\\user_state.json"
 
 //-----------------------------------------------------------------------------
@@ -51,6 +51,10 @@ Store::Store()
     strcpy( m_aCategories[0].szID, "all" );
     m_aCategories[0].nAppCount = 0;
     m_nCategoryCount = 1;
+
+    m_nCurrentPage = 1;
+    m_nTotalPages = 1;
+    m_nTotalCount = 0;
 }
 
 //-----------------------------------------------------------------------------
@@ -76,77 +80,6 @@ Store::~Store()
         }
         delete[] m_pItems;
     }
-}
-
-//-----------------------------------------------------------------------------
-// Simple JSON helper - find value for a key
-//-----------------------------------------------------------------------------
-const char* Store::FindJSONValue( const char* json, const char* key )
-{
-    static char value[512];
-    value[0] = '\0';
-    
-    char searchKey[128];
-    sprintf( searchKey, "\"%s\"", key );
-    
-    const char* keyPos = strstr( json, searchKey );
-    if( !keyPos ) return value;
-    
-    const char* colonPos = strchr( keyPos, ':' );
-    if( !colonPos ) return value;
-    
-    // Skip whitespace after colon
-    colonPos++;
-    while( *colonPos == ' ' || *colonPos == '\t' ) colonPos++;
-    
-    // Handle string values (in quotes) - NOW WITH ESCAPE SUPPORT!
-	if( *colonPos == '"' )
-	{
-		colonPos++;
-		int i = 0;
-		while( *colonPos && i < 510 )
-		{
-			// Handle escaped characters
-			if( *colonPos == '\\' && *(colonPos + 1) )
-			{
-				// Copy the backslash and the next character as-is
-				value[i++] = *colonPos++;
-				if( i < 510 && *colonPos )
-					value[i++] = *colonPos++;
-			}
-			// Stop at unescaped quote
-			else if( *colonPos == '"' )
-			{
-				break;  // Only stop at REAL end quote
-			}
-			else
-			{
-				value[i++] = *colonPos++;
-			}
-		}
-		value[i] = '\0';
-	}
-    // Handle boolean values (true/false)
-    else if( strncmp( colonPos, "true", 4 ) == 0 )
-    {
-        strcpy( value, "true" );
-    }
-    else if( strncmp( colonPos, "false", 5 ) == 0 )
-    {
-        strcpy( value, "false" );
-    }
-    // Handle numeric values
-    else
-    {
-        int i = 0;
-        while( *colonPos && (*colonPos == '-' || (*colonPos >= '0' && *colonPos <= '9')) && i < 510 )
-        {
-            value[i++] = *colonPos++;
-        }
-        value[i] = '\0';
-    }
-    
-    return value;
 }
 
 //-----------------------------------------------------------------------------
@@ -273,62 +206,6 @@ void Store::UnescapeJSON(char* dest, const char* src, int maxLen)
 }
 
 //-----------------------------------------------------------------------------
-// FindJSONValueUnescaped - Get JSON value with escapes handled
-//-----------------------------------------------------------------------------
-const char* Store::FindJSONValueUnescaped(const char* json, const char* key)
-{
-    static char unescaped[1024];
-    const char* escaped = FindJSONValue(json, key);
-    UnescapeJSON(unescaped, escaped, sizeof(unescaped));
-    return unescaped;
-}
-
-
-//-----------------------------------------------------------------------------
-// SafeParseInt - Safe integer parsing with bounds checking
-//-----------------------------------------------------------------------------
-long Store::SafeParseInt(const char* str, long defaultVal, long minVal, long maxVal)
-{
-    if (!str || !str[0])
-        return defaultVal;
-    
-    // Skip whitespace
-    while (*str == ' ' || *str == '\t') str++;
-    
-    // Check for valid number
-    const char* p = str;
-    if (*p == '-' || *p == '+') p++;
-    
-    BOOL hasDigit = FALSE;
-    while (*p)
-    {
-        if (*p >= '0' && *p <= '9')
-        {
-            hasDigit = TRUE;
-            p++;
-        }
-        else
-        {
-            return defaultVal;  // Invalid character
-        }
-    }
-    
-    if (!hasDigit)
-        return defaultVal;
-    
-    // Parse
-    char* endPtr;
-    long val = strtol(str, &endPtr, 10);
-    
-    // Clamp to range
-    if (val < minVal) return minVal;
-    if (val > maxVal) return maxVal;
-    
-    return val;
-}
-
-
-//-----------------------------------------------------------------------------
 // GenerateAppID - Create lowercase no-space ID from name
 //-----------------------------------------------------------------------------
 void Store::GenerateAppID(const char* name, char* outID, int maxLen)
@@ -420,283 +297,186 @@ void Store::BuildCategoryList()
 }
 
 //-----------------------------------------------------------------------------
-// LoadCatalogFromFile - Load and parse store.json
+// FindCategoryIndex - Look up category index by ID (for web-loaded apps)
 //-----------------------------------------------------------------------------
-BOOL Store::LoadCatalogFromFile(const char* filename)
+int Store::FindCategoryIndex( const char* catID ) const
 {
-    FILE* f = fopen(filename, "rb");
-    if (!f)
+    if( !catID || !catID[0] ) return 0;
+    for( int i = 0; i < m_nCategoryCount; i++ )
     {
-        OutputDebugString("Failed to open catalog file\n");
+        if( strcmp( m_aCategories[i].szID, catID ) == 0 )
+            return i;
+    }
+    return 0;
+}
+
+//-----------------------------------------------------------------------------
+// LoadCategoriesFromWeb - Fetch categories from API
+//-----------------------------------------------------------------------------
+BOOL Store::LoadCategoriesFromWeb()
+{
+    CategoriesResponse resp;
+    if( !WebManager::TryGetCategories( resp ) )
+    {
+        OutputDebugString( "Failed to load categories from web\n" );
         return FALSE;
     }
-
-    fseek(f, 0, SEEK_END);
-    long fileSize = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    if (fileSize <= 0 || fileSize > 10 * 1024 * 1024)
+    m_nCategoryCount = 1;
+    strcpy( m_aCategories[0].szName, "All Apps" );
+    strcpy( m_aCategories[0].szID, "all" );
+    m_aCategories[0].nAppCount = 0;
+    for( size_t i = 0; i < resp.size() && m_nCategoryCount < MAX_CATEGORIES; i++ )
     {
-        fclose(f);
+        const CategoryItem& c = resp[i];
+        SafeCopy( m_aCategories[m_nCategoryCount].szID, c.category.c_str(), sizeof( m_aCategories[m_nCategoryCount].szID ) );
+        SafeCopy( m_aCategories[m_nCategoryCount].szName, c.category.c_str(), sizeof( m_aCategories[m_nCategoryCount].szName ) );
+        if( m_aCategories[m_nCategoryCount].szName[0] >= 'a' && m_aCategories[m_nCategoryCount].szName[0] <= 'z' )
+            m_aCategories[m_nCategoryCount].szName[0] -= 32;
+        m_aCategories[m_nCategoryCount].nAppCount = (int)c.count;
+        m_nCategoryCount++;
+    }
+    OutputDebugString( "Categories loaded from web\n" );
+    return TRUE;
+}
+
+#define APPS_PAGE_SIZE 8
+
+//-----------------------------------------------------------------------------
+// LoadAppsPage - Fetch one page of apps (and optionally filter by category)
+//-----------------------------------------------------------------------------
+BOOL Store::LoadAppsPage( int page, const char* categoryFilter )
+{
+    AppsResponse resp;
+    std::string catStr = categoryFilter ? categoryFilter : "";
+    if( !WebManager::TryGetApps( resp, (uint32_t)page, (uint32_t)APPS_PAGE_SIZE, catStr, "" ) )
+    {
+        OutputDebugString( "Failed to load apps page from web\n" );
         return FALSE;
     }
-
-	char* jsonData = new char[fileSize + 1];
-	if (!jsonData)
-	{
-		OutputDebugString("ERROR: Out of memory loading catalog\n");
-		fclose(f);
-		return FALSE;
-	}
-	fread(jsonData, 1, fileSize, f);
-
-    const char* appsStart = strstr(jsonData, "\"apps\"");
-    if (!appsStart)
+    if( resp.items.empty() && page == 1 )
     {
-        delete[] jsonData;
-        return FALSE;
-    }
-
-    const char* arrayStart = strchr(appsStart, '[');
-    if (!arrayStart)
-    {
-        delete[] jsonData;
-        return FALSE;
-    }
-
-    // -------------------------------------------------
-    // PASS 1: COUNT TOP-LEVEL APP OBJECTS
-    // -------------------------------------------------
-    int appCount = 0;
-    const char* p = arrayStart + 1;
-    int depth = 0;
-
-    while (*p)
-    {
-        if (*p == '{')
-        {
-            if (depth == 0)
-                appCount++;  // Only count direct children of apps array
-
-            depth++;
-        }
-        else if (*p == '}')
-        {
-            depth--;
-        }
-        else if (*p == ']' && depth == 0)
-        {
-            break;
-        }
-
-        p++;
-    }
-
-    // Safety limit check
-    #define MAX_CATALOG_APPS 3000
-    
-    if (appCount <= 0)
-    {
-        delete[] jsonData;
-        return FALSE;
-    }
-
-    if (appCount > MAX_CATALOG_APPS)
-    {
-        char szErr[256];
-        sprintf(szErr, "ERROR: Catalog has %d apps, max supported is %d\n", 
-                appCount, MAX_CATALOG_APPS);
-        OutputDebugString(szErr);
-        delete[] jsonData;
-        return FALSE;
-    }
-
-    m_nItemCount = appCount;
-    m_pItems = new StoreItem[m_nItemCount];
-    if (!m_pItems)
-    {
-        OutputDebugString("CRITICAL: Out of memory allocating items\n");
         m_nItemCount = 0;
-        delete[] jsonData;
-        return FALSE;
+        m_nFilteredCount = 0;
+        m_nCurrentPage = 1;
+        m_nTotalPages = 1;
+        m_nTotalCount = 0;
+        if( m_nSelectedCategory >= 0 && m_nSelectedCategory < m_nCategoryCount )
+            m_aCategories[m_nSelectedCategory].nAppCount = 0;
+        return TRUE;
     }
-
-    // Zero-initialize for safety
-    memset(m_pItems, 0, sizeof(StoreItem) * m_nItemCount);
-
-    // Allocate filtered index buffer
-    if (m_pFilteredIndices)
+    if( m_pItems )
+    {
+        for( int i = 0; i < m_nItemCount; i++ )
+        {
+            if( m_pItems[i].pIcon )
+            {
+                m_pItems[i].pIcon->Release();
+                m_pItems[i].pIcon = NULL;
+            }
+        }
+        delete[] m_pItems;
+        m_pItems = NULL;
+    }
+    if( m_pFilteredIndices )
     {
         delete[] m_pFilteredIndices;
         m_pFilteredIndices = NULL;
     }
-
-    m_pFilteredIndices = new int[m_nItemCount];
-    if (!m_pFilteredIndices)
+    m_nItemCount = (int)resp.items.size();
+    m_pItems = new StoreItem[m_nItemCount];
+    if( !m_pItems )
     {
-        OutputDebugString("CRITICAL: Out of memory allocating filtered indices\n");
+        m_nItemCount = 0;
+        return FALSE;
+    }
+    memset( m_pItems, 0, sizeof( StoreItem ) * m_nItemCount );
+    m_pFilteredIndices = new int[m_nItemCount];
+    if( !m_pFilteredIndices )
+    {
         delete[] m_pItems;
         m_pItems = NULL;
         m_nItemCount = 0;
-        delete[] jsonData;
         return FALSE;
     }
-
-    // -------------------------------------------------
-    // PASS 2: PARSE EACH APP OBJECT
-    // -------------------------------------------------
-    p = arrayStart + 1;
-    int itemIndex = 0;
-    depth = 0;
-
-    while (*p && itemIndex < m_nItemCount)
+    for( int i = 0; i < m_nItemCount; i++ )
     {
-        if (*p == '{' && depth == 0)
-        {
-            const char* objStart = p;
-            int braceDepth = 0;
-            const char* scan = p;
-            const char* objEnd = NULL;
-
-            while (*scan)
-            {
-                if (*scan == '{') braceDepth++;
-                else if (*scan == '}')
-                {
-                    braceDepth--;
-                    if (braceDepth == 0)
-                    {
-                        objEnd = scan;
-                        break;
-                    }
-                }
-                scan++;
-            }
-
-            if (!objEnd)
-                break;
-
-            int objLen = objEnd - objStart + 1;
-            char* objData = new char[objLen + 1];
-            memcpy(objData, objStart, objLen);
-            objData[objLen] = '\0';
-
-            StoreItem* item = &m_pItems[itemIndex];
-
-            // Use UTF-8 aware copy for names and descriptions (international support)
-            SafeCopyUTF8(item->szName, FindJSONValueUnescaped(objData, "name"), sizeof(item->szName));
-            SafeCopyUTF8(item->szAuthor, FindJSONValueUnescaped(objData, "author"), sizeof(item->szAuthor));
-            SafeCopyUTF8(item->szDescription, FindJSONValueUnescaped(objData, "description"), sizeof(item->szDescription));
-            SafeCopy(item->szGUID, FindJSONValue(objData, "guid"), sizeof(item->szGUID));
-			SafeCopy(item->szID, FindJSONValue(objData, "id"), sizeof(item->szID));
-
-            item->nCategoryIndex = GetOrCreateCategory(FindJSONValue(objData, "category"));
-            item->pIcon = NULL;
-            item->nVersionCount = 0;
-            item->nSelectedVersion = 0;
-            item->nVersionScrollOffset = 0;
-            item->bViewingVersionDetail = FALSE;
-
-            const char* newFlag = FindJSONValue(objData, "new");
-            item->bNew = (strcmp(newFlag, "true") == 0 || strcmp(newFlag, "True") == 0);
-
-            // -------------------------
-            // Parse Versions
-            // -------------------------
-            const char* versionsStart = strstr(objData, "\"versions\"");
-            if (versionsStart)
-            {
-                const char* verArray = strchr(versionsStart, '[');
-                if (verArray)
-                {
-                    const char* vp = verArray + 1;
-
-                    while (*vp && item->nVersionCount < MAX_VERSIONS)
-                    {
-                        if (*vp == '{')
-                        {
-                            const char* vStart = vp;
-                            int vDepth = 0;
-                            const char* vScan = vp;
-                            const char* vEnd = NULL;
-
-                            while (*vScan)
-                            {
-                                if (*vScan == '{') vDepth++;
-                                else if (*vScan == '}')
-                                {
-                                    vDepth--;
-                                    if (vDepth == 0)
-                                    {
-                                        vEnd = vScan;
-                                        break;
-                                    }
-                                }
-                                vScan++;
-                            }
-
-                            if (!vEnd)
-                                break;
-
-                            int vLen = vEnd - vStart + 1;
-                            char* vData = new char[vLen + 1];
-                            memcpy(vData, vStart, vLen);
-                            vData[vLen] = '\0';
-
-                            VersionInfo* ver = &item->aVersions[item->nVersionCount];
-
-                            SafeCopy(ver->szVersion, FindJSONValue(vData, "version"), sizeof(ver->szVersion));
-
-							// FIXED: Proper changelog parsing with escapes
-							const char* changelog = FindJSONValue(vData, "changelog");
-							char unescapedChangelog[256];
-							UnescapeJSON(unescapedChangelog, changelog, sizeof(unescapedChangelog));
-							SafeCopyUTF8(ver->szChangelog, unescapedChangelog, sizeof(ver->szChangelog));
-
-							SafeCopy(ver->szReleaseDate, FindJSONValue(vData, "release_date"), sizeof(ver->szReleaseDate));
-							SafeCopy(ver->szTitleID, FindJSONValue(vData, "title_id"), sizeof(ver->szTitleID));
-							SafeCopy(ver->szRegion, FindJSONValue(vData, "region"), sizeof(ver->szRegion));
-							SafeCopy(ver->szGUID, FindJSONValue(vData, "guid"), sizeof(ver->szGUID));
-
-							ver->szInstallPath[0] = '\0';
-                            ver->dwSize = SafeParseInt(FindJSONValue(vData, "size"), 0, 0, 2000000000);
-                            ver->nState = SafeParseInt(FindJSONValue(vData, "state"), 0, 0, 3);
-
-                            delete[] vData;
-                            item->nVersionCount++;
-
-                            vp = vEnd + 1;
-                        }
-                        else if (*vp == ']')
-                            break;
-                        else
-                            vp++;
-                    }
-                }
-            }
-
-            delete[] objData;
-            itemIndex++;
-            p = objEnd + 1;
-        }
-        else
-        {
-            if (*p == '{') depth++;
-            else if (*p == '}') depth--;
-            p++;
-        }
+        const AppItem& app = resp.items[i];
+        StoreItem* item = &m_pItems[i];
+        SafeCopyUTF8( item->szName, app.name.c_str(), sizeof( item->szName ) );
+        SafeCopyUTF8( item->szAuthor, app.author.c_str(), sizeof( item->szAuthor ) );
+        SafeCopyUTF8( item->szDescription, app.description.c_str(), sizeof( item->szDescription ) );
+        SafeCopy( item->szID, app.id.c_str(), sizeof( item->szID ) );
+        SafeCopy( item->szGUID, app.id.c_str(), sizeof( item->szGUID ) );
+        item->nCategoryIndex = FindCategoryIndex( app.category.c_str() );
+        item->bNew = app.isNew ? TRUE : FALSE;
+        item->pIcon = NULL;
+        item->nVersionCount = 0;
+        item->nSelectedVersion = 0;
+        item->nVersionScrollOffset = 0;
+        item->bViewingVersionDetail = FALSE;
+        m_pFilteredIndices[i] = i;
     }
-
-    delete[] jsonData;
-
-    BuildCategoryList();
-
+    m_nFilteredCount = m_nItemCount;
+    m_nCurrentPage = (int)resp.page;
+    m_nTotalPages = (int)resp.totalPages;
+    m_nTotalCount = (int)resp.totalCount;
+    if( m_nSelectedCategory >= 0 && m_nSelectedCategory < m_nCategoryCount )
+        m_aCategories[m_nSelectedCategory].nAppCount = m_nTotalCount;
+    m_nSelectedItem = 0;
     char dbg[128];
-    sprintf(dbg, "Loaded %d apps from catalog\n", m_nItemCount);
-    OutputDebugString(dbg);
-
+    sprintf( dbg, "Loaded page %d: %d apps (total %d)\n", m_nCurrentPage, m_nItemCount, m_nTotalCount );
+    OutputDebugString( dbg );
     return TRUE;
 }
+
+//-----------------------------------------------------------------------------
+// EnsureVersionsForItem - Fetch versions from API when opening app details
+//-----------------------------------------------------------------------------
+void Store::EnsureVersionsForItem( StoreItem* pItem )
+{
+    if( !pItem || pItem->nVersionCount > 0 ) return;
+    if( !pItem->szID[0] ) return;
+    VersionsResponse resp;
+    if( !WebManager::TryGetVersions( pItem->szID, resp ) )
+    {
+        OutputDebugString( "Failed to load versions for app\n" );
+        return;
+    }
+    int n = (int)resp.size();
+    if( n > MAX_VERSIONS ) n = MAX_VERSIONS;
+    pItem->nVersionCount = n;
+    for( int i = 0; i < n; i++ )
+    {
+        const VersionItem& v = resp[i];
+        VersionInfo* ver = &pItem->aVersions[i];
+        SafeCopy( ver->szVersion, v.version.c_str(), sizeof( ver->szVersion ) );
+        SafeCopy( ver->szGUID, v.guid.c_str(), sizeof( ver->szGUID ) );
+        SafeCopy( ver->szReleaseDate, v.release_date.c_str(), sizeof( ver->szReleaseDate ) );
+        SafeCopy( ver->szTitleID, v.title_id.c_str(), sizeof( ver->szTitleID ) );
+        SafeCopy( ver->szRegion, v.region.c_str(), sizeof( ver->szRegion ) );
+        UnescapeJSON( ver->szChangelog, v.changelog.c_str(), sizeof( ver->szChangelog ) );
+        ver->dwSize = v.size;
+        ver->nState = v.state;
+        ver->szInstallPath[0] = '\0';
+    }
+    pItem->nSelectedVersion = 0;
+    LoadUserState( USER_STATE_PATH );
+}
+
+//-----------------------------------------------------------------------------
+// LoadCatalogFromWeb - Load categories then first page of apps
+//-----------------------------------------------------------------------------
+BOOL Store::LoadCatalogFromWeb()
+{
+    if( !LoadCategoriesFromWeb() )
+        return FALSE;
+    m_nSelectedCategory = 0;
+    if( !LoadAppsPage( 1, "" ) )
+        return FALSE;
+    m_aCategories[0].nAppCount = m_nTotalCount;
+    return TRUE;
+}
+
 //-----------------------------------------------------------------------------
 // LoadUserState - Load user's personal state from T:\user_state.json
 //-----------------------------------------------------------------------------
@@ -1088,12 +868,11 @@ HRESULT Store::Initialize( LPDIRECT3DDEVICE8 pd3dDevice )
     // Initialize gamepads
     XBInput_CreateGamepads( &m_pGamepads );
 
-    // Load app catalog from JSON file
-    if( !LoadCatalogFromFile( CATALOG_PATH ) )
+    // Load app catalog from web (categories + first page of apps)
+    if( !LoadCatalogFromWeb() )
     {
-        OutputDebugString( "Failed to load store.json, using fallback data\n" );
-        
-        // Fallback: Create minimal sample data if JSON fails
+        OutputDebugString( "Failed to load from web, using fallback data\n" );
+        // Fallback: Create minimal sample data
         m_nItemCount = 3;
         m_pItems = new StoreItem[m_nItemCount];
         
@@ -1160,6 +939,11 @@ HRESULT Store::Initialize( LPDIRECT3DDEVICE8 pd3dDevice )
         m_pItems[2].aVersions[0].szInstallPath[0] = '\0';
         m_pItems[2].aVersions[0].dwSize = 512 * 1024;
         m_pItems[2].aVersions[0].nState = 1;
+        
+        m_pFilteredIndices = new int[m_nItemCount];
+        for( int i = 0; i < m_nItemCount; i++ )
+            m_pFilteredIndices[i] = i;
+        m_nFilteredCount = m_nItemCount;
         
         BuildCategoryList();
     }
@@ -1303,8 +1087,11 @@ void Store::RenderMainGrid( LPDIRECT3DDEVICE8 pd3dDevice )
     DrawRect( pd3dDevice, m_fSidebarWidth, m_fScreenHeight - 50.0f, 
               m_fScreenWidth - m_fSidebarWidth, 50.0f, COLOR_SECONDARY );
     
-    char szInstructions[128];
-    sprintf( szInstructions, "A: Details  B: Exit  LT/RT: Category  (%d apps)", m_nFilteredCount );
+    char szInstructions[256];
+    if( m_nTotalPages > 1 )
+        sprintf( szInstructions, "A: Details  B: Exit  LT/RT: Category  D-pad: Move  (%d apps, page %d/%d)", m_nFilteredCount, m_nCurrentPage, m_nTotalPages );
+    else
+        sprintf( szInstructions, "A: Details  B: Exit  LT/RT: Category  (%d apps)", m_nFilteredCount );
     DrawText( pd3dDevice, szInstructions, m_fSidebarWidth + 20.0f, m_fScreenHeight - 30.0f, COLOR_WHITE );
 }
 
@@ -1323,9 +1110,14 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
 
     StoreItem* pItem = &m_pItems[actualItemIndex];
     
-    // Make sure we have at least one version
     if( pItem->nVersionCount == 0 )
+    {
+        DrawRect( pd3dDevice, 0, 0, m_fScreenWidth, m_fScreenHeight, COLOR_BG );
+        DrawText( pd3dDevice, pItem->szName, 20.0f, 20.0f, COLOR_WHITE );
+        DrawText( pd3dDevice, "No versions available.", 20.0f, 60.0f, COLOR_TEXT_GRAY );
+        DrawText( pd3dDevice, "B: Back", 20.0f, m_fScreenHeight - 40.0f, COLOR_WHITE );
         return;
+    }
     
     // Clamp selected version
     if( pItem->nSelectedVersion >= pItem->nVersionCount )
@@ -1904,7 +1696,9 @@ void Store::HandleInput()
         {
             m_nSelectedCategory--;
             if( m_nSelectedCategory < 0 ) m_nSelectedCategory = m_nCategoryCount - 1;
-            m_nSelectedItem = 0; // Reset selection
+            m_nSelectedItem = 0;
+            const char* catFilter = ( m_nSelectedCategory == 0 ) ? "" : m_aCategories[m_nSelectedCategory].szID;
+            LoadAppsPage( 1, catFilter );
         }
         
         // Right trigger - next category
@@ -1912,10 +1706,13 @@ void Store::HandleInput()
         {
             m_nSelectedCategory++;
             if( m_nSelectedCategory >= m_nCategoryCount ) m_nSelectedCategory = 0;
-            m_nSelectedItem = 0; // Reset selection
+            m_nSelectedItem = 0;
+            const char* catFilter = ( m_nSelectedCategory == 0 ) ? "" : m_aCategories[m_nSelectedCategory].szID;
+            LoadAppsPage( 1, catFilter );
         }
         
-        // Navigate grid with D-pad
+        // Navigate grid with D-pad (auto-load next/prev page when moving past edge)
+        const char* catFilter = ( m_nSelectedCategory == 0 ) ? "" : m_aCategories[m_nSelectedCategory].szID;
         if( wPressed & XINPUT_GAMEPAD_DPAD_LEFT )
         {
             if( m_nSelectedItem % m_nGridCols > 0 )
@@ -1929,30 +1726,48 @@ void Store::HandleInput()
         if( wPressed & XINPUT_GAMEPAD_DPAD_UP )
         {
             if( m_nSelectedItem >= m_nGridCols )
+            {
                 m_nSelectedItem -= m_nGridCols;
+            }
+            else if( m_nCurrentPage > 1 )
+            {
+                if( LoadAppsPage( m_nCurrentPage - 1, catFilter ) )
+                    m_nSelectedItem = m_nFilteredCount > 0 ? m_nFilteredCount - 1 : 0;
+            }
+            else
+            {
+                m_nSelectedItem = 0;
+            }
         }
         if( wPressed & XINPUT_GAMEPAD_DPAD_DOWN )
         {
-            m_nSelectedItem += m_nGridCols;
-            // Clamp to valid range based on filtered items
-            // (simplified - you'd want to count filtered items properly)
+            int nextRow = m_nSelectedItem + m_nGridCols;
+            if( nextRow < m_nFilteredCount )
+            {
+                m_nSelectedItem = nextRow;
+            }
+            else if( m_nCurrentPage < m_nTotalPages )
+            {
+                if( LoadAppsPage( m_nCurrentPage + 1, catFilter ) )
+                    m_nSelectedItem = 0;
+            }
+            else
+            {
+                m_nSelectedItem = m_nFilteredCount > 0 ? m_nFilteredCount - 1 : 0;
+            }
         }
 
         // A button - select item
         if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_A] )
         {
-            // For single-version apps, go straight to detail view
             if( m_nSelectedItem >= 0 && m_nSelectedItem < m_nFilteredCount )
             {
                 int actualItemIndex = m_pFilteredIndices[m_nSelectedItem];
                 if( actualItemIndex >= 0 && actualItemIndex < m_nItemCount )
                 {
-                    // Clear NEW flag when user views the app
+                    EnsureVersionsForItem( &m_pItems[actualItemIndex] );
                     m_pItems[actualItemIndex].bNew = FALSE;
-                    
-                    // Save user state (app viewed)
                     SaveUserState( USER_STATE_PATH );
-                    
                     if( m_pItems[actualItemIndex].nVersionCount == 1 )
                         m_pItems[actualItemIndex].bViewingVersionDetail = TRUE;
                     else

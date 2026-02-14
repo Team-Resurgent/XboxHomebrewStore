@@ -352,10 +352,19 @@
 				RelativePath=".\Debug.h">
 			</File>
 			<File
+				RelativePath=".\json.h">
+			</File>
+			<File
 				RelativePath=".\Main.h">
 			</File>
 			<File
 				RelativePath=".\Network.h">
+			</File>
+			<File
+				RelativePath=".\stb.h">
+			</File>
+			<File
+				RelativePath=".\stb_image.h">
 			</File>
 			<File
 				RelativePath=".\Store.h">

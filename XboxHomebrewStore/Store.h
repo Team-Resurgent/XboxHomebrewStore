@@ -9,6 +9,7 @@
 #include <xgraphics.h>
 #include "XBFont.h"
 #include "XBInput.h"
+#include "WebManager.h"
 
 // UI State
 enum UIState
@@ -91,11 +92,9 @@ private:
     void MarkAppAsViewed( const char* appId );
     void SetVersionState( const char* appId, const char* version, int state );
 
-    // UTF-8 and JSON helpers
+    // UTF-8 and JSON helpers (for user_state and version changelogs)
     void SafeCopyUTF8( char* dest, const char* src, int maxBytes );
-    const char* FindJSONValueUnescaped( const char* json, const char* key );
     void UnescapeJSON( char* dest, const char* src, int maxLen );
-    long SafeParseInt( const char* str, long defaultVal, long minVal, long maxVal );
     
     // Update detection helpers
     BOOL HasUpdateAvailable( StoreItem* pItem );
@@ -113,9 +112,12 @@ private:
     void DetectResolution( LPDIRECT3DDEVICE8 pd3dDevice );
     void CalculateLayout();
     
-    // JSON parsing helpers
-    BOOL LoadCatalogFromFile( const char* filename );
-    const char* FindJSONValue( const char* json, const char* key );
+    // Catalog loading (web; fallback uses GetOrCreateCategory + BuildCategoryList)
+    BOOL LoadCatalogFromWeb();
+    BOOL LoadCategoriesFromWeb();
+    BOOL LoadAppsPage( int page, const char* categoryFilter );
+    void EnsureVersionsForItem( StoreItem* pItem );
+    int FindCategoryIndex( const char* catID ) const;
     int GetOrCreateCategory( const char* catID );
     void BuildCategoryList();
 
@@ -131,6 +133,11 @@ private:
     CategoryInfo m_aCategories[MAX_CATEGORIES];
     int m_nCategoryCount;
     int m_nSelectedCategory;
+
+    // Pagination (web catalog)
+    int m_nCurrentPage;
+    int m_nTotalPages;
+    int m_nTotalCount;
     
     // Screen dimensions (detected)
     float m_fScreenWidth;
