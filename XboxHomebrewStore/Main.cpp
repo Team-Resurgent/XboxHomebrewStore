@@ -133,6 +133,7 @@ VOID __cdecl main()
 
     Network::Init();
     WebManager::Init();
+    WebManager::TrySyncTime();
     
     std::string test;
     if (WebManager::TryGetApps(test, 1, 20))

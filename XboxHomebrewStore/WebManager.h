@@ -12,4 +12,5 @@ public:
     static bool TryDownload(const std::string& url, void* buffer, uint32_t bufferSize, DownloadProgressFn progressFn = NULL, void* progressUserData = NULL, volatile bool* pCancelRequested = NULL);
     static bool TryGetApps(std::string& result, uint32_t page, uint32_t pageSize);
     static bool TryGetVersions(const std::string& id, std::string& result);
+    static bool TrySyncTime();
 };

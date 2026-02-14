@@ -9,3 +9,4 @@
 #include <cstdio>
 #include <cassert>
 #include <curl/curl.h>
+#include <winsockx.h>
