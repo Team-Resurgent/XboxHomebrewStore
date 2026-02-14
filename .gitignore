@@ -1,2 +1,6 @@
+*.suo
+*.user
+*.ncb
 
-Debug/
+[Dd]ebug/
+[Rr]elease/
