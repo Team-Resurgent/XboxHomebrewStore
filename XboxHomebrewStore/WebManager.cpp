@@ -5,6 +5,8 @@ const std::string store_api_url = "https://192.168.1.89:5001";
 const std::string store_app_controller = "/api/apps";
 const std::string store_versions = "/versions";
 
+static std::string s_lastError;
+
 struct BufferWriteContext
 {
     char* buffer;
@@ -72,52 +74,42 @@ bool WebManager::Init()
 bool WebManager::TryGetFileSize(const std::string& url, uint32_t& outSize)
 {
     outSize = 0;
-    if (url.empty())
-    {
-        return false;
-    }
+
     CURL* curl = curl_easy_init();
-    if (curl == NULL)
-    {
-        return false;
-    }
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
 
-    CURLcode res = curl_easy_perform(curl);
     long http_code = 0;
-    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-    double contentLength = -1;
-    curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &contentLength);
-    curl_easy_cleanup(curl);
-    if (res != CURLE_OK || http_code != 200 || contentLength < 0)
+    CURLcode res = curl_easy_perform(curl);
+    if (res == CURLE_OK)
     {
-        return false;
+        res = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+        if (res == CURLE_OK)
+        {
+            double contentLength = -1;
+            res = curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &contentLength);
+            if (res == CURLE_OK)
+            {
+                outSize = (uint32_t)contentLength;
+            }
+        }
     }
-    outSize = (uint32_t)contentLength;
-    return true;
+
+    curl_easy_cleanup(curl);
+    return (res == CURLE_OK && http_code == 200);
 }
 
 bool WebManager::TryDownload(const std::string& url, void* buffer, uint32_t bufferSize, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
 {
-    if (url.empty() || buffer == NULL || bufferSize == 0)
-    {
-        return false;
-    }
-    CURL* curl = curl_easy_init();
-    if (curl == NULL)
-    {
-        return false;
-    }
-
     BufferWriteContext writeCtx;
     writeCtx.buffer = (char*)buffer;
     writeCtx.bufferSize = bufferSize;
     writeCtx.written = 0;
 
+    CURL* curl = curl_easy_init();
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 0L);
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
@@ -141,27 +133,27 @@ bool WebManager::TryDownload(const std::string& url, void* buffer, uint32_t buff
         curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
     }
 
-    CURLcode res = curl_easy_perform(curl);
-
     long http_code = 0;
-    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-    curl_easy_cleanup(curl);
+    CURLcode res = curl_easy_perform(curl);
+    if (res == CURLE_OK)
+    {
+        res = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+    }
 
+    curl_easy_cleanup(curl);
     return (res == CURLE_OK && http_code == 200);
 }
 
 bool WebManager::TryGetApps(std::string& result, uint32_t page, uint32_t pageSize)
 {
     result.clear();
-    CURL* curl = curl_easy_init();
-    if (curl == NULL)
-    {
-        return false;
-    }
-
     std::string url = store_api_url + store_app_controller + String::Format("?page=%u&pageSize=%u", page, pageSize);
 
+    url = "https://www.google.com";
+
+    CURL* curl = curl_easy_init();
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
@@ -169,30 +161,23 @@ bool WebManager::TryGetApps(std::string& result, uint32_t page, uint32_t pageSiz
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, StringWriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &result);
 
-    CURLcode res = curl_easy_perform(curl);
-
     long http_code = 0;
-    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-    curl_easy_cleanup(curl);
+    CURLcode res = curl_easy_perform(curl);
+    if (res == CURLE_OK)
+    {
+        res = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+    }
 
+    curl_easy_cleanup(curl);
     return (res == CURLE_OK && http_code == 200);
 }
 
 bool WebManager::TryGetVersions(const std::string& id, std::string& result)
 {
     result.clear();
-    if (id.empty())
-    {
-        return false;
-    }
-    CURL* curl = curl_easy_init();
-    if (curl == NULL)
-    {
-        return false;
-    }
-
     std::string url = store_api_url + store_app_controller + "/" + id + store_versions;
 
+    CURL* curl = curl_easy_init();
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
@@ -201,10 +186,12 @@ bool WebManager::TryGetVersions(const std::string& id, std::string& result)
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, StringWriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &result);
 
-    CURLcode res = curl_easy_perform(curl);
-
     long http_code = 0;
-    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+    CURLcode res = curl_easy_perform(curl);
+    if (res == CURLE_OK)
+    {
+        res = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+    }
     curl_easy_cleanup(curl);
 
     return (res == CURLE_OK && http_code == 200);

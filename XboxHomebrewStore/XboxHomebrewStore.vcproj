@@ -36,6 +36,7 @@
 				Name="VCCustomBuildTool"/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalOptions="/NODEFAULTLIB:MSVCRTD"
 				AdditionalDependencies="xapilibd.lib d3d8d.lib d3dx8d.lib xgraphicsd.lib dsoundd.lib dmusicd.lib xactengd.lib xsndtrkd.lib xvoiced.lib xonlined.lib xboxkrnl.lib xbdm.lib libbearssl.lib libcurl.lib"
 				OutputFile="$(OutDir)/$(ProjectName).exe"
 				LinkIncremental="2"
@@ -52,7 +53,10 @@
 			<Tool
 				Name="VCPreLinkEventTool"/>
 			<Tool
-				Name="XboxDeploymentTool"/>
+				Name="XboxDeploymentTool"
+				AdditionalFiles="Media"
+				Progress="TRUE"
+				ForceCopy="TRUE"/>
 			<Tool
 				Name="XboxImageTool"
 				StackSize="65536"
@@ -87,6 +91,7 @@
 				Name="VCCustomBuildTool"/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalOptions="/NODEFAULTLIB:MSVCRT"
 				AdditionalDependencies="xapilib.lib d3d8i.lib d3dx8.lib xgraphics.lib dsound.lib dmusici.lib xactengi.lib xsndtrk.lib xvoice.lib xonlines.lib xboxkrnl.lib xbdm.lib xperf.lib libbearssl.lib libcurl.lib"
 				OutputFile="$(OutDir)/$(ProjectName).exe"
 				LinkIncremental="1"
@@ -106,7 +111,10 @@
 			<Tool
 				Name="VCPreLinkEventTool"/>
 			<Tool
-				Name="XboxDeploymentTool"/>
+				Name="XboxDeploymentTool"
+				AdditionalFiles="Media"
+				Progress="TRUE"
+				ForceCopy="TRUE"/>
 			<Tool
 				Name="XboxImageTool"
 				StackSize="65536"
@@ -142,6 +150,7 @@
 				Name="VCCustomBuildTool"/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalOptions="/NODEFAULTLIB:MSVCRT"
 				AdditionalDependencies="xapilib.lib d3d8i.lib d3dx8.lib xgraphics.lib dsound.lib dmusici.lib xactengi.lib xsndtrk.lib xvoice.lib xonlines.lib xboxkrnl.lib xbdm.lib xperf.lib libbearssl.lib libcurl.lib"
 				OutputFile="$(OutDir)/$(ProjectName).exe"
 				LinkIncremental="1"
@@ -161,7 +170,10 @@
 			<Tool
 				Name="VCPreLinkEventTool"/>
 			<Tool
-				Name="XboxDeploymentTool"/>
+				Name="XboxDeploymentTool"
+				AdditionalFiles="Media"
+				Progress="TRUE"
+				ForceCopy="TRUE"/>
 			<Tool
 				Name="XboxImageTool"
 				StackSize="65536"
@@ -196,6 +208,7 @@
 				Name="VCCustomBuildTool"/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalOptions="/NODEFAULTLIB:MSVCRT"
 				AdditionalDependencies="xapilib.lib d3d8.lib d3dx8.lib xgraphics.lib dsound.lib dmusic.lib xacteng.lib xsndtrk.lib xvoice.lib xonlines.lib xboxkrnl.lib libbearssl.lib libcurl.lib"
 				OutputFile="$(OutDir)/$(ProjectName).exe"
 				LinkIncremental="1"
@@ -215,7 +228,10 @@
 			<Tool
 				Name="VCPreLinkEventTool"/>
 			<Tool
-				Name="XboxDeploymentTool"/>
+				Name="XboxDeploymentTool"
+				AdditionalFiles="Media"
+				Progress="TRUE"
+				ForceCopy="TRUE"/>
 			<Tool
 				Name="XboxImageTool"
 				StackSize="65536"
@@ -249,6 +265,7 @@
 				Name="VCCustomBuildTool"/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalOptions="/NODEFAULTLIB:MSVCRT"
 				AdditionalDependencies="xapilib.lib d3d8ltcg.lib d3dx8.lib xgraphicsltcg.lib dsound.lib dmusicltcg.lib xactengltcg.lib xsndtrk.lib xvoice.lib xonlines.lib xboxkrnl.lib libbearssl.lib libcurl.lib"
 				OutputFile="$(OutDir)/$(ProjectName).exe"
 				LinkIncremental="1"
@@ -268,7 +285,10 @@
 			<Tool
 				Name="VCPreLinkEventTool"/>
 			<Tool
-				Name="XboxDeploymentTool"/>
+				Name="XboxDeploymentTool"
+				AdditionalFiles="Media"
+				Progress="TRUE"
+				ForceCopy="TRUE"/>
 			<Tool
 				Name="XboxImageTool"
 				StackSize="65536"
@@ -286,9 +306,6 @@
 				RelativePath=".\Debug.cpp">
 			</File>
 			<File
-				RelativePath=".\String.cpp">
-			</File>
-			<File
 				RelativePath=".\Main.cpp">
 			</File>
 			<File
@@ -296,6 +313,9 @@
 			</File>
 			<File
 				RelativePath=".\Store.cpp">
+			</File>
+			<File
+				RelativePath=".\String.cpp">
 			</File>
 			<File
 				RelativePath=".\WebManager.cpp">
@@ -312,6 +332,17 @@
 			<File
 				RelativePath=".\xbutil.cpp">
 			</File>
+			<Filter
+				Name="Media"
+				Filter="">
+				<Filter
+					Name="Fonts"
+					Filter="">
+					<File
+						RelativePath=".\Media\Fonts\Arial_16.xpr">
+					</File>
+				</Filter>
+			</Filter>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -321,9 +352,6 @@
 				RelativePath=".\Debug.h">
 			</File>
 			<File
-				RelativePath=".\String.h">
-			</File>
-			<File
 				RelativePath=".\Main.h">
 			</File>
 			<File
@@ -331,6 +359,9 @@
 			</File>
 			<File
 				RelativePath=".\Store.h">
+			</File>
+			<File
+				RelativePath=".\String.h">
 			</File>
 			<File
 				RelativePath=".\WebManager.h">

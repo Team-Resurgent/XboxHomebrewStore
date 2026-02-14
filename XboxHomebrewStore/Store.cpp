@@ -19,7 +19,7 @@
 #define COLOR_SIDEBAR_HOVER 0xFFC2185B  // Darker pink for selected
 
 // File paths
-#define CATALOG_PATH        "D:\\store.json"
+#define CATALOG_PATH        "D:\\Media\\store.json"
 #define USER_STATE_PATH     "T:\\user_state.json"
 
 //-----------------------------------------------------------------------------
