@@ -7,6 +7,16 @@
 #include "Store.h"
 #include "Network.h"
 #include "WebManager.h"
+#include "Debug.h"
+#include "String.h"
+
+static void CoverDownloadProgress(uint32_t dlNow, uint32_t dlTotal, void* userData)
+{
+    (void)userData;
+    Debug::Print(std::string("Cover download: %u / %u bytes\n"), dlNow, dlTotal);
+    // Example: to cancel the download, pass the same volatile bool* as progressUserData and pCancelRequested, then set:
+    // *(volatile bool*)userData = true;
+}
 
 //-----------------------------------------------------------------------------
 // Global variables
@@ -135,10 +145,22 @@ VOID __cdecl main()
     WebManager::Init();
     WebManager::TrySyncTime();
     
-    std::string test;
-    if (WebManager::TryGetApps(test, 1, 20))
+    AppsResponse appsResp;
+    if (WebManager::TryGetApps(appsResp, 1, 20))
     {
-        // use test with response body
+        Debug::Print(String::Format("Apps: %u items, page %u/%u", (unsigned)appsResp.items.size(), appsResp.page, appsResp.totalPages));
+    }
+
+    {
+        const std::string coverPath = "D:\\Media\\next-dashboard-cover.png";
+        if (WebManager::TryDownloadCover("next-dashboard-t0h4", 256, 256, coverPath, CoverDownloadProgress, NULL, NULL))
+        {
+            Debug::Print(std::string("Cover saved to %s\n"), coverPath.c_str());
+        }
+        else
+        {
+            Debug::Print(std::string("Cover download failed\n"));
+        }
     }
 
     // Initialize Direct3D

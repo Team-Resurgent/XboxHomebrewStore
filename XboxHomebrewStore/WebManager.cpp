@@ -1,10 +1,13 @@
 #include "WebManager.h"
 #include "String.h"
+#include "json.h"
 #include <time.h>
+#include <stdlib.h>
 
 const std::string store_api_url = "https://192.168.1.89:5001";
 const std::string store_app_controller = "/api/apps";
 const std::string store_versions = "/versions";
+const std::string store_categories = "/api/categories";
 
 static const char* ntp_server = "167.160.187.12";
 static const int ntp_port = 123;
@@ -13,15 +16,6 @@ static const unsigned long ntp_epoch_offset = 2208988800UL;
 extern "C" {
     LONG WINAPI NtSetSystemTime(LPFILETIME SystemTime, LPFILETIME PreviousTime);
 }
-
-static std::string s_lastError;
-
-struct BufferWriteContext
-{
-    char* buffer;
-    uint32_t bufferSize;
-    uint32_t written;
-};
 
 struct ProgressContext
 {
@@ -41,22 +35,155 @@ static size_t StringWriteCallback(char* ptr, size_t size, size_t nmemb, void* us
     return total;
 }
 
-static size_t BufferWriteCallback(char* ptr, size_t size, size_t nmemb, void* userdata)
+static struct json_value_s* GetObjectMember(struct json_object_s* obj, const char* name)
 {
-    BufferWriteContext* ctx = (BufferWriteContext*)userdata;
-    if (ctx == NULL || ctx->buffer == NULL)
+    if (!obj || !name) return NULL;
+    size_t nameLen = strlen(name);
+    struct json_object_element_s* elem = obj->start;
+    while (elem)
     {
-        return 0;
+        if (elem->name && elem->name->string_size == nameLen &&
+            memcmp(elem->name->string, name, nameLen) == 0)
+        {
+            return elem->value;
+        }
+        elem = elem->next;
     }
-    size_t total = size * nmemb;
-    uint32_t space = ctx->bufferSize - ctx->written;
-    if (total > (size_t)space)
+    return NULL;
+}
+
+static std::string JsonToString(struct json_value_s* v)
+{
+    if (!v) return "";
+    struct json_string_s* s = json_value_as_string(v);
+    if (!s || !s->string) return "";
+    return std::string(s->string, s->string_size);
+}
+
+static uint32_t JsonToUInt32(struct json_value_s* v)
+{
+    if (!v) return 0;
+    struct json_number_s* n = json_value_as_number(v);
+    if (!n || !n->number) return 0;
+    return (uint32_t)strtoul(n->number, NULL, 10);
+}
+
+static int JsonToInt(struct json_value_s* v)
+{
+    if (!v) return 0;
+    struct json_number_s* n = json_value_as_number(v);
+    if (!n || !n->number) return 0;
+    return atoi(n->number);
+}
+
+static bool JsonToBool(struct json_value_s* v)
+{
+    return v && json_value_is_true(v);
+}
+
+static bool ParseAppsResponse(const std::string& raw, AppsResponse& out)
+{
+    struct json_value_s* root = json_parse(raw.c_str(), raw.size());
+    if (!root) return false;
+    struct json_object_s* obj = json_value_as_object(root);
+    if (!obj)
     {
-        return 0;
+        free(root);
+        return false;
     }
-    memcpy(ctx->buffer + ctx->written, ptr, total);
-    ctx->written += (uint32_t)total;
-    return total;
+    out.items.clear();
+    struct json_value_s* itemsVal = GetObjectMember(obj, "items");
+    struct json_array_s* itemsArr = itemsVal ? json_value_as_array(itemsVal) : NULL;
+    if (itemsArr)
+    {
+        struct json_array_element_s* elem = itemsArr->start;
+        while (elem && elem->value)
+        {
+            struct json_object_s* itemObj = json_value_as_object(elem->value);
+            if (itemObj)
+            {
+                AppItem app;
+                app.id = JsonToString(GetObjectMember(itemObj, "id"));
+                app.name = JsonToString(GetObjectMember(itemObj, "name"));
+                app.author = JsonToString(GetObjectMember(itemObj, "author"));
+                app.category = JsonToString(GetObjectMember(itemObj, "category"));
+                app.description = JsonToString(GetObjectMember(itemObj, "description"));
+                app.isNew = JsonToBool(GetObjectMember(itemObj, "isNew"));
+                out.items.push_back(app);
+            }
+            elem = elem->next;
+        }
+    }
+    out.page = JsonToUInt32(GetObjectMember(obj, "page"));
+    out.pageSize = JsonToUInt32(GetObjectMember(obj, "pageSize"));
+    out.totalCount = JsonToUInt32(GetObjectMember(obj, "totalCount"));
+    out.totalPages = JsonToUInt32(GetObjectMember(obj, "totalPages"));
+    out.hasNextPage = JsonToBool(GetObjectMember(obj, "hasNextPage"));
+    out.hasPreviousPage = JsonToBool(GetObjectMember(obj, "hasPreviousPage"));
+    free(root);
+    return true;
+}
+
+static bool ParseCategoriesResponse(const std::string& raw, CategoriesResponse& out)
+{
+    struct json_value_s* root = json_parse(raw.c_str(), raw.size());
+    if (!root) return false;
+    struct json_array_s* arr = json_value_as_array(root);
+    if (!arr)
+    {
+        free(root);
+        return false;
+    }
+    out.clear();
+    struct json_array_element_s* elem = arr->start;
+    while (elem && elem->value)
+    {
+        struct json_object_s* itemObj = json_value_as_object(elem->value);
+        if (itemObj)
+        {
+            CategoryItem cat;
+            cat.category = JsonToString(GetObjectMember(itemObj, "category"));
+            cat.count = JsonToUInt32(GetObjectMember(itemObj, "count"));
+            out.push_back(cat);
+        }
+        elem = elem->next;
+    }
+    free(root);
+    return true;
+}
+
+static bool ParseVersionsResponse(const std::string& raw, VersionsResponse& out)
+{
+    struct json_value_s* root = json_parse(raw.c_str(), raw.size());
+    if (!root) return false;
+    struct json_array_s* arr = json_value_as_array(root);
+    if (!arr)
+    {
+        free(root);
+        return false;
+    }
+    out.clear();
+    struct json_array_element_s* elem = arr->start;
+    while (elem && elem->value)
+    {
+        struct json_object_s* itemObj = json_value_as_object(elem->value);
+        if (itemObj)
+        {
+            VersionItem ver;
+            ver.guid = JsonToString(GetObjectMember(itemObj, "guid"));
+            ver.version = JsonToString(GetObjectMember(itemObj, "version"));
+            ver.size = JsonToUInt32(GetObjectMember(itemObj, "size"));
+            ver.state = JsonToInt(GetObjectMember(itemObj, "state"));
+            ver.release_date = JsonToString(GetObjectMember(itemObj, "release_date"));
+            ver.changelog = JsonToString(GetObjectMember(itemObj, "changelog"));
+            ver.title_id = JsonToString(GetObjectMember(itemObj, "title_id"));
+            ver.region = JsonToString(GetObjectMember(itemObj, "region"));
+            out.push_back(ver);
+        }
+        elem = elem->next;
+    }
+    free(root);
+    return true;
 }
 
 static int ProgressCallback(void* clientp, double dltotal, double dlnow, double ultotal, double ulnow)
@@ -78,29 +205,6 @@ static int ProgressCallback(void* clientp, double dltotal, double dlnow, double 
 bool WebManager::Init()
 {
     return curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK;
-}
-
-static bool TimeTToSystemTime(time_t t, SYSTEMTIME* pst)
-{
-    if (pst == NULL)
-    {
-        return false;
-    }
-    struct tm* utc = gmtime(&t);
-    if (utc == NULL)
-    {
-        return false;
-    }
-    memset(pst, 0, sizeof(SYSTEMTIME));
-    pst->wYear = (WORD)(utc->tm_year + 1900);
-    pst->wMonth = (WORD)(utc->tm_mon + 1);
-    pst->wDayOfWeek = (WORD)utc->tm_wday;
-    pst->wDay = (WORD)utc->tm_mday;
-    pst->wHour = (WORD)utc->tm_hour;
-    pst->wMinute = (WORD)utc->tm_min;
-    pst->wSecond = (WORD)utc->tm_sec;
-    pst->wMilliseconds = 0;
-    return true;
 }
 
 bool WebManager::TryGetFileSize(const std::string& url, uint32_t& outSize)
@@ -134,12 +238,17 @@ bool WebManager::TryGetFileSize(const std::string& url, uint32_t& outSize)
     return (res == CURLE_OK && http_code == 200);
 }
 
-bool WebManager::TryDownload(const std::string& url, void* buffer, uint32_t bufferSize, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
+bool WebManager::TryDownload(const std::string& url, const std::string& filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
 {
-    BufferWriteContext writeCtx;
-    writeCtx.buffer = (char*)buffer;
-    writeCtx.bufferSize = bufferSize;
-    writeCtx.written = 0;
+    if (url.empty() || filePath.empty())
+    {
+        return false;
+    }
+    FILE* fp = fopen(filePath.c_str(), "wb");
+    if (fp == NULL)
+    {
+        return false;
+    }
 
     CURL* curl = curl_easy_init();
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
@@ -147,8 +256,8 @@ bool WebManager::TryDownload(const std::string& url, void* buffer, uint32_t buff
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, BufferWriteCallback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &writeCtx);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, (size_t (*)(void*, size_t, size_t, void*))fwrite);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
 
     ProgressContext progCtx;
     progCtx.fn = progressFn;
@@ -169,18 +278,34 @@ bool WebManager::TryDownload(const std::string& url, void* buffer, uint32_t buff
     CURLcode res = curl_easy_perform(curl);
     if (res == CURLE_OK)
     {
-        res = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
     }
 
+    fclose(fp);
     curl_easy_cleanup(curl);
-    return (res == CURLE_OK && http_code == 200);
+
+    if (res != CURLE_OK || http_code != 200)
+    {
+        remove(filePath.c_str());
+        return false;
+    }
+    return true;
 }
 
-bool WebManager::TryGetApps(std::string& result, uint32_t page, uint32_t pageSize)
+bool WebManager::TryGetApps(AppsResponse& result, uint32_t page, uint32_t pageSize, const std::string& category, const std::string& name)
 {
-    result.clear();
+    result.items.clear();
     std::string url = store_api_url + store_app_controller + String::Format("?page=%u&pageSize=%u", page, pageSize);
+    if (!category.empty())
+    {
+        url += "&category=" + category;
+    }
+    if (!name.empty())
+    {
+        url += "&name=" + name;
+    }
 
+    std::string raw;
     CURL* curl = curl_easy_init();
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
@@ -189,7 +314,7 @@ bool WebManager::TryGetApps(std::string& result, uint32_t page, uint32_t pageSiz
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, StringWriteCallback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &result);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &raw);
 
     long http_code = 0;
     CURLcode res = curl_easy_perform(curl);
@@ -199,14 +324,49 @@ bool WebManager::TryGetApps(std::string& result, uint32_t page, uint32_t pageSiz
     }
 
     curl_easy_cleanup(curl);
-    return (res == CURLE_OK && http_code == 200);
+    if (res != CURLE_OK || http_code != 200)
+        return false;
+    return ParseAppsResponse(raw, result);
 }
 
-bool WebManager::TryGetVersions(const std::string& id, std::string& result)
+bool WebManager::TryGetCategories(CategoriesResponse& result)
+{
+    result.clear();
+    std::string url = store_api_url + store_categories;
+
+    std::string raw;
+    CURL* curl = curl_easy_init();
+    if (curl == NULL)
+    {
+        return false;
+    }
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, StringWriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &raw);
+
+    long http_code = 0;
+    CURLcode res = curl_easy_perform(curl);
+    if (res == CURLE_OK)
+    {
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+    }
+    curl_easy_cleanup(curl);
+
+    if (res != CURLE_OK || http_code != 200)
+        return false;
+    return ParseCategoriesResponse(raw, result);
+}
+
+bool WebManager::TryGetVersions(const std::string& id, VersionsResponse& result)
 {
     result.clear();
     std::string url = store_api_url + store_app_controller + "/" + id + store_versions;
 
+    std::string raw;
     CURL* curl = curl_easy_init();
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
@@ -214,7 +374,7 @@ bool WebManager::TryGetVersions(const std::string& id, std::string& result)
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, StringWriteCallback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &result);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &raw);
 
     long http_code = 0;
     CURLcode res = curl_easy_perform(curl);
@@ -224,7 +384,29 @@ bool WebManager::TryGetVersions(const std::string& id, std::string& result)
     }
     curl_easy_cleanup(curl);
 
-    return (res == CURLE_OK && http_code == 200);
+    if (res != CURLE_OK || http_code != 200)
+        return false;
+    return ParseVersionsResponse(raw, result);
+}
+
+bool WebManager::TryDownloadCover(const std::string& id, uint32_t width, uint32_t height, const std::string& filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
+{
+    if (id.empty())
+    {
+        return false;
+    }
+    std::string url = store_api_url + "/api/Cover/" + id + String::Format("?width=%u&height=%u", width, height);
+    return TryDownload(url, filePath, progressFn, progressUserData, pCancelRequested);
+}
+
+bool WebManager::TryDownloadScreenshot(const std::string& id, uint32_t width, uint32_t height, const std::string& filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
+{
+    if (id.empty())
+    {
+        return false;
+    }
+    std::string url = store_api_url + "/api/Screenshot/" + id + String::Format("?width=%u&height=%u", width, height);
+    return TryDownload(url, filePath, progressFn, progressUserData, pCancelRequested);
 }
 
 bool WebManager::TrySyncTime()

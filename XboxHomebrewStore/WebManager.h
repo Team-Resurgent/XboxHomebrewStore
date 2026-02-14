@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Main.h"
+#include "Models.h"
 
 class WebManager
 {
@@ -9,8 +10,11 @@ public:
 
     static bool Init();
     static bool TryGetFileSize(const std::string& url, uint32_t& outSize);
-    static bool TryDownload(const std::string& url, void* buffer, uint32_t bufferSize, DownloadProgressFn progressFn = NULL, void* progressUserData = NULL, volatile bool* pCancelRequested = NULL);
-    static bool TryGetApps(std::string& result, uint32_t page, uint32_t pageSize);
-    static bool TryGetVersions(const std::string& id, std::string& result);
+    static bool TryDownload(const std::string& url, const std::string& filePath, DownloadProgressFn progressFn = NULL, void* progressUserData = NULL, volatile bool* pCancelRequested = NULL);
+    static bool TryDownloadCover(const std::string& id, uint32_t width, uint32_t height, const std::string& filePath, DownloadProgressFn progressFn = NULL, void* progressUserData = NULL, volatile bool* pCancelRequested = NULL);
+    static bool TryDownloadScreenshot(const std::string& id, uint32_t width, uint32_t height, const std::string& filePath, DownloadProgressFn progressFn = NULL, void* progressUserData = NULL, volatile bool* pCancelRequested = NULL);
+    static bool TryGetApps(AppsResponse& result, uint32_t page, uint32_t pageSize, const std::string& category = "", const std::string& name = "");
+    static bool TryGetCategories(CategoriesResponse& result);
+    static bool TryGetVersions(const std::string& id, VersionsResponse& result);
     static bool TrySyncTime();
 };
