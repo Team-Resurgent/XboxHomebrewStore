@@ -149,8 +149,6 @@ bool WebManager::TryGetApps(std::string& result, uint32_t page, uint32_t pageSiz
     result.clear();
     std::string url = store_api_url + store_app_controller + String::Format("?page=%u&pageSize=%u", page, pageSize);
 
-    url = "https://www.google.com";
-
     CURL* curl = curl_easy_init();
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
