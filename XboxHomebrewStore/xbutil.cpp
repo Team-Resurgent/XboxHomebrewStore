@@ -11,11 +11,7 @@
 //
 // Copyright (c) Microsoft Corporation. All rights reserved.
 //-----------------------------------------------------------------------------
-#include <xtl.h>
-#include <xgraphics.h>
-#include <tchar.h> 
-#include <cstdio>
-#include <cassert>
+#include "Main.h"
 #include "XBUtil.h"
 
 

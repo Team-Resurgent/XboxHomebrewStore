@@ -2,8 +2,8 @@
 // Store.cpp - Xbox Homebrew Store Implementation
 //=============================================================================
 
+#include "Main.h"
 #include "Store.h"
-#include <stdio.h>
 
 // Colors - Modern clean theme inspired by Switch store
 #define COLOR_PRIMARY       0xFFE91E63  // Pink/Red accent

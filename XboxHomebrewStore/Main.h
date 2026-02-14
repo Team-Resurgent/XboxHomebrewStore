@@ -1,0 +1,10 @@
+#pragma once
+
+#include <xtl.h>
+#include <xgraphics.h>
+#include <string>
+#include <stdint.h>
+#include <stdio.h>
+#include <tchar.h> 
+#include <cstdio>
+#include <cassert>

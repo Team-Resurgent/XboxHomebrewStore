@@ -40,9 +40,7 @@
 //
 // Copyright (c) Microsoft Corporation. All rights reserved.
 //-----------------------------------------------------------------------------
-#include <xtl.h>
-#include <xgraphics.h>
-#include <stdio.h>
+#include "Main.h"
 #include "XBFont.h"
 
 

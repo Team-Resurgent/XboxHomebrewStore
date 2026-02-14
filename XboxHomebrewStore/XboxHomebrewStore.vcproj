@@ -21,7 +21,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="0"
 				OptimizeForProcessor="2"
-				AdditionalIncludeDirectories="&quot;$(SolutionDir)Libraries\libbearssl\include&quot;;&quot;$(SolutionDir)Libraries\libcurl\include&quot;"
+				AdditionalIncludeDirectories="&quot;$(SolutionDir)Libraries\libbearssl\include&quot;;&quot;$(SolutionDir)Libraries\libcurl\include&quot;;&quot;$(SolutionDir)Libraries\libutil\include&quot;"
 				PreprocessorDefinitions="_DEBUG;_XBOX"
 				MinimalRebuild="TRUE"
 				BasicRuntimeChecks="3"
@@ -71,7 +71,7 @@
 				Optimization="3"
 				OmitFramePointers="TRUE"
 				OptimizeForProcessor="2"
-				AdditionalIncludeDirectories="&quot;$(SolutionDir)Libraries\libbearssl\include&quot;;&quot;$(SolutionDir)Libraries\libcurl\include&quot;"
+				AdditionalIncludeDirectories="&quot;$(SolutionDir)Libraries\libbearssl\include&quot;;&quot;$(SolutionDir)Libraries\libcurl\include&quot;;&quot;$(SolutionDir)Libraries\libutil\include&quot;"
 				PreprocessorDefinitions="NDEBUG;_XBOX;PROFILE"
 				StringPooling="TRUE"
 				RuntimeLibrary="0"
@@ -125,7 +125,7 @@
 				Optimization="3"
 				OmitFramePointers="TRUE"
 				OptimizeForProcessor="2"
-				AdditionalIncludeDirectories="&quot;$(SolutionDir)Libraries\libbearssl\include&quot;;&quot;$(SolutionDir)Libraries\libcurl\include&quot;"
+				AdditionalIncludeDirectories="&quot;$(SolutionDir)Libraries\libbearssl\include&quot;;&quot;$(SolutionDir)Libraries\libcurl\include&quot;;&quot;$(SolutionDir)Libraries\libutil\include&quot;"
 				PreprocessorDefinitions="NDEBUG;_XBOX;PROFILE;FASTCAP"
 				StringPooling="TRUE"
 				RuntimeLibrary="0"
@@ -180,7 +180,7 @@
 				Optimization="3"
 				OmitFramePointers="TRUE"
 				OptimizeForProcessor="2"
-				AdditionalIncludeDirectories="&quot;$(SolutionDir)Libraries\libbearssl\include&quot;;&quot;$(SolutionDir)Libraries\libcurl\include&quot;"
+				AdditionalIncludeDirectories="&quot;$(SolutionDir)Libraries\libbearssl\include&quot;;&quot;$(SolutionDir)Libraries\libcurl\include&quot;;&quot;$(SolutionDir)Libraries\libutil\include&quot;"
 				PreprocessorDefinitions="NDEBUG;_XBOX"
 				StringPooling="TRUE"
 				RuntimeLibrary="0"
@@ -233,7 +233,7 @@
 				Optimization="3"
 				OmitFramePointers="TRUE"
 				OptimizeForProcessor="2"
-				AdditionalIncludeDirectories="&quot;$(SolutionDir)Libraries\libbearssl\include&quot;;&quot;$(SolutionDir)Libraries\libcurl\include&quot;"
+				AdditionalIncludeDirectories="&quot;$(SolutionDir)Libraries\libbearssl\include&quot;;&quot;$(SolutionDir)Libraries\libcurl\include&quot;;&quot;$(SolutionDir)Libraries\libutil\include&quot;"
 				PreprocessorDefinitions="NDEBUG;_XBOX;LTCG"
 				StringPooling="TRUE"
 				RuntimeLibrary="0"
@@ -283,19 +283,25 @@
 			Filter="cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx"
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}">
 			<File
-				RelativePath=".\stdafx.cpp">
+				RelativePath=".\Debug.cpp">
+			</File>
+			<File
+				RelativePath=".\Main.cpp">
+			</File>
+			<File
+				RelativePath=".\Network.cpp">
 			</File>
 			<File
 				RelativePath=".\Store.cpp">
+			</File>
+			<File
+				RelativePath=".\WebManager.cpp">
 			</File>
 			<File
 				RelativePath=".\xbfont.cpp">
 			</File>
 			<File
 				RelativePath=".\xbinput.cpp">
-			</File>
-			<File
-				RelativePath=".\XboxHomebrewStore.cpp">
 			</File>
 			<File
 				RelativePath=".\xbresource.cpp">
@@ -309,10 +315,19 @@
 			Filter="h;hpp;hxx;hm;inl;inc;xsd"
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}">
 			<File
-				RelativePath=".\stdafx.h">
+				RelativePath=".\Debug.h">
+			</File>
+			<File
+				RelativePath=".\Main.h">
+			</File>
+			<File
+				RelativePath=".\Network.h">
 			</File>
 			<File
 				RelativePath=".\Store.h">
+			</File>
+			<File
+				RelativePath=".\WebManager.h">
 			</File>
 			<File
 				RelativePath=".\xbfont.h">
@@ -321,18 +336,12 @@
 				RelativePath=".\xbinput.h">
 			</File>
 			<File
-				RelativePath="..\..\..\..\..\Program Files\Microsoft Xbox SDK\Samples\Xbox\Common\Include\xbinput.h">
-			</File>
-			<File
 				RelativePath=".\xbresource.h">
 			</File>
 			<File
 				RelativePath=".\xbutil.h">
 			</File>
 		</Filter>
-		<File
-			RelativePath=".\ReadMe.txt">
-		</File>
 	</Files>
 	<Globals>
 	</Globals>

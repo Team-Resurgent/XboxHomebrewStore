@@ -3,9 +3,9 @@
 // Main Application Entry Point
 //=============================================================================
 
-#include <xtl.h>
-#include <xgraphics.h>
+#include "Main.h"
 #include "Store.h"
+#include "Network.h"
 
 //-----------------------------------------------------------------------------
 // Global variables
@@ -129,6 +129,8 @@ VOID __cdecl main()
 {
     // Initialize Xbox input devices - MUST be called before XBInput functions
     XInitDevices( 0, NULL );
+
+    Network::Init();
 
     // Initialize Direct3D
     if( FAILED( InitD3D() ) )
