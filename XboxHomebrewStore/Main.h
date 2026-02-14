@@ -8,3 +8,4 @@
 #include <tchar.h> 
 #include <cstdio>
 #include <cassert>
+#include <curl/curl.h>

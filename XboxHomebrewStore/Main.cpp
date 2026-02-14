@@ -6,6 +6,7 @@
 #include "Main.h"
 #include "Store.h"
 #include "Network.h"
+#include "WebManager.h"
 
 //-----------------------------------------------------------------------------
 // Global variables
@@ -131,6 +132,13 @@ VOID __cdecl main()
     XInitDevices( 0, NULL );
 
     Network::Init();
+    WebManager::Init();
+    
+    std::string test;
+    if (WebManager::TryGetApps(test, 1, 20))
+    {
+        // use test with response body
+    }
 
     // Initialize Direct3D
     if( FAILED( InitD3D() ) )

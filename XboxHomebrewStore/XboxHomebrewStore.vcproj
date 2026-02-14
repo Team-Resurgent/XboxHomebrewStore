@@ -22,7 +22,7 @@
 				Optimization="0"
 				OptimizeForProcessor="2"
 				AdditionalIncludeDirectories="&quot;$(SolutionDir)Libraries\libbearssl\include&quot;;&quot;$(SolutionDir)Libraries\libcurl\include&quot;;&quot;$(SolutionDir)Libraries\libutil\include&quot;"
-				PreprocessorDefinitions="_DEBUG;_XBOX"
+				PreprocessorDefinitions="_DEBUG;_XBOX;CURL_STATICLIB"
 				MinimalRebuild="TRUE"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
@@ -72,7 +72,7 @@
 				OmitFramePointers="TRUE"
 				OptimizeForProcessor="2"
 				AdditionalIncludeDirectories="&quot;$(SolutionDir)Libraries\libbearssl\include&quot;;&quot;$(SolutionDir)Libraries\libcurl\include&quot;;&quot;$(SolutionDir)Libraries\libutil\include&quot;"
-				PreprocessorDefinitions="NDEBUG;_XBOX;PROFILE"
+				PreprocessorDefinitions="NDEBUG;_XBOX;PROFILE;CURL_STATICLIB"
 				StringPooling="TRUE"
 				RuntimeLibrary="0"
 				BufferSecurityCheck="TRUE"
@@ -126,7 +126,7 @@
 				OmitFramePointers="TRUE"
 				OptimizeForProcessor="2"
 				AdditionalIncludeDirectories="&quot;$(SolutionDir)Libraries\libbearssl\include&quot;;&quot;$(SolutionDir)Libraries\libcurl\include&quot;;&quot;$(SolutionDir)Libraries\libutil\include&quot;"
-				PreprocessorDefinitions="NDEBUG;_XBOX;PROFILE;FASTCAP"
+				PreprocessorDefinitions="NDEBUG;_XBOX;PROFILE;FASTCAP;CURL_STATICLIB"
 				StringPooling="TRUE"
 				RuntimeLibrary="0"
 				BufferSecurityCheck="TRUE"
@@ -181,7 +181,7 @@
 				OmitFramePointers="TRUE"
 				OptimizeForProcessor="2"
 				AdditionalIncludeDirectories="&quot;$(SolutionDir)Libraries\libbearssl\include&quot;;&quot;$(SolutionDir)Libraries\libcurl\include&quot;;&quot;$(SolutionDir)Libraries\libutil\include&quot;"
-				PreprocessorDefinitions="NDEBUG;_XBOX"
+				PreprocessorDefinitions="NDEBUG;_XBOX;CURL_STATICLIB"
 				StringPooling="TRUE"
 				RuntimeLibrary="0"
 				BufferSecurityCheck="TRUE"
@@ -234,7 +234,7 @@
 				OmitFramePointers="TRUE"
 				OptimizeForProcessor="2"
 				AdditionalIncludeDirectories="&quot;$(SolutionDir)Libraries\libbearssl\include&quot;;&quot;$(SolutionDir)Libraries\libcurl\include&quot;;&quot;$(SolutionDir)Libraries\libutil\include&quot;"
-				PreprocessorDefinitions="NDEBUG;_XBOX;LTCG"
+				PreprocessorDefinitions="NDEBUG;_XBOX;LTCG;CURL_STATICLIB"
 				StringPooling="TRUE"
 				RuntimeLibrary="0"
 				BufferSecurityCheck="TRUE"
@@ -286,6 +286,9 @@
 				RelativePath=".\Debug.cpp">
 			</File>
 			<File
+				RelativePath=".\String.cpp">
+			</File>
+			<File
 				RelativePath=".\Main.cpp">
 			</File>
 			<File
@@ -318,6 +321,9 @@
 				RelativePath=".\Debug.h">
 			</File>
 			<File
+				RelativePath=".\String.h">
+			</File>
+			<File
 				RelativePath=".\Main.h">
 			</File>
 			<File
@@ -341,6 +347,37 @@
 			<File
 				RelativePath=".\xbutil.h">
 			</File>
+			<Filter
+				Name="Curl"
+				Filter="">
+				<File
+					RelativePath="..\Libraries\libcurl\include\curl\curl.h">
+				</File>
+				<File
+					RelativePath="..\Libraries\libcurl\include\curl\curlver.h">
+				</File>
+				<File
+					RelativePath="..\Libraries\libcurl\include\curl\easy.h">
+				</File>
+				<File
+					RelativePath="..\Libraries\libcurl\include\curl\mprintf.h">
+				</File>
+				<File
+					RelativePath="..\Libraries\libcurl\include\curl\multi.h">
+				</File>
+				<File
+					RelativePath="..\Libraries\libcurl\include\curl\stdcheaders.h">
+				</File>
+				<File
+					RelativePath="..\Libraries\libcurl\include\curl\system.h">
+				</File>
+				<File
+					RelativePath="..\Libraries\libcurl\include\curl\typecheck-gcc.h">
+				</File>
+				<File
+					RelativePath="..\Libraries\libcurl\include\curl\urlapi.h">
+				</File>
+			</Filter>
 		</Filter>
 	</Files>
 	<Globals>
