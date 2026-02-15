@@ -127,7 +127,7 @@ static bool ParseVersionsResponse(const std::string& raw, VersionsResponse& out)
         if (itemObj)
         {
             VersionItem ver;
-            ver.guid = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "guid"));
+            ver.id = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "id"));
             ver.version = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "version"));
             ver.size = JsonHelper::ToUInt32(JsonHelper::GetObjectMember(itemObj, "size"));
             ver.state = JsonHelper::ToInt(JsonHelper::GetObjectMember(itemObj, "state"));
@@ -135,6 +135,7 @@ static bool ParseVersionsResponse(const std::string& raw, VersionsResponse& out)
             ver.changeLog = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "changelog"));
             ver.titleId = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "title_id"));
             ver.region = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "region"));
+            ver.download_file = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "download_file"));
             out.push_back(ver);
         }
     }

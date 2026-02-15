@@ -26,7 +26,7 @@ struct AppsResponse
 
 struct VersionItem
 {
-    std::string guid;
+    std::string id;
     std::string version;
     uint32_t size;
     int state;
@@ -34,6 +34,7 @@ struct VersionItem
     std::string changeLog;
     std::string titleId;
     std::string region;
+    std::string download_file;
     std::string install_path;  // Local install path (from user state)
 };
 
