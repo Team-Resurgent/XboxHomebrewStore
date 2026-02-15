@@ -671,7 +671,11 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
         float screenshotY = 70.0f;
         float screenshotH = m_fScreenHeight * 0.45f;
         DrawRect( pd3dDevice, 20.0f, screenshotY, contentW - 40.0f, screenshotH, COLOR_CARD_BG );
-        
+        LPDIRECT3DTEXTURE8 pScreenshot = TextureHelper::GetScreenshot( pd3dDevice );
+        if( pScreenshot ) {
+            DrawTexturedRect( pd3dDevice, 20.0f, screenshotY, contentW - 40.0f, screenshotH, pScreenshot );
+            pScreenshot->Release();
+        }
         float descY = screenshotY + screenshotH + 20.0f;
         
         // Description
@@ -823,7 +827,11 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
     float screenshotY = 70.0f;
     float screenshotH = m_fScreenHeight * 0.30f;
     DrawRect( pd3dDevice, 20.0f, screenshotY, contentW - 40.0f, screenshotH, COLOR_CARD_BG );
-    
+    LPDIRECT3DTEXTURE8 pScreenshot = TextureHelper::GetScreenshot( pd3dDevice );
+    if( pScreenshot ) {
+        DrawTexturedRect( pd3dDevice, 20.0f, screenshotY, contentW - 40.0f, screenshotH, pScreenshot );
+        pScreenshot->Release();
+    }
     float contentY = screenshotY + screenshotH + 20.0f;
     
     DrawText( pd3dDevice, "Description:", 20.0f, contentY, COLOR_TEXT_GRAY );
