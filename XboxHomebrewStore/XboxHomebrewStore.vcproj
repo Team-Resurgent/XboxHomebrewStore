@@ -315,10 +315,16 @@
 				RelativePath=".\Store.cpp">
 			</File>
 			<File
+				RelativePath=".\UserState.cpp">
+			</File>
+			<File
 				RelativePath=".\String.cpp">
 			</File>
 			<File
 				RelativePath=".\WebManager.cpp">
+			</File>
+			<File
+				RelativePath=".\JsonHelper.cpp">
 			</File>
 			<File
 				RelativePath=".\xbfont.cpp">
@@ -355,6 +361,9 @@
 				RelativePath=".\json.h">
 			</File>
 			<File
+				RelativePath=".\JsonHelper.h">
+			</File>
+			<File
 				RelativePath=".\Main.h">
 			</File>
 			<File
@@ -368,6 +377,9 @@
 			</File>
 			<File
 				RelativePath=".\Store.h">
+			</File>
+			<File
+				RelativePath=".\UserState.h">
 			</File>
 			<File
 				RelativePath=".\String.h">

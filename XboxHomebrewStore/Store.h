@@ -10,6 +10,7 @@
 #include "XBFont.h"
 #include "XBInput.h"
 #include "WebManager.h"
+#include "Models.h"
 
 // UI State
 enum UIState
@@ -20,52 +21,19 @@ enum UIState
     UI_SETTINGS
 };
 
-// Version info structure
-struct VersionInfo
-{
-    char szVersion[16];
-    char szChangelog[128];
-    char szReleaseDate[32];  // "2024-02-11" or "Feb 11, 2024"
-    char szTitleID[16];      // Xbox title ID (e.g., "45410026")
-    char szRegion[16];       // Region code (e.g., "USA", "PAL", "JPN", "GLO")
-    char szInstallPath[128]; // Install location (e.g., "E:\\Apps\\XBMC35")
-    char szGUID[32];         // ADDED: Version-specific download ID (server-side only)
-    DWORD dwSize;
-    int nState;  // Download state for this specific version
-};
-
-#define MAX_VERSIONS 32
-
-// Store item structure
+// Store item: app data (from API) + UI state
 struct StoreItem
 {
-    char szName[64];
-    char szDescription[256];
-    char szAuthor[64];
-    char szGUID[32];        // Legacy: Global ID for cover art/media (backwards compat)
-    char szID[64];          // ADDED: App-level unique ID (safe for user_state.json)
+    AppItem app;
     int nCategoryIndex;     // Index into categories array
-    BOOL bNew;              // TRUE = Show red NEW badge, auto-clears on view
-    
-    // Multi-version support
-    VersionInfo aVersions[MAX_VERSIONS];
-    int nVersionCount;
-    int nSelectedVersion;   // Which version is currently selected/highlighted
-    int nVersionScrollOffset; // For scrolling version list
-    BOOL bViewingVersionDetail; // TRUE when viewing a specific version's detail
-    
+    std::vector<VersionItem> versions;
+    int nSelectedVersion;
+    int nVersionScrollOffset;
+    BOOL bViewingVersionDetail;
     LPDIRECT3DTEXTURE8 pIcon;
 };
 
-// Dynamic category system
-#define MAX_CATEGORIES 128
-
-struct CategoryInfo
-{
-    char szName[32];        // "Games", "Emulators", etc.
-    char szID[32];          // "games", "emulators", etc.
-    int nAppCount;          // Number of apps in this category
-};
+#include "UserState.h"
 
 class Store
 {
@@ -85,17 +53,10 @@ private:
     void RenderSettings( LPDIRECT3DDEVICE8 pd3dDevice );
     void RenderCategorySidebar( LPDIRECT3DDEVICE8 pd3dDevice );
     
-    // User state management
-    BOOL LoadUserState( const char* filename );
-    BOOL SaveUserState( const char* filename );
-    void MergeUserStateWithCatalog();
+    // User state (load/save and apply to store)
     void MarkAppAsViewed( const char* appId );
     void SetVersionState( const char* appId, const char* version, int state );
 
-    // UTF-8 and JSON helpers (for user_state and version changelogs)
-    void SafeCopyUTF8( char* dest, const char* src, int maxBytes );
-    void UnescapeJSON( char* dest, const char* src, int maxLen );
-    
     // Update detection helpers
     BOOL HasUpdateAvailable( StoreItem* pItem );
     int GetDisplayState( StoreItem* pItem, int versionIndex );
@@ -112,16 +73,16 @@ private:
     void DetectResolution( LPDIRECT3DDEVICE8 pd3dDevice );
     void CalculateLayout();
     
-    // Catalog loading (web; fallback uses GetOrCreateCategory + BuildCategoryList)
+    // Catalog loading (web)
     BOOL LoadCatalogFromWeb();
     BOOL LoadCategoriesFromWeb();
     BOOL LoadAppsPage( int page, const char* categoryFilter );
     void EnsureVersionsForItem( StoreItem* pItem );
     int FindCategoryIndex( const char* catID ) const;
-    int GetOrCreateCategory( const char* catID );
     void BuildCategoryList();
 
     // Data
+    UserState m_userState;
     StoreItem* m_pItems;
     int m_nItemCount;
     int m_nSelectedItem;
@@ -130,8 +91,7 @@ private:
     UIState m_CurrentState;
     
     // Dynamic categories
-    CategoryInfo m_aCategories[MAX_CATEGORIES];
-    int m_nCategoryCount;
+    std::vector<CategoryItem> m_aCategories;
     int m_nSelectedCategory;
 
     // Pagination (web catalog)
@@ -160,9 +120,6 @@ private:
     XBGAMEPAD* m_pGamepads;
     DWORD m_dwLastButtons;
 
-    // SafeCopy
-    void SafeCopy(char* dest, const char* src, int maxLen);
-    void GenerateAppID(const char* name, char* outID, int maxLen);
 };
 
 // Vertex format for 2D rendering

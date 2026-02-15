@@ -1,8 +1,10 @@
 #include "WebManager.h"
 #include "String.h"
 #include "json.h"
+#include "JsonHelper.h"
 #include <time.h>
 #include <stdlib.h>
+#include <string.h>
 
 const std::string store_api_url = "https://192.168.1.89:5001";
 const std::string store_app_controller = "/api/apps";
@@ -35,52 +37,6 @@ static size_t StringWriteCallback(char* ptr, size_t size, size_t nmemb, void* us
     return total;
 }
 
-static struct json_value_s* GetObjectMember(struct json_object_s* obj, const char* name)
-{
-    if (!obj || !name) return NULL;
-    size_t nameLen = strlen(name);
-    struct json_object_element_s* elem = obj->start;
-    while (elem)
-    {
-        if (elem->name && elem->name->string_size == nameLen &&
-            memcmp(elem->name->string, name, nameLen) == 0)
-        {
-            return elem->value;
-        }
-        elem = elem->next;
-    }
-    return NULL;
-}
-
-static std::string JsonToString(struct json_value_s* v)
-{
-    if (!v) return "";
-    struct json_string_s* s = json_value_as_string(v);
-    if (!s || !s->string) return "";
-    return std::string(s->string, s->string_size);
-}
-
-static uint32_t JsonToUInt32(struct json_value_s* v)
-{
-    if (!v) return 0;
-    struct json_number_s* n = json_value_as_number(v);
-    if (!n || !n->number) return 0;
-    return (uint32_t)strtoul(n->number, NULL, 10);
-}
-
-static int JsonToInt(struct json_value_s* v)
-{
-    if (!v) return 0;
-    struct json_number_s* n = json_value_as_number(v);
-    if (!n || !n->number) return 0;
-    return atoi(n->number);
-}
-
-static bool JsonToBool(struct json_value_s* v)
-{
-    return v && json_value_is_true(v);
-}
-
 static bool ParseAppsResponse(const std::string& raw, AppsResponse& out)
 {
     struct json_value_s* root = json_parse(raw.c_str(), raw.size());
@@ -92,7 +48,7 @@ static bool ParseAppsResponse(const std::string& raw, AppsResponse& out)
         return false;
     }
     out.items.clear();
-    struct json_value_s* itemsVal = GetObjectMember(obj, "items");
+    struct json_value_s* itemsVal = JsonHelper::GetObjectMember(obj, "items");
     struct json_array_s* itemsArr = itemsVal ? json_value_as_array(itemsVal) : NULL;
     if (itemsArr)
     {
@@ -103,23 +59,23 @@ static bool ParseAppsResponse(const std::string& raw, AppsResponse& out)
             if (itemObj)
             {
                 AppItem app;
-                app.id = JsonToString(GetObjectMember(itemObj, "id"));
-                app.name = JsonToString(GetObjectMember(itemObj, "name"));
-                app.author = JsonToString(GetObjectMember(itemObj, "author"));
-                app.category = JsonToString(GetObjectMember(itemObj, "category"));
-                app.description = JsonToString(GetObjectMember(itemObj, "description"));
-                app.isNew = JsonToBool(GetObjectMember(itemObj, "isNew"));
+                app.id = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "id"));
+                app.name = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "name"));
+                app.author = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "author"));
+                app.category = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "category"));
+                app.description = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "description"));
+                app.isNew = JsonHelper::ToBool(JsonHelper::GetObjectMember(itemObj, "isNew"));
                 out.items.push_back(app);
             }
             elem = elem->next;
         }
     }
-    out.page = JsonToUInt32(GetObjectMember(obj, "page"));
-    out.pageSize = JsonToUInt32(GetObjectMember(obj, "pageSize"));
-    out.totalCount = JsonToUInt32(GetObjectMember(obj, "totalCount"));
-    out.totalPages = JsonToUInt32(GetObjectMember(obj, "totalPages"));
-    out.hasNextPage = JsonToBool(GetObjectMember(obj, "hasNextPage"));
-    out.hasPreviousPage = JsonToBool(GetObjectMember(obj, "hasPreviousPage"));
+    out.page = JsonHelper::ToUInt32(JsonHelper::GetObjectMember(obj, "page"));
+    out.pageSize = JsonHelper::ToUInt32(JsonHelper::GetObjectMember(obj, "pageSize"));
+    out.totalCount = JsonHelper::ToUInt32(JsonHelper::GetObjectMember(obj, "totalCount"));
+    out.totalPages = JsonHelper::ToUInt32(JsonHelper::GetObjectMember(obj, "totalPages"));
+    out.hasNextPage = JsonHelper::ToBool(JsonHelper::GetObjectMember(obj, "hasNextPage"));
+    out.hasPreviousPage = JsonHelper::ToBool(JsonHelper::GetObjectMember(obj, "hasPreviousPage"));
     free(root);
     return true;
 }
@@ -142,8 +98,8 @@ static bool ParseCategoriesResponse(const std::string& raw, CategoriesResponse& 
         if (itemObj)
         {
             CategoryItem cat;
-            cat.category = JsonToString(GetObjectMember(itemObj, "category"));
-            cat.count = JsonToUInt32(GetObjectMember(itemObj, "count"));
+            cat.category = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "category"));
+            cat.count = JsonHelper::ToUInt32(JsonHelper::GetObjectMember(itemObj, "count"));
             out.push_back(cat);
         }
         elem = elem->next;
@@ -170,14 +126,14 @@ static bool ParseVersionsResponse(const std::string& raw, VersionsResponse& out)
         if (itemObj)
         {
             VersionItem ver;
-            ver.guid = JsonToString(GetObjectMember(itemObj, "guid"));
-            ver.version = JsonToString(GetObjectMember(itemObj, "version"));
-            ver.size = JsonToUInt32(GetObjectMember(itemObj, "size"));
-            ver.state = JsonToInt(GetObjectMember(itemObj, "state"));
-            ver.release_date = JsonToString(GetObjectMember(itemObj, "release_date"));
-            ver.changelog = JsonToString(GetObjectMember(itemObj, "changelog"));
-            ver.title_id = JsonToString(GetObjectMember(itemObj, "title_id"));
-            ver.region = JsonToString(GetObjectMember(itemObj, "region"));
+            ver.guid = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "guid"));
+            ver.version = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "version"));
+            ver.size = JsonHelper::ToUInt32(JsonHelper::GetObjectMember(itemObj, "size"));
+            ver.state = JsonHelper::ToInt(JsonHelper::GetObjectMember(itemObj, "state"));
+            ver.release_date = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "release_date"));
+            ver.changelog = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "changelog"));
+            ver.title_id = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "title_id"));
+            ver.region = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "region"));
             out.push_back(ver);
         }
         elem = elem->next;
@@ -324,8 +280,9 @@ bool WebManager::TryGetApps(AppsResponse& result, uint32_t page, uint32_t pageSi
     }
 
     curl_easy_cleanup(curl);
-    if (res != CURLE_OK || http_code != 200)
+    if (res != CURLE_OK || http_code != 200) {
         return false;
+    }
     return ParseAppsResponse(raw, result);
 }
 
@@ -356,8 +313,9 @@ bool WebManager::TryGetCategories(CategoriesResponse& result)
     }
     curl_easy_cleanup(curl);
 
-    if (res != CURLE_OK || http_code != 200)
+    if (res != CURLE_OK || http_code != 200) {
         return false;
+    }
     return ParseCategoriesResponse(raw, result);
 }
 
@@ -384,8 +342,9 @@ bool WebManager::TryGetVersions(const std::string& id, VersionsResponse& result)
     }
     curl_easy_cleanup(curl);
 
-    if (res != CURLE_OK || http_code != 200)
+    if (res != CURLE_OK || http_code != 200) {
         return false;
+    }
     return ParseVersionsResponse(raw, result);
 }
 

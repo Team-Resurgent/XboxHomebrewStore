@@ -34,6 +34,7 @@ struct VersionItem
     std::string changelog;
     std::string title_id;
     std::string region;
+    std::string install_path;  // Local install path (from user state)
 };
 
 typedef std::vector<VersionItem> VersionsResponse;
