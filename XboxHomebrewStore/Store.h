@@ -32,6 +32,7 @@ struct StoreItem
     int nVersionScrollOffset;
     BOOL bViewingVersionDetail;
     LPDIRECT3DTEXTURE8 pIcon;
+    LPDIRECT3DTEXTURE8 pScreenshot;
 };
 
 #include "UserState.h"
@@ -80,6 +81,7 @@ private:
     BOOL LoadCategoriesFromWeb();
     BOOL LoadAppsPage( int page, const char* categoryFilter );
     void EnsureVersionsForItem( StoreItem* pItem );
+    void EnsureScreenshotForItem( StoreItem* pItem );
     int FindCategoryIndex( const char* catID ) const;
     void BuildCategoryList();
 

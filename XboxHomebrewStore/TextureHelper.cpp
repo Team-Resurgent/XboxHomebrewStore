@@ -20,6 +20,18 @@ static HRESULT LoadTextureFromFile( LPDIRECT3DDEVICE8 pd3dDevice, const char* fi
         D3DX_DEFAULT, D3DX_DEFAULT, 0, NULL, NULL, ppTexture );
 }
 
+LPDIRECT3DTEXTURE8 TextureHelper::LoadFromFile( LPDIRECT3DDEVICE8 pd3dDevice, const char* filePath )
+{
+    if( !pd3dDevice || !filePath ) return NULL;
+    LPDIRECT3DTEXTURE8 pTex = NULL;
+    if( FAILED( D3DXCreateTextureFromFileEx( pd3dDevice, filePath,
+        D3DX_DEFAULT, D3DX_DEFAULT, D3DX_DEFAULT, 0, D3DFMT_UNKNOWN, D3DPOOL_DEFAULT,
+        D3DX_DEFAULT, D3DX_DEFAULT, 0, NULL, NULL, &pTex ) ) ) {
+        return NULL;
+    }
+    return pTex;
+}
+
 HRESULT TextureHelper::Init( LPDIRECT3DDEVICE8 pd3dDevice )
 {
     if( !pd3dDevice ) return E_INVALIDARG;

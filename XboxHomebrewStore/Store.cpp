@@ -88,6 +88,9 @@ Store::~Store()
             if( m_pItems[i].pIcon ) {
                 m_pItems[i].pIcon->Release();
             }
+            if( m_pItems[i].pScreenshot ) {
+                m_pItems[i].pScreenshot->Release();
+            }
         }
         delete[] m_pItems;
     }
@@ -198,6 +201,11 @@ BOOL Store::LoadAppsPage( int page, const char* categoryFilter )
                 m_pItems[i].pIcon->Release();
                 m_pItems[i].pIcon = NULL;
             }
+            if( m_pItems[i].pScreenshot )
+            {
+                m_pItems[i].pScreenshot->Release();
+                m_pItems[i].pScreenshot = NULL;
+            }
         }
         delete[] m_pItems;
         m_pItems = NULL;
@@ -228,6 +236,7 @@ BOOL Store::LoadAppsPage( int page, const char* categoryFilter )
         item->app = resp.items[i];
         item->nCategoryIndex = FindCategoryIndex( item->app.category.c_str() );
         item->pIcon = NULL;
+        item->pScreenshot = NULL;
         item->nSelectedVersion = 0;
         item->nVersionScrollOffset = 0;
         item->bViewingVersionDetail = FALSE;
@@ -244,8 +253,16 @@ BOOL Store::LoadAppsPage( int page, const char* categoryFilter )
     m_nSelectedItem = 0;
     m_userState.Load( USER_STATE_PATH );
     m_userState.ApplyToStore( m_pItems, m_nItemCount );
+    static const char* TEMP_COVER_PATH = "D:\\temp.jpg";
     for( int i = 0; i < m_nItemCount; i++ ) {
-        m_pItems[i].pIcon = TextureHelper::GetCover( m_pd3dDevice );
+        LPDIRECT3DTEXTURE8 pIcon = NULL;
+        if( WebManager::TryDownloadCover( m_pItems[i].app.id, 256, 256, TEMP_COVER_PATH, NULL, NULL, NULL ) ) {
+            pIcon = TextureHelper::LoadFromFile( m_pd3dDevice, TEMP_COVER_PATH );
+        }
+        if( !pIcon ) {
+            pIcon = TextureHelper::GetCover( m_pd3dDevice );
+        }
+        m_pItems[i].pIcon = pIcon;
     }
     OutputDebugString( String::Format( "Loaded page %d: %d apps (total %d)\n", m_nCurrentPage, m_nItemCount, m_nTotalCount ).c_str() );
     return TRUE;
@@ -268,6 +285,24 @@ void Store::EnsureVersionsForItem( StoreItem* pItem )
     pItem->nSelectedVersion = 0;
     m_userState.Load( USER_STATE_PATH );
     m_userState.ApplyToStore( m_pItems, m_nItemCount );
+}
+
+//-----------------------------------------------------------------------------
+// EnsureScreenshotForItem - Release existing screenshot and try to download for detail view
+//-----------------------------------------------------------------------------
+void Store::EnsureScreenshotForItem( StoreItem* pItem )
+{
+    if( !pItem ) return;
+    if( pItem->pScreenshot ) {
+        pItem->pScreenshot->Release();
+        pItem->pScreenshot = NULL;
+    }
+    if( !pItem->app.id.empty() && WebManager::TryDownloadScreenshot( pItem->app.id, 640, 360, "D:\\temp_scr.jpg", NULL, NULL, NULL ) ) {
+        pItem->pScreenshot = TextureHelper::LoadFromFile( m_pd3dDevice, "D:\\temp_scr.jpg" );
+    }
+    if( !pItem->pScreenshot ) {
+        pItem->pScreenshot = TextureHelper::GetScreenshot( m_pd3dDevice );
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -671,10 +706,8 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
         float screenshotY = 70.0f;
         float screenshotH = m_fScreenHeight * 0.45f;
         DrawRect( pd3dDevice, 20.0f, screenshotY, contentW - 40.0f, screenshotH, COLOR_CARD_BG );
-        LPDIRECT3DTEXTURE8 pScreenshot = TextureHelper::GetScreenshot( pd3dDevice );
-        if( pScreenshot ) {
-            DrawTexturedRect( pd3dDevice, 20.0f, screenshotY, contentW - 40.0f, screenshotH, pScreenshot );
-            pScreenshot->Release();
+        if( pItem->pScreenshot ) {
+            DrawTexturedRect( pd3dDevice, 20.0f, screenshotY, contentW - 40.0f, screenshotH, pItem->pScreenshot );
         }
         float descY = screenshotY + screenshotH + 20.0f;
         
@@ -824,16 +857,15 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
     DrawText( pd3dDevice, pItem->app.name.c_str(), 20.0f, 20.0f, COLOR_WHITE );
     DrawText( pd3dDevice, pItem->app.author.c_str(), 20.0f, 40.0f, COLOR_TEXT_GRAY );
     
+    // Screenshot
     float screenshotY = 70.0f;
     float screenshotH = m_fScreenHeight * 0.30f;
     DrawRect( pd3dDevice, 20.0f, screenshotY, contentW - 40.0f, screenshotH, COLOR_CARD_BG );
-    LPDIRECT3DTEXTURE8 pScreenshot = TextureHelper::GetScreenshot( pd3dDevice );
-    if( pScreenshot ) {
-        DrawTexturedRect( pd3dDevice, 20.0f, screenshotY, contentW - 40.0f, screenshotH, pScreenshot );
-        pScreenshot->Release();
+    if( pItem->pScreenshot ) {
+        DrawTexturedRect( pd3dDevice, 20.0f, screenshotY, contentW - 40.0f, screenshotH, pItem->pScreenshot );
     }
     float contentY = screenshotY + screenshotH + 20.0f;
-    
+
     DrawText( pd3dDevice, "Description:", 20.0f, contentY, COLOR_TEXT_GRAY );
     contentY += 25.0f;
     DrawText( pd3dDevice, pItem->app.description.c_str(), 20.0f, contentY, COLOR_WHITE );
@@ -1311,10 +1343,14 @@ void Store::HandleInput()
                     m_pItems[actualItemIndex].app.isNew = false;
                     m_userState.UpdateFromStore( m_pItems, m_nItemCount );
                     m_userState.Save( USER_STATE_PATH );
-                    if( m_pItems[actualItemIndex].versions.size() == 1 )
-                        m_pItems[actualItemIndex].bViewingVersionDetail = TRUE;
-                    else
-                        m_pItems[actualItemIndex].bViewingVersionDetail = FALSE;
+                    StoreItem* pItem = &m_pItems[actualItemIndex];
+                    if( pItem->versions.size() == 1 ) {
+                        pItem->bViewingVersionDetail = TRUE;
+                        EnsureScreenshotForItem( pItem );
+                    } else {
+                        pItem->bViewingVersionDetail = FALSE;
+                        EnsureScreenshotForItem( pItem );
+                    }
                 }
             }
             m_CurrentState = UI_ITEM_DETAILS;
@@ -1443,6 +1479,7 @@ void Store::HandleInput()
                 if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_A] )
                 {
                     pItem->bViewingVersionDetail = TRUE;
+                    EnsureScreenshotForItem( pItem );
                 }
             }
             // Single version - act immediately

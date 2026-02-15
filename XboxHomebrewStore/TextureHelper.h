@@ -13,6 +13,9 @@ public:
     // Load Screenshot.jpg and Cover.jpg from Media folder. Returns S_OK on success.
     static HRESULT Init( LPDIRECT3DDEVICE8 pd3dDevice );
 
+    // Load a texture from a full path (e.g. "D:\\temp.jpg"). Caller must Release. Returns NULL on failure.
+    static LPDIRECT3DTEXTURE8 LoadFromFile( LPDIRECT3DDEVICE8 pd3dDevice, const char* filePath );
+
     // Return a copy of the texture (caller must Release). Returns NULL if not initialized or copy fails.
     static LPDIRECT3DTEXTURE8 GetScreenshot( LPDIRECT3DDEVICE8 pd3dDevice );
     static LPDIRECT3DTEXTURE8 GetCover( LPDIRECT3DDEVICE8 pd3dDevice );
