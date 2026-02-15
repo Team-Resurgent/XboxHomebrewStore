@@ -37,8 +37,10 @@ Store::Store()
     m_CurrentState = UI_MAIN_GRID;
     m_nSelectedCategory = 0;
     m_pVB = NULL;
+    m_pVBTex = NULL;
     m_pGamepads = NULL;
     m_dwLastButtons = 0;
+    m_pd3dDevice = NULL;
 	m_pFilteredIndices = NULL;
     
     // Will be set in Initialize
@@ -66,8 +68,12 @@ Store::~Store()
 {
     if( m_pVB ) {
         m_pVB->Release();
+        m_pVB = NULL;
     }
-    
+    if( m_pVBTex ) {
+        m_pVBTex->Release();
+        m_pVBTex = NULL;
+    }
     m_Font.Destroy();
 
 	if (m_pFilteredIndices) {
@@ -238,6 +244,9 @@ BOOL Store::LoadAppsPage( int page, const char* categoryFilter )
     m_nSelectedItem = 0;
     m_userState.Load( USER_STATE_PATH );
     m_userState.ApplyToStore( m_pItems, m_nItemCount );
+    for( int i = 0; i < m_nItemCount; i++ ) {
+        m_pItems[i].pIcon = TextureHelper::GetCover( m_pd3dDevice );
+    }
     OutputDebugString( String::Format( "Loaded page %d: %d apps (total %d)\n", m_nCurrentPage, m_nItemCount, m_nTotalCount ).c_str() );
     return TRUE;
 }
@@ -421,6 +430,16 @@ HRESULT Store::Initialize( LPDIRECT3DDEVICE8 pd3dDevice )
     {
         return E_FAIL;
     }
+    if( FAILED( pd3dDevice->CreateVertexBuffer( 4*sizeof(TEXVERTEX),
+                                                 D3DUSAGE_WRITEONLY,
+                                                 D3DFVF_TEXVERTEX,
+                                                 D3DPOOL_DEFAULT,
+                                                 &m_pVBTex ) ) )
+    {
+        m_pVB->Release();
+        m_pVB = NULL;
+        return E_FAIL;
+    }
 
     // Initialize font using bundled font files
     if( FAILED( m_Font.Create( "D:\\Media\\Fonts\\Arial_16.xpr" ) ) )
@@ -430,6 +449,11 @@ HRESULT Store::Initialize( LPDIRECT3DDEVICE8 pd3dDevice )
 
     // Initialize gamepads
     XBInput_CreateGamepads( &m_pGamepads );
+
+    m_pd3dDevice = pd3dDevice;
+    if( FAILED( TextureHelper::Init( pd3dDevice ) ) ) {
+        OutputDebugString( "Warning: TextureHelper Init failed (Cover/Screenshot).\n" );
+    }
 
     // Load app catalog from web (categories + first page of apps)
     if( !LoadCatalogFromWeb() )
@@ -656,11 +680,11 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
         DrawText( pd3dDevice, pItem->app.description.c_str(), 20.0f, descY, COLOR_WHITE );
         descY += 50.0f;
         
-        if( !pCurrentVersion->changelog.empty() && pCurrentVersion->changelog != "No changelog available" )
+        if( !pCurrentVersion->changeLog.empty() && pCurrentVersion->changeLog != "No changelog available" )
         {
             DrawText( pd3dDevice, "What's New:", 20.0f, descY, COLOR_TEXT_GRAY );
             descY += 25.0f;
-            DrawText( pd3dDevice, pCurrentVersion->changelog.c_str(), 20.0f, descY, COLOR_WHITE );
+            DrawText( pd3dDevice, pCurrentVersion->changeLog.c_str(), 20.0f, descY, COLOR_WHITE );
         }
         
         // Right sidebar - Version metadata
@@ -673,11 +697,11 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
         DrawText( pd3dDevice, pCurrentVersion->version.c_str(), sidebarX + 15.0f, metaY, COLOR_WHITE );
         metaY += 40.0f;
         
-        if( !pCurrentVersion->release_date.empty() )
+        if( !pCurrentVersion->releaseDate.empty() )
         {
             DrawText( pd3dDevice, "Released:", sidebarX + 15.0f, metaY, COLOR_WHITE );
             metaY += 20.0f;
-            DrawText( pd3dDevice, pCurrentVersion->release_date.c_str(), sidebarX + 15.0f, metaY, COLOR_WHITE );
+            DrawText( pd3dDevice, pCurrentVersion->releaseDate.c_str(), sidebarX + 15.0f, metaY, COLOR_WHITE );
             metaY += 40.0f;
         }
         
@@ -686,11 +710,11 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
         DrawText( pd3dDevice, String::Format( "%.1f MB", pCurrentVersion->size / (1024.0f * 1024.0f) ).c_str(), sidebarX + 15.0f, metaY, COLOR_WHITE );
         metaY += 40.0f;
         
-        if( !pCurrentVersion->title_id.empty() )
+        if( !pCurrentVersion->titleId.empty() )
         {
             DrawText( pd3dDevice, "Title ID:", sidebarX + 15.0f, metaY, COLOR_WHITE );
             metaY += 20.0f;
-            DrawText( pd3dDevice, pCurrentVersion->title_id.c_str(), sidebarX + 15.0f, metaY, COLOR_WHITE );
+            DrawText( pd3dDevice, pCurrentVersion->titleId.c_str(), sidebarX + 15.0f, metaY, COLOR_WHITE );
             metaY += 40.0f;
         }
         
@@ -847,8 +871,8 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
             std::string szVer = String::Format( "v%s", pVer->version.c_str() );
             DrawText( pd3dDevice, szVer.c_str(), 30.0f, contentY + 8.0f, COLOR_WHITE );
             
-            if( !pVer->release_date.empty() )
-                DrawText( pd3dDevice, pVer->release_date.c_str(), 30.0f, contentY + 28.0f, COLOR_TEXT_GRAY );
+            if( !pVer->releaseDate.empty() )
+                DrawText( pd3dDevice, pVer->releaseDate.c_str(), 30.0f, contentY + 28.0f, COLOR_TEXT_GRAY );
             
             std::string szSize = String::Format( "%.1f MB", pVer->size / (1024.0f * 1024.0f) );
             DrawText( pd3dDevice, szSize.c_str(), contentW - 120.0f, contentY + 18.0f, COLOR_WHITE );
@@ -1077,6 +1101,34 @@ void Store::DrawRect( LPDIRECT3DDEVICE8 pd3dDevice, float x, float y, float w, f
 }
 
 //-----------------------------------------------------------------------------
+// DrawTexturedRect - Draw a textured quad (for icons)
+//-----------------------------------------------------------------------------
+void Store::DrawTexturedRect( LPDIRECT3DDEVICE8 pd3dDevice, float x, float y, float w, float h, LPDIRECT3DTEXTURE8 pTexture )
+{
+    if( !pTexture || !m_pVBTex ) return;
+    TEXVERTEX vertices[] =
+    {
+        { x,     y,     0.5f, 1.0f, 0xFFFFFFFF, 0.0f, 0.0f },
+        { x + w, y,     0.5f, 1.0f, 0xFFFFFFFF, 1.0f, 0.0f },
+        { x,     y + h, 0.5f, 1.0f, 0xFFFFFFFF, 0.0f, 1.0f },
+        { x + w, y + h, 0.5f, 1.0f, 0xFFFFFFFF, 1.0f, 1.0f },
+    };
+    VOID* pV;
+    if( FAILED( m_pVBTex->Lock( 0, sizeof(vertices), (BYTE**)&pV, 0 ) ) ) return;
+    memcpy( pV, vertices, sizeof(vertices) );
+    m_pVBTex->Unlock();
+
+    pd3dDevice->SetTexture( 0, pTexture );
+    pd3dDevice->SetTextureStageState( 0, D3DTSS_COLOROP, D3DTOP_MODULATE );
+    pd3dDevice->SetTextureStageState( 0, D3DTSS_COLORARG1, D3DTA_TEXTURE );
+    pd3dDevice->SetTextureStageState( 0, D3DTSS_COLORARG2, D3DTA_DIFFUSE );
+    pd3dDevice->SetStreamSource( 0, m_pVBTex, sizeof(TEXVERTEX) );
+    pd3dDevice->SetVertexShader( D3DFVF_TEXVERTEX );
+    pd3dDevice->DrawPrimitive( D3DPT_TRIANGLESTRIP, 0, 2 );
+    pd3dDevice->SetTexture( 0, NULL );
+}
+
+//-----------------------------------------------------------------------------
 // DrawText - Draw text using CXBFont
 //-----------------------------------------------------------------------------
 void Store::DrawText( LPDIRECT3DDEVICE8 pd3dDevice, const char* text, float x, float y, DWORD color )
@@ -1110,7 +1162,10 @@ void Store::DrawAppCard( LPDIRECT3DDEVICE8 pd3dDevice, StoreItem* pItem, float x
         thumbSize = m_fCardHeight - 60.0f;
     
     DrawRect( pd3dDevice, x + 10, y + 10, thumbSize, thumbSize, COLOR_BG );
-    
+    if( pItem->pIcon ) {
+        DrawTexturedRect( pd3dDevice, x + 10, y + 10, thumbSize, thumbSize, pItem->pIcon );
+    }
+
     // Status badge (top-right corner) - RED if new, otherwise varies by state
     DWORD badgeColor;
     

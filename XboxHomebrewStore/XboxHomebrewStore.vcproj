@@ -306,28 +306,31 @@
 				RelativePath=".\Debug.cpp">
 			</File>
 			<File
+				RelativePath=".\JsonHelper.cpp">
+			</File>
+			<File
 				RelativePath=".\Main.cpp">
 			</File>
 			<File
 				RelativePath=".\Network.cpp">
 			</File>
 			<File
-				RelativePath=".\Store.cpp">
+				RelativePath=".\parson.c">
 			</File>
 			<File
-				RelativePath=".\UserState.cpp">
+				RelativePath=".\Store.cpp">
 			</File>
 			<File
 				RelativePath=".\String.cpp">
 			</File>
 			<File
+				RelativePath=".\UserState.cpp">
+			</File>
+			<File
 				RelativePath=".\WebManager.cpp">
 			</File>
 			<File
-				RelativePath=".\JsonHelper.cpp">
-			</File>
-			<File
-				RelativePath=".\parson.c">
+				RelativePath=".\TextureHelper.cpp">
 			</File>
 			<File
 				RelativePath=".\xbfont.cpp">
@@ -361,16 +364,19 @@
 				RelativePath=".\Debug.h">
 			</File>
 			<File
-				RelativePath=".\parson.h">
-			</File>
-			<File
 				RelativePath=".\JsonHelper.h">
 			</File>
 			<File
 				RelativePath=".\Main.h">
 			</File>
 			<File
+				RelativePath=".\Models.h">
+			</File>
+			<File
 				RelativePath=".\Network.h">
+			</File>
+			<File
+				RelativePath=".\parson.h">
 			</File>
 			<File
 				RelativePath=".\stb.h">
@@ -382,10 +388,13 @@
 				RelativePath=".\Store.h">
 			</File>
 			<File
-				RelativePath=".\UserState.h">
+				RelativePath=".\TextureHelper.h">
 			</File>
 			<File
 				RelativePath=".\String.h">
+			</File>
+			<File
+				RelativePath=".\UserState.h">
 			</File>
 			<File
 				RelativePath=".\WebManager.h">

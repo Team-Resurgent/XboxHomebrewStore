@@ -7,6 +7,7 @@
 #include "Store.h"
 #include "Network.h"
 #include "WebManager.h"
+#include "TextureHelper.h"
 #include "Debug.h"
 #include "String.h"
 
@@ -141,9 +142,17 @@ VOID __cdecl main()
     // Initialize Xbox input devices - MUST be called before XBInput functions
     XInitDevices( 0, NULL );
 
+    // Initialize Direct3D
+    if( FAILED( InitD3D() ) )
+    {
+        OutputDebugString( "Failed to initialize Direct3D!\n" );
+        return;
+    }
+
     Network::Init();
     WebManager::Init();
     WebManager::TrySyncTime();
+    TextureHelper::Init(g_pd3dDevice);
     
     /*AppsResponse appsResp;
     if (WebManager::TryGetApps(appsResp, 1, 20))
@@ -163,12 +172,7 @@ VOID __cdecl main()
         }
     }*/
 
-    // Initialize Direct3D
-    if( FAILED( InitD3D() ) )
-    {
-        OutputDebugString( "Failed to initialize Direct3D!\n" );
-        return;
-    }
+ 
 
     // Initialize the store
     g_pStore = new Store();

@@ -11,6 +11,7 @@
 #include "XBInput.h"
 #include "WebManager.h"
 #include "Models.h"
+#include "TextureHelper.h"
 
 // UI State
 enum UIState
@@ -63,6 +64,7 @@ private:
     
     // Helper functions
     void DrawRect( LPDIRECT3DDEVICE8 pd3dDevice, float x, float y, float w, float h, DWORD color );
+    void DrawTexturedRect( LPDIRECT3DDEVICE8 pd3dDevice, float x, float y, float w, float h, LPDIRECT3DTEXTURE8 pTexture );
     void DrawText( LPDIRECT3DDEVICE8 pd3dDevice, const char* text, float x, float y, DWORD color );
     void DrawAppCard( LPDIRECT3DDEVICE8 pd3dDevice, StoreItem* pItem, float x, float y, BOOL bSelected );
     
@@ -83,6 +85,7 @@ private:
 
     // Data
     UserState m_userState;
+    LPDIRECT3DDEVICE8 m_pd3dDevice;
     StoreItem* m_pItems;
     int m_nItemCount;
     int m_nSelectedItem;
@@ -114,6 +117,7 @@ private:
     
     // D3D resources
     LPDIRECT3DVERTEXBUFFER8 m_pVB;
+    LPDIRECT3DVERTEXBUFFER8 m_pVBTex;
     CXBFont m_Font;
     
     // Controller state
@@ -130,5 +134,15 @@ struct CUSTOMVERTEX
 };
 
 #define D3DFVF_CUSTOMVERTEX (D3DFVF_XYZRHW|D3DFVF_DIFFUSE)
+
+// Vertex format for textured quads (icon/screenshot)
+struct TEXVERTEX
+{
+    FLOAT x, y, z, rhw;
+    DWORD color;
+    FLOAT tu, tv;
+};
+
+#define D3DFVF_TEXVERTEX (D3DFVF_XYZRHW|D3DFVF_DIFFUSE|D3DFVF_TEX1)
 
 #endif // STORE_H

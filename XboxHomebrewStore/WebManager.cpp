@@ -131,9 +131,9 @@ static bool ParseVersionsResponse(const std::string& raw, VersionsResponse& out)
             ver.version = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "version"));
             ver.size = JsonHelper::ToUInt32(JsonHelper::GetObjectMember(itemObj, "size"));
             ver.state = JsonHelper::ToInt(JsonHelper::GetObjectMember(itemObj, "state"));
-            ver.release_date = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "release_date"));
-            ver.changelog = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "changelog"));
-            ver.title_id = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "title_id"));
+            ver.releaseDate = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "release_date"));
+            ver.changeLog = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "changelog"));
+            ver.titleId = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "title_id"));
             ver.region = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "region"));
             out.push_back(ver);
         }

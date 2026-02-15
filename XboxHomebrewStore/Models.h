@@ -30,9 +30,9 @@ struct VersionItem
     std::string version;
     uint32_t size;
     int state;
-    std::string release_date;
-    std::string changelog;
-    std::string title_id;
+    std::string releaseDate;
+    std::string changeLog;
+    std::string titleId;
     std::string region;
     std::string install_path;  // Local install path (from user state)
 };
