@@ -1,6 +1,6 @@
 #include "WebManager.h"
 #include "String.h"
-#include "json.h"
+#include "parson.h"
 #include "JsonHelper.h"
 #include <time.h>
 #include <stdlib.h>
@@ -39,23 +39,24 @@ static size_t StringWriteCallback(char* ptr, size_t size, size_t nmemb, void* us
 
 static bool ParseAppsResponse(const std::string& raw, AppsResponse& out)
 {
-    struct json_value_s* root = json_parse(raw.c_str(), raw.size());
+    JSON_Value* root = json_parse_string(raw.c_str());
     if (!root) return false;
-    struct json_object_s* obj = json_value_as_object(root);
+    JSON_Object* obj = json_value_get_object(root);
     if (!obj)
     {
-        free(root);
+        json_value_free(root);
         return false;
     }
     out.items.clear();
-    struct json_value_s* itemsVal = JsonHelper::GetObjectMember(obj, "items");
-    struct json_array_s* itemsArr = itemsVal ? json_value_as_array(itemsVal) : NULL;
+    JSON_Value* itemsVal = JsonHelper::GetObjectMember(obj, "items");
+    JSON_Array* itemsArr = itemsVal ? json_value_get_array(itemsVal) : NULL;
     if (itemsArr)
     {
-        struct json_array_element_s* elem = itemsArr->start;
-        while (elem && elem->value)
+        size_t count = json_array_get_count(itemsArr);
+        for (size_t i = 0; i < count; i++)
         {
-            struct json_object_s* itemObj = json_value_as_object(elem->value);
+            JSON_Value* elemVal = json_array_get_value(itemsArr, i);
+            JSON_Object* itemObj = elemVal ? json_value_get_object(elemVal) : NULL;
             if (itemObj)
             {
                 AppItem app;
@@ -64,10 +65,9 @@ static bool ParseAppsResponse(const std::string& raw, AppsResponse& out)
                 app.author = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "author"));
                 app.category = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "category"));
                 app.description = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "description"));
-                app.isNew = JsonHelper::ToBool(JsonHelper::GetObjectMember(itemObj, "isNew"));
+                app.isNew = JsonHelper::ToBool(JsonHelper::GetObjectMember(itemObj, "is_new"));
                 out.items.push_back(app);
             }
-            elem = elem->next;
         }
     }
     out.page = JsonHelper::ToUInt32(JsonHelper::GetObjectMember(obj, "page"));
@@ -76,25 +76,26 @@ static bool ParseAppsResponse(const std::string& raw, AppsResponse& out)
     out.totalPages = JsonHelper::ToUInt32(JsonHelper::GetObjectMember(obj, "totalPages"));
     out.hasNextPage = JsonHelper::ToBool(JsonHelper::GetObjectMember(obj, "hasNextPage"));
     out.hasPreviousPage = JsonHelper::ToBool(JsonHelper::GetObjectMember(obj, "hasPreviousPage"));
-    free(root);
+    json_value_free(root);
     return true;
 }
 
 static bool ParseCategoriesResponse(const std::string& raw, CategoriesResponse& out)
 {
-    struct json_value_s* root = json_parse(raw.c_str(), raw.size());
+    JSON_Value* root = json_parse_string(raw.c_str());
     if (!root) return false;
-    struct json_array_s* arr = json_value_as_array(root);
+    JSON_Array* arr = json_value_get_array(root);
     if (!arr)
     {
-        free(root);
+        json_value_free(root);
         return false;
     }
     out.clear();
-    struct json_array_element_s* elem = arr->start;
-    while (elem && elem->value)
+    size_t count = json_array_get_count(arr);
+    for (size_t i = 0; i < count; i++)
     {
-        struct json_object_s* itemObj = json_value_as_object(elem->value);
+        JSON_Value* elemVal = json_array_get_value(arr, i);
+        JSON_Object* itemObj = elemVal ? json_value_get_object(elemVal) : NULL;
         if (itemObj)
         {
             CategoryItem cat;
@@ -102,27 +103,27 @@ static bool ParseCategoriesResponse(const std::string& raw, CategoriesResponse& 
             cat.count = JsonHelper::ToUInt32(JsonHelper::GetObjectMember(itemObj, "count"));
             out.push_back(cat);
         }
-        elem = elem->next;
     }
-    free(root);
+    json_value_free(root);
     return true;
 }
 
 static bool ParseVersionsResponse(const std::string& raw, VersionsResponse& out)
 {
-    struct json_value_s* root = json_parse(raw.c_str(), raw.size());
+    JSON_Value* root = json_parse_string(raw.c_str());
     if (!root) return false;
-    struct json_array_s* arr = json_value_as_array(root);
+    JSON_Array* arr = json_value_get_array(root);
     if (!arr)
     {
-        free(root);
+        json_value_free(root);
         return false;
     }
     out.clear();
-    struct json_array_element_s* elem = arr->start;
-    while (elem && elem->value)
+    size_t count = json_array_get_count(arr);
+    for (size_t i = 0; i < count; i++)
     {
-        struct json_object_s* itemObj = json_value_as_object(elem->value);
+        JSON_Value* elemVal = json_array_get_value(arr, i);
+        JSON_Object* itemObj = elemVal ? json_value_get_object(elemVal) : NULL;
         if (itemObj)
         {
             VersionItem ver;
@@ -136,9 +137,8 @@ static bool ParseVersionsResponse(const std::string& raw, VersionsResponse& out)
             ver.region = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "region"));
             out.push_back(ver);
         }
-        elem = elem->next;
     }
-    free(root);
+    json_value_free(root);
     return true;
 }
 

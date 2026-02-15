@@ -145,7 +145,7 @@ VOID __cdecl main()
     WebManager::Init();
     WebManager::TrySyncTime();
     
-    AppsResponse appsResp;
+    /*AppsResponse appsResp;
     if (WebManager::TryGetApps(appsResp, 1, 20))
     {
         Debug::Print(String::Format("Apps: %u items, page %u/%u", (unsigned)appsResp.items.size(), appsResp.page, appsResp.totalPages));
@@ -161,7 +161,7 @@ VOID __cdecl main()
         {
             Debug::Print(std::string("Cover download failed\n"));
         }
-    }
+    }*/
 
     // Initialize Direct3D
     if( FAILED( InitD3D() ) )

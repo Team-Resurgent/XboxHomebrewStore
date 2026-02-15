@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "parson.h"
 #include <string>
 #include <vector>
 
@@ -23,9 +24,6 @@ struct AppUserState
     bool viewed;
     std::vector<VersionUserState> versions;
 };
-
-struct json_value_s;
-struct json_object_s;
 
 // Holds current user state; Load/Save to JSON, ApplyToStore/UpdateFromStore for sync with catalog
 class UserState
@@ -47,6 +45,6 @@ private:
     std::string last_updated_;
     std::vector<AppUserState> apps_;
 
-    struct json_value_s* ToJson() const;
-    void FromJson( struct json_object_s* rootObj );
+    JSON_Value* ToJson() const;
+    void FromJson( const JSON_Object* rootObj );
 };

@@ -1,27 +1,27 @@
 //=============================================================================
-// JsonHelper.h - JSON helpers using sheredom/json.h
+// JsonHelper.h - JSON helpers using parson
 //=============================================================================
 
 #pragma once
 
-#include "json.h"
+#include "parson.h"
 #include <stdint.h>
 #include <string>
 
 class JsonHelper
 {
 public:
-    // ---- Reading (parse tree from json_parse) ----
-    static struct json_value_s* GetObjectMember( struct json_object_s* obj, const char* name );
-    static std::string ToString( struct json_value_s* v );
-    static uint32_t ToUInt32( struct json_value_s* v );
-    static int ToInt( struct json_value_s* v );
-    static bool ToBool( struct json_value_s* v );
+    // ---- Reading (parse tree from json_parse_string) ----
+    static JSON_Value* GetObjectMember( const JSON_Object* obj, const char* name );
+    static std::string ToString( const JSON_Value* v );
+    static uint32_t ToUInt32( const JSON_Value* v );
+    static int ToInt( const JSON_Value* v );
+    static bool ToBool( const JSON_Value* v );
 
-    // ---- Writing (build tree, then json_write_minified) ----
-    static void FreeValue( struct json_value_s* v );
-    static struct json_value_s* StringValue( const char* str, size_t len );
-    static struct json_value_s* NumberValue( int n );
-    static struct json_value_s* BoolValue( bool isTrue );
-    static bool ObjectAdd( struct json_object_s* obj, const char* keyName, size_t keyLen, struct json_value_s* value );
+    // ---- Writing (build tree, then json_serialize_to_string_pretty) ----
+    static void FreeValue( JSON_Value* v );
+    static JSON_Value* StringValue( const char* str, size_t len );
+    static JSON_Value* NumberValue( int n );
+    static JSON_Value* BoolValue( bool isTrue );
+    static bool ObjectAdd( JSON_Object* obj, const char* keyName, size_t keyLen, JSON_Value* value );
 };

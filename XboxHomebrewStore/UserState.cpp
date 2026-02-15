@@ -4,7 +4,7 @@
 
 #include "Store.h"
 #include "JsonHelper.h"
-#include "json.h"
+#include "parson.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,46 +15,50 @@ UserState::UserState()
     last_updated_ = "2026-02-12";
 }
 
-void UserState::FromJson( struct json_object_s* rootObj )
+void UserState::FromJson( const JSON_Object* rootObj )
 {
     if( !rootObj ) return;
     apps_.clear();
-    struct json_value_s* vVer = JsonHelper::GetObjectMember( rootObj, "version" );
-    struct json_value_s* vUpdated = JsonHelper::GetObjectMember( rootObj, "last_updated" );
+    JSON_Value* vVer = JsonHelper::GetObjectMember( rootObj, "version" );
+    JSON_Value* vUpdated = JsonHelper::GetObjectMember( rootObj, "last_updated" );
     if( vVer ) version_ = JsonHelper::ToString( vVer );
     if( vUpdated ) last_updated_ = JsonHelper::ToString( vUpdated );
 
-    for( struct json_object_element_s* elem = rootObj->start; elem != NULL; elem = elem->next )
+    size_t n = json_object_get_count( rootObj );
+    for( size_t i = 0; i < n; i++ )
     {
-        if( !elem->name || !elem->value ) continue;
-        const char* key = elem->name->string;
-        size_t keyLen = elem->name->string_size;
-        if( keyLen == 7 && memcmp( key, "version", 7 ) == 0 ) continue;
-        if( keyLen == 12 && memcmp( key, "last_updated", 12 ) == 0 ) continue;
+        const char* key = json_object_get_name( rootObj, i );
+        if( !key ) continue;
+        if( strcmp( key, "version" ) == 0 ) continue;
+        if( strcmp( key, "last_updated" ) == 0 ) continue;
+
+        JSON_Value* elemVal = json_object_get_value_at( rootObj, i );
+        if( !elemVal ) continue;
+        JSON_Object* appObj = json_value_get_object( elemVal );
+        if( !appObj ) continue;
 
         AppUserState appState;
-        appState.appId.assign( key, keyLen );
-        struct json_object_s* appObj = json_value_as_object( elem->value );
-        if( !appObj ) continue;
-        struct json_value_s* vViewed = JsonHelper::GetObjectMember( appObj, "viewed" );
+        appState.appId = key;
+        JSON_Value* vViewed = JsonHelper::GetObjectMember( appObj, "viewed" );
         appState.viewed = JsonHelper::ToBool( vViewed );
-        struct json_value_s* versVal = JsonHelper::GetObjectMember( appObj, "versions" );
-        struct json_object_s* versObj = versVal ? json_value_as_object( versVal ) : NULL;
+        JSON_Value* versVal = JsonHelper::GetObjectMember( appObj, "versions" );
+        JSON_Object* versObj = versVal ? json_value_get_object( versVal ) : NULL;
         if( versObj )
         {
-            for( struct json_object_element_s* ve = versObj->start; ve != NULL; ve = ve->next )
+            size_t nv = json_object_get_count( versObj );
+            for( size_t j = 0; j < nv; j++ )
             {
-                if( !ve->name || !ve->value ) continue;
+                const char* verKey = json_object_get_name( versObj, j );
+                if( !verKey ) continue;
+                JSON_Value* veVal = json_object_get_value_at( versObj, j );
+                JSON_Object* verEntry = veVal ? json_value_get_object( veVal ) : NULL;
+                if( !verEntry ) continue;
                 VersionUserState vu;
-                vu.version.assign( ve->name->string, ve->name->string_size );
-                struct json_object_s* verEntry = json_value_as_object( ve->value );
-                if( verEntry )
-                {
-                    struct json_value_s* vs = JsonHelper::GetObjectMember( verEntry, "state" );
-                    struct json_value_s* vp = JsonHelper::GetObjectMember( verEntry, "path" );
-                    vu.state = JsonHelper::ToInt( vs );
-                    if( vp ) vu.install_path = JsonHelper::ToString( vp );
-                }
+                vu.version = verKey;
+                JSON_Value* vs = JsonHelper::GetObjectMember( verEntry, "state" );
+                JSON_Value* vp = JsonHelper::GetObjectMember( verEntry, "path" );
+                vu.state = JsonHelper::ToInt( vs );
+                if( vp ) vu.install_path = JsonHelper::ToString( vp );
                 appState.versions.push_back( vu );
             }
         }
@@ -85,119 +89,100 @@ bool UserState::Load( const char* filename )
     fileData[readLen] = '\0';
     fclose( f );
 
-    struct json_value_s* root = json_parse( fileData, readLen );
+    JSON_Value* root = json_parse_string( fileData );
     delete[] fileData;
     if( !root )
     {
         OutputDebugString( "User state: JSON parse failed\n" );
         return false;
     }
-    struct json_object_s* rootObj = json_value_as_object( root );
+    JSON_Object* rootObj = json_value_get_object( root );
     if( !rootObj )
     {
-        JsonHelper::FreeValue( root );
+        json_value_free( root );
         return false;
     }
     FromJson( rootObj );
-    JsonHelper::FreeValue( root );
+    json_value_free( root );
     OutputDebugString( "User state applied\n" );
     return true;
 }
 
-struct json_value_s* UserState::ToJson() const
+JSON_Value* UserState::ToJson() const
 {
-    struct json_object_s* rootObj = (struct json_object_s*)malloc( sizeof(struct json_object_s) );
-    if( !rootObj ) return NULL;
-    rootObj->length = 0;
-    rootObj->start = NULL;
-    struct json_value_s* root = (struct json_value_s*)malloc( sizeof(struct json_value_s) );
-    if( !root ) { free( rootObj ); return NULL; }
-    root->type = json_type_object;
-    root->payload = rootObj;
+    JSON_Value* root = json_value_init_object();
+    if( !root ) return NULL;
+    JSON_Object* rootObj = json_value_get_object( root );
 
-    if( !JsonHelper::ObjectAdd( rootObj, "version", 7, JsonHelper::StringValue( version_.c_str(), version_.size() ) ) ) goto fail;
-    if( !JsonHelper::ObjectAdd( rootObj, "last_updated", 12, JsonHelper::StringValue( last_updated_.c_str(), last_updated_.size() ) ) ) goto fail;
+    if( json_object_set_string( rootObj, "version", version_.c_str() ) != JSONSuccess ) goto fail;
+    if( json_object_set_string( rootObj, "last_updated", last_updated_.c_str() ) != JSONSuccess ) goto fail;
 
     for( size_t a = 0; a < apps_.size(); a++ )
     {
         const AppUserState& app = apps_[a];
-        struct json_object_s* appObj = (struct json_object_s*)malloc( sizeof(struct json_object_s) );
-        if( !appObj ) goto fail;
-        appObj->length = 0;
-        appObj->start = NULL;
-        struct json_value_s* viewedVal = JsonHelper::BoolValue( app.viewed );
-        if( !viewedVal ) { free( appObj ); goto fail; }
-        if( !JsonHelper::ObjectAdd( appObj, "viewed", 6, viewedVal ) ) { JsonHelper::FreeValue( viewedVal ); free( appObj ); goto fail; }
-        struct json_object_s* versObj = (struct json_object_s*)malloc( sizeof(struct json_object_s) );
-        if( !versObj ) { free( appObj ); goto fail; }
-        versObj->length = 0;
-        versObj->start = NULL;
+        JSON_Value* appVal = json_value_init_object();
+        if( !appVal ) goto fail;
+        JSON_Object* appObj = json_value_get_object( appVal );
+        if( json_object_set_boolean( appObj, "viewed", app.viewed ? 1 : 0 ) != JSONSuccess ) { json_value_free( appVal ); goto fail; }
+
+        JSON_Value* versVal = json_value_init_object();
+        if( !versVal ) { json_value_free( appVal ); goto fail; }
+        JSON_Object* versObj = json_value_get_object( versVal );
         for( size_t v = 0; v < app.versions.size(); v++ )
         {
             const VersionUserState& vu = app.versions[v];
-            struct json_object_s* verEntry = (struct json_object_s*)malloc( sizeof(struct json_object_s) );
-            if( !verEntry ) { free( versObj ); free( appObj ); goto fail; }
-            verEntry->length = 0;
-            verEntry->start = NULL;
-            struct json_value_s* stateVal = JsonHelper::NumberValue( vu.state );
-            if( !stateVal ) { free( verEntry ); free( versObj ); free( appObj ); goto fail; }
-            if( !JsonHelper::ObjectAdd( verEntry, "state", 5, stateVal ) ) { JsonHelper::FreeValue( stateVal ); free( verEntry ); free( versObj ); free( appObj ); goto fail; }
+            JSON_Value* verEntryVal = json_value_init_object();
+            if( !verEntryVal ) { json_value_free( versVal ); json_value_free( appVal ); goto fail; }
+            JSON_Object* verEntry = json_value_get_object( verEntryVal );
+            if( json_object_set_number( verEntry, "state", (double)vu.state ) != JSONSuccess ) { json_value_free( verEntryVal ); json_value_free( versVal ); json_value_free( appVal ); goto fail; }
             if( !vu.install_path.empty() )
             {
-                struct json_value_s* pathVal = JsonHelper::StringValue( vu.install_path.c_str(), vu.install_path.size() );
-                if( !pathVal ) { free( verEntry ); free( versObj ); free( appObj ); goto fail; }
-                if( !JsonHelper::ObjectAdd( verEntry, "path", 4, pathVal ) ) { JsonHelper::FreeValue( pathVal ); free( verEntry ); free( versObj ); free( appObj ); goto fail; }
+                if( json_object_set_string( verEntry, "path", vu.install_path.c_str() ) != JSONSuccess ) { json_value_free( verEntryVal ); json_value_free( versVal ); json_value_free( appVal ); goto fail; }
             }
-            struct json_value_s* verEntryVal = (struct json_value_s*)malloc( sizeof(struct json_value_s) );
-            if( !verEntryVal ) { free( verEntry ); free( versObj ); free( appObj ); goto fail; }
-            verEntryVal->type = json_type_object;
-            verEntryVal->payload = verEntry;
-            if( !JsonHelper::ObjectAdd( versObj, vu.version.c_str(), vu.version.size(), verEntryVal ) ) { JsonHelper::FreeValue( verEntryVal ); free( versObj ); free( appObj ); goto fail; }
+            if( json_object_set_value( versObj, vu.version.c_str(), verEntryVal ) != JSONSuccess ) { json_value_free( verEntryVal ); json_value_free( versVal ); json_value_free( appVal ); goto fail; }
         }
-        struct json_value_s* versVal = (struct json_value_s*)malloc( sizeof(struct json_value_s) );
-        if( !versVal ) { free( versObj ); free( appObj ); goto fail; }
-        versVal->type = json_type_object;
-        versVal->payload = versObj;
-        if( !JsonHelper::ObjectAdd( appObj, "versions", 8, versVal ) ) { JsonHelper::FreeValue( versVal ); free( appObj ); goto fail; }
-        struct json_value_s* appVal = (struct json_value_s*)malloc( sizeof(struct json_value_s) );
-        if( !appVal ) { free( appObj ); goto fail; }
-        appVal->type = json_type_object;
-        appVal->payload = appObj;
-        if( !JsonHelper::ObjectAdd( rootObj, app.appId.c_str(), app.appId.size(), appVal ) ) { JsonHelper::FreeValue( appVal ); goto fail; }
+        if( json_object_set_value( appObj, "versions", versVal ) != JSONSuccess ) { json_value_free( versVal ); json_value_free( appVal ); goto fail; }
+        if( json_object_set_value( rootObj, app.appId.c_str(), appVal ) != JSONSuccess ) { json_value_free( appVal ); goto fail; }
     }
     return root;
 fail:
-    JsonHelper::FreeValue( root );
+    json_value_free( root );
     return NULL;
 }
 
 bool UserState::Save( const char* filename )
 {
     OutputDebugString( "Saving user state...\n" );
-    struct json_value_s* root = ToJson();
+    JSON_Value* root = ToJson();
     if( !root ) return false;
-    size_t outSize = 0;
-    void* jsonStr = json_write_minified( root, &outSize );
-    JsonHelper::FreeValue( root );
-    if( !jsonStr ) return false;
+    char* jsonStr = json_serialize_to_string_pretty( root );
+    json_value_free( root );
+    if( !jsonStr )
+    {
+        OutputDebugString( "Failed to serialize user state JSON\n" );
+        return false;
+    }
     FILE* f = fopen( filename, "wb" );
     if( !f )
     {
-        free( jsonStr );
+        json_free_serialized_string( jsonStr );
         OutputDebugString( "Failed to create user state file\n" );
         return false;
     }
-    if( outSize > 0 ) {
-        fwrite( jsonStr, 1, outSize, f );
-    }
+    size_t len = strlen( jsonStr );
+    if( len > 0 ) { fwrite( jsonStr, 1, len, f ); }
     fclose( f );
-    free( jsonStr );
+    json_free_serialized_string( jsonStr );
     OutputDebugString( "User state saved\n" );
     return true;
 }
 
 void UserState::ApplyToStore( StoreItem* pItems, int nItemCount )
 {
+    // Default: every item is "new" (unviewed) unless we have it in state with viewed=true
+    for( int i = 0; i < nItemCount; i++ ) {
+        pItems[i].app.isNew = true;
+    }
     for( size_t a = 0; a < apps_.size(); a++ )
     {
         const AppUserState& app = apps_[a];

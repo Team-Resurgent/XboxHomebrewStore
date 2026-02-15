@@ -236,6 +236,8 @@ BOOL Store::LoadAppsPage( int page, const char* categoryFilter )
         m_aCategories[m_nSelectedCategory].count = (uint32_t)m_nTotalCount;
     }
     m_nSelectedItem = 0;
+    m_userState.Load( USER_STATE_PATH );
+    m_userState.ApplyToStore( m_pItems, m_nItemCount );
     OutputDebugString( String::Format( "Loaded page %d: %d apps (total %d)\n", m_nCurrentPage, m_nItemCount, m_nTotalCount ).c_str() );
     return TRUE;
 }

@@ -327,6 +327,9 @@
 				RelativePath=".\JsonHelper.cpp">
 			</File>
 			<File
+				RelativePath=".\parson.c">
+			</File>
+			<File
 				RelativePath=".\xbfont.cpp">
 			</File>
 			<File
@@ -358,7 +361,7 @@
 				RelativePath=".\Debug.h">
 			</File>
 			<File
-				RelativePath=".\json.h">
+				RelativePath=".\parson.h">
 			</File>
 			<File
 				RelativePath=".\JsonHelper.h">
