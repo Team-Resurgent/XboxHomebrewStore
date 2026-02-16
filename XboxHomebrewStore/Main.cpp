@@ -200,7 +200,7 @@ VOID __cdecl main()
     {
         OutputDebugString( "Could not create T:\\Cache\\Screenshots\n" );
     }
-    // DeleteImageCache();  // Uncomment to clear image cache on startup
+    //DeleteImageCache();  // Uncomment to clear image cache on startup
     Network::Init();
     WebManager::Init();
     WebManager::TrySyncTime();

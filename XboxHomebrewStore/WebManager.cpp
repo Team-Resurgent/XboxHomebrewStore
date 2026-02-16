@@ -368,6 +368,16 @@ bool WebManager::TryDownloadScreenshot(const std::string& id, uint32_t width, ui
     return TryDownload(url, filePath, progressFn, progressUserData, pCancelRequested);
 }
 
+bool WebManager::TryDownloadApp(const std::string& id, const std::string& filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
+{
+    if (id.empty())
+    {
+        return false;
+    }
+    std::string url = store_api_url + "/api/Download/" + id;;
+    return TryDownload(url, filePath, progressFn, progressUserData, pCancelRequested);
+}
+
 bool WebManager::TrySyncTime()
 {
     SOCKET sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);

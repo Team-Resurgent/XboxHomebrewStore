@@ -42,7 +42,13 @@ Store::Store()
     m_dwLastButtons = 0;
     m_pd3dDevice = NULL;
 	m_pFilteredIndices = NULL;
-    
+    m_downloadNow = 0;
+    m_downloadTotal = 0;
+    m_downloadDone = false;
+    m_downloadSuccess = false;
+    m_downloadCancelRequested = false;
+    m_downloadThread = NULL;
+
     // Will be set in Initialize
     m_fScreenWidth = 640.0f;
     m_fScreenHeight = 480.0f;
@@ -297,6 +303,37 @@ void Store::EnsureScreenshotForItem( StoreItem* pItem )
 }
 
 //-----------------------------------------------------------------------------
+// App download thread and progress
+//-----------------------------------------------------------------------------
+static void DownloadProgressCallback( uint32_t dlNow, uint32_t dlTotal, void* userData )
+{
+    Store* s = (Store*)userData;
+    if( s ) s->SetDownloadProgress( dlNow, dlTotal );
+}
+
+void Store::SetDownloadProgress( uint32_t dlNow, uint32_t dlTotal )
+{
+    m_downloadNow = dlNow;
+    m_downloadTotal = dlTotal;
+}
+
+DWORD WINAPI Store::DownloadThreadProc( LPVOID param )
+{
+    Store* s = (Store*)param;
+    if( !s || s->m_downloadVersionId.empty() || s->m_downloadPath.empty() ) return 0;
+    CreateDirectory( "T:\\Apps", NULL );
+    s->m_downloadSuccess = WebManager::TryDownloadApp( s->m_downloadVersionId, s->m_downloadPath, DownloadProgressCallback, s, &s->m_downloadCancelRequested );
+    s->m_downloadDone = true;
+    return 0;
+}
+
+void Store::StartDownloadThread()
+{
+    if( m_downloadThread != NULL ) return;
+    m_downloadThread = CreateThread( NULL, 0, DownloadThreadProc, this, 0, NULL );
+}
+
+//-----------------------------------------------------------------------------
 // LoadCatalogFromWeb - Load categories then first page of apps
 //-----------------------------------------------------------------------------
 BOOL Store::LoadCatalogFromWeb()
@@ -504,6 +541,8 @@ HRESULT Store::Initialize( LPDIRECT3DDEVICE8 pd3dDevice )
 void Store::Update()
 {
     m_imageDownloader.ProcessCompleted( m_pd3dDevice );
+    if( m_CurrentState == UI_DOWNLOADING && m_downloadThread == NULL && !m_downloadDone )
+        StartDownloadThread();
     HandleInput();
 }
 
@@ -969,25 +1008,26 @@ void Store::RenderDownloading( LPDIRECT3DDEVICE8 pd3dDevice )
     
     DrawRect( pd3dDevice, panelX, panelY, panelW, panelH, COLOR_CARD_BG );
     
-    // App name from filtered index
-    if( m_nSelectedItem >= 0 && m_nSelectedItem < m_nFilteredCount )
-    {
-        int actualItemIndex = m_pFilteredIndices[m_nSelectedItem];
-        if( actualItemIndex >= 0 && actualItemIndex < m_nItemCount )
-        {
-            DrawText( pd3dDevice, m_pItems[actualItemIndex].app.name.c_str(), panelX + 20.0f, panelY + 20.0f, COLOR_WHITE );
-        }
-    }
+    DrawText( pd3dDevice, m_downloadAppName.c_str(), panelX + 20.0f, panelY + 20.0f, COLOR_WHITE );
     
-    // Progress bar
     float barY = panelY + 80.0f;
     float barW = panelW - 40.0f;
     DrawRect( pd3dDevice, panelX + 20.0f, barY, barW, 30.0f, COLOR_SECONDARY );
-    DrawRect( pd3dDevice, panelX + 22.0f, barY + 2.0f, (barW - 4.0f) * 0.5f, 26.0f, COLOR_DOWNLOAD );
+    float pct = (m_downloadTotal > 0) ? (float)m_downloadNow / (float)m_downloadTotal : 0.0f;
+    if( pct > 1.0f ) pct = 1.0f;
+    DrawRect( pd3dDevice, panelX + 22.0f, barY + 2.0f, (barW - 4.0f) * pct, 26.0f, COLOR_DOWNLOAD );
     
-    // Progress text
-    DrawText( pd3dDevice, "50% Complete", panelX + 20.0f, barY + 50.0f, COLOR_WHITE );
-    DrawText( pd3dDevice, "2048 KB / 4096 KB", panelX + 20.0f, barY + 70.0f, COLOR_TEXT_GRAY );
+    if( m_downloadDone )
+    {
+        DrawText( pd3dDevice, m_downloadSuccess ? "Complete" : "Failed", panelX + 20.0f, barY + 50.0f, m_downloadSuccess ? COLOR_SUCCESS : COLOR_NEW );
+        DrawText( pd3dDevice, "B: Back", panelX + 20.0f, barY + 70.0f, COLOR_TEXT_GRAY );
+    }
+    else
+    {
+        DrawText( pd3dDevice, String::Format( "%u%%", m_downloadTotal > 0 ? (unsigned)( pct * 100.0f ) : 0u ).c_str(), panelX + 20.0f, barY + 50.0f, COLOR_WHITE );
+        DrawText( pd3dDevice, String::Format( "%u KB / %u KB", (unsigned)( m_downloadNow / 1024 ), (unsigned)( m_downloadTotal / 1024 ) ).c_str(), panelX + 20.0f, barY + 70.0f, COLOR_TEXT_GRAY );
+        DrawText( pd3dDevice, "B: Cancel", panelX + 20.0f, barY + 95.0f, COLOR_TEXT_GRAY );
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -1395,7 +1435,17 @@ void Store::HandleInput()
                 {
                     switch( pVer->state )
                     {
-                        case 0: m_CurrentState = UI_DOWNLOADING; break; // Download
+                        case 0:
+                            m_downloadVersionId = pVer->id;
+                            m_downloadAppName = pItem->app.name;
+                            m_downloadPath = "T:\\Apps\\" + pItem->app.name + ".zip";
+                            m_downloadNow = 0;
+                            m_downloadTotal = 0;
+                            m_downloadDone = false;
+                            m_downloadCancelRequested = false;
+                            m_downloadThread = NULL;
+                            m_CurrentState = UI_DOWNLOADING;
+                            break; // Download
                         case 1:  // Install (this IS the update if newer version exists!)
                         {
                             // Generate install path: E:\Apps\AppName_Version
@@ -1421,7 +1471,7 @@ void Store::HandleInput()
                             verClean[j] = '\0';
                             
                             // Create install path
-                            pVer->install_path = "E:\\Apps\\";
+                            pVer->install_path = "T:\\Apps\\";
                             pVer->install_path += appName;
                             pVer->install_path += "_";
                             pVer->install_path += verClean;
@@ -1483,7 +1533,17 @@ void Store::HandleInput()
                 {
                     switch( pVer->state )
                     {
-                        case 0: m_CurrentState = UI_DOWNLOADING; break;
+                        case 0:
+                            m_downloadVersionId = pVer->id;
+                            m_downloadAppName = pItem->app.name;
+                            m_downloadPath = "T:\\Apps\\" + pItem->app.name + ".zip";
+                            m_downloadNow = 0;
+                            m_downloadTotal = 0;
+                            m_downloadDone = false;
+                            m_downloadCancelRequested = false;
+                            m_downloadThread = NULL;
+                            m_CurrentState = UI_DOWNLOADING;
+                            break;
                         case 1:
                         {
                             char appName[64];
@@ -1503,7 +1563,7 @@ void Store::HandleInput()
                                 }
                             }
                             verClean[j] = '\0';
-                            pVer->install_path = "E:\\Apps\\";
+                            pVer->install_path = "T:\\Apps\\";
                             pVer->install_path += appName;
                             pVer->install_path += "_";
                             pVer->install_path += verClean;
@@ -1531,32 +1591,34 @@ void Store::HandleInput()
     }
     else if( m_CurrentState == UI_DOWNLOADING )
     {
-        // Simulate download completion (in real app, this would be async)
-        // For now, B button completes download
         if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_B] )
         {
-            // Get currently selected item
-            if( m_nSelectedItem >= 0 && m_nSelectedItem < m_nFilteredCount )
+            if( m_downloadDone )
             {
-                int actualItemIndex = m_pFilteredIndices[m_nSelectedItem];
-                if( actualItemIndex >= 0 && actualItemIndex < m_nItemCount )
+                if( m_downloadThread != NULL )
                 {
-                    StoreItem* pItem = &m_pItems[actualItemIndex];
-                    
-                    // Mark selected version as downloaded
-                    if( pItem->nSelectedVersion >= 0 && pItem->nSelectedVersion < (int)pItem->versions.size() )
+                    WaitForSingleObject( m_downloadThread, INFINITE );
+                    CloseHandle( m_downloadThread );
+                    m_downloadThread = NULL;
+                }
+                if( m_downloadSuccess && m_nSelectedItem >= 0 && m_nSelectedItem < m_nFilteredCount )
+                {
+                    int actualItemIndex = m_pFilteredIndices[m_nSelectedItem];
+                    if( actualItemIndex >= 0 && actualItemIndex < m_nItemCount )
                     {
-                        pItem->versions[pItem->nSelectedVersion].state = 1;
-                        m_userState.UpdateFromStore( m_pItems, m_nItemCount );
-                        m_userState.Save( USER_STATE_PATH );
-                        
-                        OutputDebugString( "Download complete - marked as DOWNLOADED\n" );
+                        StoreItem* pItem = &m_pItems[actualItemIndex];
+                        if( pItem->nSelectedVersion >= 0 && pItem->nSelectedVersion < (int)pItem->versions.size() )
+                        {
+                            pItem->versions[pItem->nSelectedVersion].state = 1;
+                            m_userState.UpdateFromStore( m_pItems, m_nItemCount );
+                            m_userState.Save( USER_STATE_PATH );
+                        }
                     }
                 }
+                m_CurrentState = UI_ITEM_DETAILS;
             }
-            
-            // Return to details
-            m_CurrentState = UI_ITEM_DETAILS;
+            else
+                m_downloadCancelRequested = true;
         }
     }
     else if( m_CurrentState == UI_SETTINGS )

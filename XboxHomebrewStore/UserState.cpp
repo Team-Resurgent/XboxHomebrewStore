@@ -179,10 +179,6 @@ bool UserState::Save( const char* filename )
 
 void UserState::ApplyToStore( StoreItem* pItems, int nItemCount )
 {
-    // Default: every item is "new" (unviewed) unless we have it in state with viewed=true
-    for( int i = 0; i < nItemCount; i++ ) {
-        pItems[i].app.isNew = true;
-    }
     for( size_t a = 0; a < apps_.size(); a++ )
     {
         const AppUserState& app = apps_[a];

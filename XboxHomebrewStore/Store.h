@@ -48,6 +48,8 @@ public:
     void Update();
     void Render( LPDIRECT3DDEVICE8 pd3dDevice );
 
+    void SetDownloadProgress( uint32_t dlNow, uint32_t dlTotal );
+
 private:
     // Rendering functions
     void RenderMainGrid( LPDIRECT3DDEVICE8 pd3dDevice );
@@ -127,6 +129,19 @@ private:
     // Controller state
     XBGAMEPAD* m_pGamepads;
     DWORD m_dwLastButtons;
+
+    // App download state (UI_DOWNLOADING)
+    std::string m_downloadVersionId;
+    std::string m_downloadAppName;
+    std::string m_downloadPath;
+    volatile uint32_t m_downloadNow;
+    volatile uint32_t m_downloadTotal;
+    volatile bool m_downloadDone;
+    bool m_downloadSuccess;
+    volatile bool m_downloadCancelRequested;
+    HANDLE m_downloadThread;
+    static DWORD WINAPI DownloadThreadProc( LPVOID param );
+    void StartDownloadThread();
 
 };
 
