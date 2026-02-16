@@ -36,6 +36,13 @@ struct StoreItem
     LPDIRECT3DTEXTURE8 pScreenshot;
 };
 
+#define STATE_NONE 0
+#define STATE_NEW 1
+#define STATE_UPDATE 2
+#define STATE_DOWNLOADED 3
+#define STATE_INSTALLED 4
+#define STATE_NOT_DOWNLOADED 5
+
 #include "UserState.h"
 
 class Store
@@ -64,7 +71,7 @@ private:
 
     // Update detection helpers
     BOOL HasUpdateAvailable( StoreItem* pItem );
-    int GetDisplayState( StoreItem* pItem, int versionIndex );
+    uint32_t GetDisplayState( StoreItem* pItem, int versionIndex );
     
     // Helper functions
     void DrawRect( LPDIRECT3DDEVICE8 pd3dDevice, float x, float y, float w, float h, DWORD color );

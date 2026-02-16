@@ -185,7 +185,7 @@ void UserState::ApplyToStore( StoreItem* pItems, int nItemCount )
         for( int i = 0; i < nItemCount; i++ )
         {
             if( pItems[i].app.id != app.appId ) continue;
-            pItems[i].app.isNew = !app.viewed;
+            pItems[i].app.state = app.viewed ? STATE_NONE : pItems[i].app.state;
             for( size_t v = 0; v < app.versions.size(); v++ )
             {
                 const VersionUserState& vu = app.versions[v];
@@ -213,11 +213,11 @@ void UserState::UpdateFromStore( StoreItem* pItems, int nItemCount )
     {
         StoreItem* pItem = &pItems[i];
         if( pItem->app.id.empty() ) continue;
-        bool viewed = !pItem->app.isNew;
+        bool viewed = pItem->app.state == STATE_NONE;
         bool hasState = false;
         for( size_t v = 0; v < pItem->versions.size(); v++ )
         {
-            if( pItem->versions[v].state != 0 ) { hasState = true; break; }
+            if( pItem->versions[v].state != STATE_NONE ) { hasState = true; break; }
         }
         if( !viewed && !hasState ) continue;
         AppUserState appState;

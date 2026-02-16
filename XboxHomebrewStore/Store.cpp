@@ -25,11 +25,6 @@
 // File paths
 #define USER_STATE_PATH     "T:\\user_state.json"
 
-#define STATE_NONE 0
-#define STATE_DOWNLOADED 1
-#define STATE_INSTALLED 2
-#define STATE_NOT_DOWNLOADED 3
-
 //-----------------------------------------------------------------------------
 // Constructor
 //-----------------------------------------------------------------------------
@@ -361,7 +356,7 @@ void Store::MarkAppAsViewed( const char* appId )
     {
         if( m_pItems[i].app.id == appId )
         {
-            m_pItems[i].app.isNew = false;
+            m_pItems[i].app.state = STATE_NONE;
             m_userState.UpdateFromStore( m_pItems, m_nItemCount );
             m_userState.Save( USER_STATE_PATH );
             OutputDebugString( String::Format( "Marked %s as viewed\n", m_pItems[i].app.name.c_str() ).c_str() );
@@ -399,7 +394,7 @@ BOOL Store::HasUpdateAvailable( StoreItem* pItem )
     int installedIndex = -1;
     for( size_t v = 0; v < pItem->versions.size(); v++ )
     {
-        if( pItem->versions[v].state == 2 )
+        if( pItem->versions[v].state == STATE_INSTALLED )
         {
             installedIndex = (int)v;
             break;
@@ -418,13 +413,13 @@ BOOL Store::HasUpdateAvailable( StoreItem* pItem )
 // GetDisplayState - Get state to display (with update detection)
 // RULE: Only show UPDATE if user actually has the app installed
 //-----------------------------------------------------------------------------
-int Store::GetDisplayState( StoreItem* pItem, int versionIndex )
+uint32_t Store::GetDisplayState( StoreItem* pItem, int versionIndex )
 {
     if( !pItem || versionIndex < 0 || versionIndex >= (int)pItem->versions.size() ) {
         return 0;
     }
     
-    int actualState = pItem->versions[versionIndex].state;
+    uint32_t actualState = pItem->versions[versionIndex].state;
     
     // Card badge (versionIndex == 0): Show best state across ALL versions
     if( versionIndex == 0 )
@@ -440,12 +435,12 @@ int Store::GetDisplayState( StoreItem* pItem, int versionIndex )
         
         for( size_t v = 0; v < pItem->versions.size(); v++ )
         {
-            if( pItem->versions[v].state == 2 )
+            if( pItem->versions[v].state == STATE_INSTALLED )
             {
                 installedIndex = (int)v;
                 break;
             }
-            else if( pItem->versions[v].state == 1 ) {
+            else if( pItem->versions[v].state == STATE_DOWNLOADED ) {
                 hasDownloaded = TRUE;
             }
         }
@@ -455,26 +450,26 @@ int Store::GetDisplayState( StoreItem* pItem, int versionIndex )
         {
             // If latest version (index 0) is installed -> GREEN
             if( installedIndex == 0 ) {
-                return 2;  // INSTALLED
+                return STATE_INSTALLED;  // INSTALLED
             }
             
             // If older version is installed -> ORANGE (update available)
-            return 3;  // UPDATE_AVAILABLE
+            return STATE_NOT_DOWNLOADED;  // UPDATE_AVAILABLE
         }
         
         // Nothing installed, but something downloaded -> BLUE
         if( hasDownloaded ) {
-            return 1;  // DOWNLOADED
+            return STATE_DOWNLOADED;  // DOWNLOADED
         }
         
         // Nothing at all -> GRAY
-        return 0;  // NOT_DOWNLOADED
+        return STATE_NONE;  // NOT_DOWNLOADED
     }
     
     // Version list: If this is an old version and it's installed, show UPDATE
-    if( actualState == 2 && versionIndex > 0 )
+    if( actualState == STATE_INSTALLED && versionIndex > 0 )
     {
-        return 3;  // UPDATE_AVAILABLE
+        return STATE_NOT_DOWNLOADED;  // UPDATE_AVAILABLE
     }
     
     return actualState;
@@ -799,7 +794,7 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
             metaY += 40.0f;
         }
         
-        int displayState = GetDisplayState( pItem, pItem->nSelectedVersion );
+        uint32_t displayState = GetDisplayState( pItem, pItem->nSelectedVersion );
         const char* statusText;
         DWORD statusColor;
         switch( displayState )
@@ -953,11 +948,11 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
             std::string szSize = String::Format( "%.1f MB", pVer->size / (1024.0f * 1024.0f) );
             DrawText( pd3dDevice, szSize.c_str(), contentW - 120.0f, contentY + 18.0f, COLOR_WHITE );
             
-            if( pVer->state == 2 )
+            if( pVer->state == STATE_INSTALLED )
             {
                 DrawText( pd3dDevice, "INSTALLED", contentW - 220.0f, contentY + 18.0f, COLOR_SUCCESS );
             }
-            else if( pVer->state == 1 )
+            else if( pVer->state == STATE_DOWNLOADED )
             {
                 DrawText( pd3dDevice, "DOWNLOADED", contentW - 240.0f, contentY + 18.0f, COLOR_DOWNLOAD );
             }
@@ -1245,8 +1240,8 @@ void Store::DrawAppCard( LPDIRECT3DDEVICE8 pd3dDevice, StoreItem* pItem, float x
 
     // Status badge (top-right corner) - RED if new, otherwise varies by state
     DWORD badgeColor;
-    
-    if( pItem->app.isNew )
+  
+    if( pItem->app.state == STATE_NEW )
     {
         // NEW items get bright red badge
         badgeColor = COLOR_NEW;
@@ -1254,17 +1249,17 @@ void Store::DrawAppCard( LPDIRECT3DDEVICE8 pd3dDevice, StoreItem* pItem, float x
     else
     {
         // Normal state colors - use display state for update detection
-        int state = (!pItem->versions.empty()) ? GetDisplayState( pItem, 0 ) : 0;
+        uint32_t state = (!pItem->versions.empty()) ? GetDisplayState( pItem, 0 ) : 0;
         
         switch( state )
         {
-            case 2: // STATE_INSTALLED
+            case STATE_INSTALLED: // STATE_INSTALLED
                 badgeColor = COLOR_SUCCESS; // Green checkmark
                 break;
-            case 1: // STATE_DOWNLOADED
+            case STATE_DOWNLOADED: // STATE_DOWNLOADED
                 badgeColor = COLOR_DOWNLOAD; // Blue - ready to install
                 break;
-            case 3: // STATE_UPDATE_AVAILABLE
+            case STATE_NOT_DOWNLOADED: // STATE_UPDATE_AVAILABLE
                 badgeColor = 0xFFFF9800; // Orange - update available
                 break;
             default: // STATE_NOT_DOWNLOADED
@@ -1377,7 +1372,7 @@ void Store::HandleInput()
                 if( actualItemIndex >= 0 && actualItemIndex < m_nItemCount )
                 {
                     EnsureVersionsForItem( &m_pItems[actualItemIndex] );
-                    m_pItems[actualItemIndex].app.isNew = false;
+                    m_pItems[actualItemIndex].app.state = STATE_NONE;
                     m_userState.UpdateFromStore( m_pItems, m_nItemCount );
                     m_userState.Save( USER_STATE_PATH );
                     StoreItem* pItem = &m_pItems[actualItemIndex];
@@ -1440,7 +1435,7 @@ void Store::HandleInput()
                 {
                     switch( pVer->state )
                     {
-                        case 0:
+                        case STATE_NONE:
                             m_downloadVersionId = pVer->id;
                             m_downloadAppName = pItem->app.name;
                             m_downloadPath = "T:\\Apps\\" + pItem->app.name + ".zip";
@@ -1451,7 +1446,7 @@ void Store::HandleInput()
                             m_downloadThread = NULL;
                             m_CurrentState = UI_DOWNLOADING;
                             break; // Download
-                        case 1:  // Install (this IS the update if newer version exists!)
+                        case STATE_DOWNLOADED:  // Install (this IS the update if newer version exists!)
                         {
                             // Generate install path: E:\Apps\AppName_Version
                             char appName[64];
@@ -1480,7 +1475,7 @@ void Store::HandleInput()
                             pVer->install_path += appName;
                             pVer->install_path += "_";
                             pVer->install_path += verClean;
-                            pVer->state = 2;
+                            pVer->state = STATE_INSTALLED;
                             m_userState.UpdateFromStore( m_pItems, m_nItemCount );
                             m_userState.Save( USER_STATE_PATH );
                             OutputDebugString( String::Format( "Installed to: %s\n", pVer->install_path.c_str() ).c_str() );
@@ -1493,10 +1488,10 @@ void Store::HandleInput()
                 // X button - delete/uninstall
                 if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_X] )
                 {
-                    if( pVer->state == 1 || pVer->state == 2 )
+                    if( pVer->state == STATE_DOWNLOADED || pVer->state == STATE_INSTALLED )
                     {
                         pVer->install_path.clear();
-                        pVer->state = 0;
+                        pVer->state = STATE_NONE;
                         m_userState.UpdateFromStore( m_pItems, m_nItemCount );
                         m_userState.Save( USER_STATE_PATH );
                         
@@ -1538,7 +1533,7 @@ void Store::HandleInput()
                 {
                     switch( pVer->state )
                     {
-                        case 0:
+                        case STATE_NONE:
                             m_downloadVersionId = pVer->id;
                             m_downloadAppName = pItem->app.name;
                             m_downloadPath = "T:\\Apps\\" + pItem->app.name + ".zip";
@@ -1549,7 +1544,7 @@ void Store::HandleInput()
                             m_downloadThread = NULL;
                             m_CurrentState = UI_DOWNLOADING;
                             break;
-                        case 1:
+                        case STATE_DOWNLOADED:
                         {
                             char appName[64];
                             int j = 0;
@@ -1572,7 +1567,7 @@ void Store::HandleInput()
                             pVer->install_path += appName;
                             pVer->install_path += "_";
                             pVer->install_path += verClean;
-                            pVer->state = 2;
+                            pVer->state = STATE_INSTALLED;
                             m_userState.UpdateFromStore( m_pItems, m_nItemCount );
                             m_userState.Save( USER_STATE_PATH );
                             break;
@@ -1583,10 +1578,10 @@ void Store::HandleInput()
                 
                 if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_X] )
                 {
-                    if( pVer->state == 1 || pVer->state == 2 )
+                    if( pVer->state == STATE_DOWNLOADED || pVer->state == STATE_INSTALLED )
                     {
                         pVer->install_path.clear();
-                        pVer->state = 0;
+                        pVer->state = STATE_NONE;
                         m_userState.UpdateFromStore( m_pItems, m_nItemCount );
                         m_userState.Save( USER_STATE_PATH );
                     }
@@ -1614,7 +1609,7 @@ void Store::HandleInput()
                         StoreItem* pItem = &m_pItems[actualItemIndex];
                         if( pItem->nSelectedVersion >= 0 && pItem->nSelectedVersion < (int)pItem->versions.size() )
                         {
-                            pItem->versions[pItem->nSelectedVersion].state = 1;
+                            pItem->versions[pItem->nSelectedVersion].state = STATE_DOWNLOADED;
                             m_userState.UpdateFromStore( m_pItems, m_nItemCount );
                             m_userState.Save( USER_STATE_PATH );
                         }

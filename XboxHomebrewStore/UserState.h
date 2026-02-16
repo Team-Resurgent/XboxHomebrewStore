@@ -14,7 +14,7 @@ struct StoreItem;
 struct VersionUserState
 {
     std::string version;
-    int state;
+    uint32_t state;
     std::string install_path;
 };
 

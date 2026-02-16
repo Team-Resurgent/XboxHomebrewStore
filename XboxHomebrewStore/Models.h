@@ -10,7 +10,7 @@ struct AppItem
     std::string author;
     std::string category;
     std::string description;
-    bool isNew;
+    uint32_t state;
 };
 
 struct AppsResponse
@@ -29,11 +29,12 @@ struct VersionItem
     std::string id;
     std::string version;
     uint32_t size;
-    int state;
     std::string releaseDate;
     std::string changeLog;
     std::string titleId;
     std::string region;
+
+    uint32_t state;
     std::string install_path;  // Local install path (from user state)
 };
 

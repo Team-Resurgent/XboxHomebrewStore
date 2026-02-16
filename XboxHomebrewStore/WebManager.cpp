@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-const std::string store_api_url = "https://192.168.1.89:5001";
+const std::string store_api_url = "https://192.168.1.88:5001";
 const std::string store_app_controller = "/api/apps";
 const std::string store_versions = "/versions";
 const std::string store_categories = "/api/categories";
@@ -65,7 +65,7 @@ static bool ParseAppsResponse(const std::string& raw, AppsResponse& out)
                 app.author = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "author"));
                 app.category = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "category"));
                 app.description = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "description"));
-                app.isNew = JsonHelper::ToBool(JsonHelper::GetObjectMember(itemObj, "is_new"));
+                app.state = JsonHelper::ToBool(JsonHelper::GetObjectMember(itemObj, "state"));
                 out.items.push_back(app);
             }
         }
@@ -130,7 +130,6 @@ static bool ParseVersionsResponse(const std::string& raw, VersionsResponse& out)
             ver.id = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "id"));
             ver.version = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "version"));
             ver.size = JsonHelper::ToUInt32(JsonHelper::GetObjectMember(itemObj, "size"));
-            ver.state = JsonHelper::ToInt(JsonHelper::GetObjectMember(itemObj, "state"));
             ver.releaseDate = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "release_date"));
             ver.changeLog = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "changelog"));
             ver.titleId = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "title_id"));
