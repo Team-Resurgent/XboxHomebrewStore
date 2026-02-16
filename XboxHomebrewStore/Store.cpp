@@ -25,6 +25,11 @@
 // File paths
 #define USER_STATE_PATH     "T:\\user_state.json"
 
+#define STATE_NONE 0
+#define STATE_DOWNLOADED 1
+#define STATE_INSTALLED 2
+#define STATE_NOT_DOWNLOADED 3
+
 //-----------------------------------------------------------------------------
 // Constructor
 //-----------------------------------------------------------------------------

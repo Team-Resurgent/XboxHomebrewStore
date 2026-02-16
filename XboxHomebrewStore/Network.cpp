@@ -11,11 +11,16 @@ int Network::Init()
     memset(&xnsp, 0, sizeof(xnsp));
     xnsp.cfgSizeOfStruct = sizeof(XNetStartupParams);
     xnsp.cfgFlags = XNET_STARTUP_BYPASS_SECURITY;
-    xnsp.cfgPrivatePoolSizeInPages = 128;
-    xnsp.cfgEnetReceiveQueueLength = 64;
+
+    xnsp.cfgPrivatePoolSizeInPages = 64;
+    xnsp.cfgEnetReceiveQueueLength = 16;
+    xnsp.cfgIpFragMaxSimultaneous = 16;
+    xnsp.cfgIpFragMaxPacketDiv256 = 32;
     xnsp.cfgSockMaxSockets = 64;
-    xnsp.cfgSockDefaultRecvBufsizeInK = 128;
-    xnsp.cfgSockDefaultSendBufsizeInK = 128;
+
+    xnsp.cfgSockDefaultRecvBufsizeInK = 64;
+    xnsp.cfgSockDefaultSendBufsizeInK = 64;
+
 
     XNetStartup(&xnsp);
     WSAStartup(MAKEWORD(2, 2), &wsaData);
