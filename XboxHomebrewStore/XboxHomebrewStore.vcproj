@@ -333,6 +333,9 @@
 				RelativePath=".\TextureHelper.cpp">
 			</File>
 			<File
+				RelativePath=".\ImageDownloader.cpp">
+			</File>
+			<File
 				RelativePath=".\xbfont.cpp">
 			</File>
 			<File
@@ -389,6 +392,9 @@
 			</File>
 			<File
 				RelativePath=".\TextureHelper.h">
+			</File>
+			<File
+				RelativePath=".\ImageDownloader.h">
 			</File>
 			<File
 				RelativePath=".\String.h">

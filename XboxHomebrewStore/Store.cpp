@@ -192,6 +192,7 @@ BOOL Store::LoadAppsPage( int page, const char* categoryFilter )
         }
         return TRUE;
     }
+    m_imageDownloader.CancelAll();
     if( m_pItems )
     {
         for( int i = 0; i < m_nItemCount; i++ )
@@ -253,16 +254,9 @@ BOOL Store::LoadAppsPage( int page, const char* categoryFilter )
     m_nSelectedItem = 0;
     m_userState.Load( USER_STATE_PATH );
     m_userState.ApplyToStore( m_pItems, m_nItemCount );
-    static const char* TEMP_COVER_PATH = "D:\\temp.jpg";
     for( int i = 0; i < m_nItemCount; i++ ) {
-        LPDIRECT3DTEXTURE8 pIcon = NULL;
-        if( WebManager::TryDownloadCover( m_pItems[i].app.id, 256, 256, TEMP_COVER_PATH, NULL, NULL, NULL ) ) {
-            pIcon = TextureHelper::LoadFromFile( m_pd3dDevice, TEMP_COVER_PATH );
-        }
-        if( !pIcon ) {
-            pIcon = TextureHelper::GetCover( m_pd3dDevice );
-        }
-        m_pItems[i].pIcon = pIcon;
+        m_pItems[i].pIcon = TextureHelper::GetCover( m_pd3dDevice );
+        m_imageDownloader.Queue( &m_pItems[i].pIcon, m_pItems[i].app.id, IMAGE_COVER );
     }
     OutputDebugString( String::Format( "Loaded page %d: %d apps (total %d)\n", m_nCurrentPage, m_nItemCount, m_nTotalCount ).c_str() );
     return TRUE;
@@ -297,12 +291,9 @@ void Store::EnsureScreenshotForItem( StoreItem* pItem )
         pItem->pScreenshot->Release();
         pItem->pScreenshot = NULL;
     }
-    if( !pItem->app.id.empty() && WebManager::TryDownloadScreenshot( pItem->app.id, 640, 360, "D:\\temp_scr.jpg", NULL, NULL, NULL ) ) {
-        pItem->pScreenshot = TextureHelper::LoadFromFile( m_pd3dDevice, "D:\\temp_scr.jpg" );
-    }
-    if( !pItem->pScreenshot ) {
-        pItem->pScreenshot = TextureHelper::GetScreenshot( m_pd3dDevice );
-    }
+    pItem->pScreenshot = TextureHelper::GetScreenshot( m_pd3dDevice );
+    if( !pItem->app.id.empty() )
+        m_imageDownloader.Queue( &pItem->pScreenshot, pItem->app.id, IMAGE_SCREENSHOT );
 }
 
 //-----------------------------------------------------------------------------
@@ -512,6 +503,7 @@ HRESULT Store::Initialize( LPDIRECT3DDEVICE8 pd3dDevice )
 //-----------------------------------------------------------------------------
 void Store::Update()
 {
+    m_imageDownloader.ProcessCompleted( m_pd3dDevice );
     HandleInput();
 }
 

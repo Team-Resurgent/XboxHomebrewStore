@@ -12,6 +12,7 @@
 #include "WebManager.h"
 #include "Models.h"
 #include "TextureHelper.h"
+#include "ImageDownloader.h"
 
 // UI State
 enum UIState
@@ -87,6 +88,7 @@ private:
 
     // Data
     UserState m_userState;
+    ImageDownloader m_imageDownloader;
     LPDIRECT3DDEVICE8 m_pd3dDevice;
     StoreItem* m_pItems;
     int m_nItemCount;

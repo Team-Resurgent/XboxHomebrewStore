@@ -27,6 +27,45 @@ LPDIRECT3DDEVICE8       g_pd3dDevice = NULL;
 Store*                  g_pStore     = NULL;
 
 //-----------------------------------------------------------------------------
+// DeleteImageCache() - Remove all files in T:\Cache\Covers and T:\Cache\Screenshots
+// Uncomment the call in main() to clear cache on startup (e.g. for testing).
+//-----------------------------------------------------------------------------
+static void DeleteImageCache()
+{
+    WIN32_FIND_DATAA fd;
+    HANDLE h;
+    std::string pattern;
+    pattern = "T:\\Cache\\Covers\\*";
+    h = FindFirstFileA( pattern.c_str(), &fd );
+    if( h != INVALID_HANDLE_VALUE )
+    {
+        do
+        {
+            if( !(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) )
+            {
+                std::string path = "T:\\Cache\\Covers\\" + std::string( fd.cFileName );
+                DeleteFileA( path.c_str() );
+            }
+        } while( FindNextFileA( h, &fd ) );
+        FindClose( h );
+    }
+    pattern = "T:\\Cache\\Screenshots\\*";
+    h = FindFirstFileA( pattern.c_str(), &fd );
+    if( h != INVALID_HANDLE_VALUE )
+    {
+        do
+        {
+            if( !(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) )
+            {
+                std::string path = "T:\\Cache\\Screenshots\\" + std::string( fd.cFileName );
+                DeleteFileA( path.c_str() );
+            }
+        } while( FindNextFileA( h, &fd ) );
+        FindClose( h );
+    }
+}
+
+//-----------------------------------------------------------------------------
 // Name: InitD3D()
 // Desc: Initializes Direct3D
 //-----------------------------------------------------------------------------
@@ -149,6 +188,19 @@ VOID __cdecl main()
         return;
     }
 
+    if( !CreateDirectory( "T:\\Cache", NULL ) && GetLastError() != ERROR_ALREADY_EXISTS )
+    {
+        OutputDebugString( "Could not create T:\\Cache\n" );
+    }
+    if( !CreateDirectory( "T:\\Cache\\Covers", NULL ) && GetLastError() != ERROR_ALREADY_EXISTS )
+    {
+        OutputDebugString( "Could not create T:\\Cache\\Covers\n" );
+    }
+    if( !CreateDirectory( "T:\\Cache\\Screenshots", NULL ) && GetLastError() != ERROR_ALREADY_EXISTS )
+    {
+        OutputDebugString( "Could not create T:\\Cache\\Screenshots\n" );
+    }
+    // DeleteImageCache();  // Uncomment to clear image cache on startup
     Network::Init();
     WebManager::Init();
     WebManager::TrySyncTime();
