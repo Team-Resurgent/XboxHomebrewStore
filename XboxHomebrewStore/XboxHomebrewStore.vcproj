@@ -95,7 +95,7 @@
 				OutputFile="$(OutDir)/$(ProjectName).exe"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="&quot;$(SolutionDir)Libraries\libbearssl&quot;;&quot;$(SolutionDir)Libraries\libcurl&quot;"
-				IgnoreDefaultLibraryNames="LIBCMT"
+				IgnoreDefaultLibraryNames=""
 				GenerateDebugInformation="TRUE"
 				ProgramDatabaseFile="$(OutDir)/$(ProjectName).pdb"
 				SubSystem="2"
@@ -154,7 +154,7 @@
 				OutputFile="$(OutDir)/$(ProjectName).exe"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="&quot;$(SolutionDir)Libraries\libbearssl&quot;;&quot;$(SolutionDir)Libraries\libcurl&quot;"
-				IgnoreDefaultLibraryNames="LIBCMT"
+				IgnoreDefaultLibraryNames=""
 				GenerateDebugInformation="TRUE"
 				ProgramDatabaseFile="$(OutDir)/$(ProjectName).pdb"
 				SubSystem="2"
@@ -212,7 +212,7 @@
 				OutputFile="$(OutDir)/$(ProjectName).exe"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="&quot;$(SolutionDir)Libraries\libbearssl&quot;;&quot;$(SolutionDir)Libraries\libcurl&quot;"
-				IgnoreDefaultLibraryNames="LIBCMT"
+				IgnoreDefaultLibraryNames=""
 				GenerateDebugInformation="TRUE"
 				ProgramDatabaseFile="$(OutDir)/$(ProjectName).pdb"
 				SubSystem="2"
@@ -269,7 +269,7 @@
 				OutputFile="$(OutDir)/$(ProjectName).exe"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="&quot;$(SolutionDir)Libraries\libbearssl&quot;;&quot;$(SolutionDir)Libraries\libcurl&quot;"
-				IgnoreDefaultLibraryNames="LIBCMT"
+				IgnoreDefaultLibraryNames=""
 				GenerateDebugInformation="TRUE"
 				ProgramDatabaseFile="$(OutDir)/$(ProjectName).pdb"
 				SubSystem="2"
@@ -306,6 +306,9 @@
 				RelativePath=".\Debug.cpp">
 			</File>
 			<File
+				RelativePath=".\ImageDownloader.cpp">
+			</File>
+			<File
 				RelativePath=".\JsonHelper.cpp">
 			</File>
 			<File
@@ -324,16 +327,13 @@
 				RelativePath=".\String.cpp">
 			</File>
 			<File
+				RelativePath=".\TextureHelper.cpp">
+			</File>
+			<File
 				RelativePath=".\UserState.cpp">
 			</File>
 			<File
 				RelativePath=".\WebManager.cpp">
-			</File>
-			<File
-				RelativePath=".\TextureHelper.cpp">
-			</File>
-			<File
-				RelativePath=".\ImageDownloader.cpp">
 			</File>
 			<File
 				RelativePath=".\xbfont.cpp">
@@ -367,6 +367,9 @@
 				RelativePath=".\Debug.h">
 			</File>
 			<File
+				RelativePath=".\ImageDownloader.h">
+			</File>
+			<File
 				RelativePath=".\JsonHelper.h">
 			</File>
 			<File
@@ -391,13 +394,10 @@
 				RelativePath=".\Store.h">
 			</File>
 			<File
-				RelativePath=".\TextureHelper.h">
-			</File>
-			<File
-				RelativePath=".\ImageDownloader.h">
-			</File>
-			<File
 				RelativePath=".\String.h">
+			</File>
+			<File
+				RelativePath=".\TextureHelper.h">
 			</File>
 			<File
 				RelativePath=".\UserState.h">
