@@ -32,6 +32,12 @@ typedef struct
     float u, v;
 } TEXVERTEX;
 
+typedef struct
+{
+    float x, y, z, rhw;
+    uint32_t diffuse;
+} VERTEX;
+
 class Drawing
 {
 public:
@@ -41,4 +47,6 @@ public:
     static bool LoadFont(const std::string filePath, void* context);
     static bool TryGenerateBitmapFont(void* context, const std::string fontName, int fontStyle, int fontSize, int lineHeight, int spacing, int textureDimension, BitmapFont* bitmapFont);
     static void DrawFont(BitmapFont* font, const char* message, uint32_t color, int x, int y);
+    static void DrawFilledRect(uint32_t color, int x, int y, int width, int height);
+    static void DrawTexturedRect(D3DTexture* texture, int x, int y, int width, int height);
 };

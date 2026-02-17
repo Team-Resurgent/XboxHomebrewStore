@@ -191,10 +191,6 @@ bool Drawing::TryGenerateBitmapFont(void* context, const std::string fontName, i
 
 void Drawing::DrawFont(BitmapFont* font, const char* message, uint32_t color, int x, int y)
 {
-    if (!message || !message[0]) {
-        return;
-    }
-
     static TEXVERTEX batchBuf[DRAW_BATCH_MAX_VERTS];
     UINT vertexCount = 0;
 
@@ -220,9 +216,8 @@ void Drawing::DrawFont(BitmapFont* font, const char* message, uint32_t color, in
         
         const Rect& rect = it->second;
 
-        if (vertexCount + 6 > (UINT)DRAW_BATCH_MAX_VERTS)
-        {
-            mD3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLELIST, vertexCount / 3, batchBuf, sizeof(TEXVERTEX));
+        if (vertexCount + 4 > (UINT)DRAW_BATCH_MAX_VERTS) {
+            mD3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, vertexCount - 2, batchBuf, sizeof(TEXVERTEX));
             vertexCount = 0;
         }
 
@@ -238,20 +233,65 @@ void Drawing::DrawFont(BitmapFont* font, const char* message, uint32_t color, in
         float fh = (float)rect.height;
 
         TEXVERTEX* v = &batchBuf[vertexCount];
-        v[0].x = px + fw; v[0].y = py;     v[0].z = 0.5f; v[0].rhw = 1.0f; v[0].diffuse = color; v[0].u = u1; v[0].v = v0;
-        v[1].x = px + fw; v[1].y = py+fh; v[1].z = 0.5f; v[1].rhw = 1.0f; v[1].diffuse = color; v[1].u = u1; v[1].v = v1;
-        v[2].x = px;      v[2].y = py+fh; v[2].z = 0.5f; v[2].rhw = 1.0f; v[2].diffuse = color; v[2].u = u0; v[2].v = v1;
-        v[3].x = px + fw; v[3].y = py;     v[3].z = 0.5f; v[3].rhw = 1.0f; v[3].diffuse = color; v[3].u = u1; v[3].v = v0;
-        v[4].x = px;      v[4].y = py+fh; v[4].z = 0.5f; v[4].rhw = 1.0f; v[4].diffuse = color; v[4].u = u0; v[4].v = v1;
-        v[5].x = px;      v[5].y = py;     v[5].z = 0.5f; v[5].rhw = 1.0f; v[5].diffuse = color; v[5].u = u0; v[5].v = v0;
+        v[0].x = px;      v[0].y = py;      v[0].z = 0.5f; v[0].rhw = 1.0f; v[0].diffuse = color; v[0].u = u0; v[0].v = v0;
+        v[1].x = px + fw; v[1].y = py;      v[1].z = 0.5f; v[1].rhw = 1.0f; v[1].diffuse = color; v[1].u = u1; v[1].v = v0;
+        v[2].x = px;      v[2].y = py + fh; v[2].z = 0.5f; v[2].rhw = 1.0f; v[2].diffuse = color; v[2].u = u0; v[2].v = v1;
+        v[3].x = px + fw; v[3].y = py + fh; v[3].z = 0.5f; v[3].rhw = 1.0f; v[3].diffuse = color; v[3].u = u1; v[3].v = v1;
 
-        vertexCount += 6;
+        vertexCount += 4;
         xPos += rect.width + font->spacing;
     }
 
     if (vertexCount > 0) {
-        mD3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLELIST, vertexCount / 3, batchBuf, sizeof(TEXVERTEX));
+        mD3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, vertexCount - 2, batchBuf, sizeof(TEXVERTEX));
     }
 
+    mD3dDevice->SetTexture(0, NULL);
+}
+
+void Drawing::DrawFilledRect(uint32_t color, int x, int y, int width, int height)
+{
+    VERTEX vertices[4];
+
+    float px = (float)x;
+    float py = (float)y;
+    float fw = (float)width;
+    float fh = (float)height;
+
+    vertices[0].x = px;      vertices[0].y = py;      vertices[0].z = 0.5f; vertices[0].rhw = 1.0f; vertices[0].diffuse = color;
+    vertices[1].x = px + fw; vertices[1].y = py;      vertices[1].z = 0.5f; vertices[1].rhw = 1.0f; vertices[1].diffuse = color;
+    vertices[2].x = px;      vertices[2].y = py + fh; vertices[2].z = 0.5f; vertices[2].rhw = 1.0f; vertices[2].diffuse = color;
+    vertices[3].x = px + fw; vertices[3].y = py + fh; vertices[3].z = 0.5f; vertices[3].rhw = 1.0f; vertices[3].diffuse = color;
+
+    mD3dDevice->SetVertexShader(D3DFVF_XYZRHW | D3DFVF_DIFFUSE);
+    mD3dDevice->SetTexture(0, NULL);
+    mD3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, vertices, sizeof(VERTEX));
+}
+
+void Drawing::DrawTexturedRect(D3DTexture* texture, int x, int y, int width, int height)
+{
+    if (!pTexture) {
+        return;
+    }
+
+    TEXVERTEX vertices[4];
+
+    float px = (float)x;
+    float py = (float)y;
+    float fw = (float)width;
+    float fh = (float)height;
+
+    /* Full texture UVs; quad as triangle strip: v0(tl), v1(tr), v2(bl), v3(br) */
+    vertices[0].x = px;      vertices[0].y = py;      vertices[0].z = 0.5f; vertices[0].rhw = 1.0f; vertices[0].diffuse = 0xFFFFFFFF; vertices[0].u = 0.0f; vertices[0].v = 0.0f;
+    vertices[1].x = px + fw; vertices[1].y = py;      vertices[1].z = 0.5f; vertices[1].rhw = 1.0f; vertices[1].diffuse = 0xFFFFFFFF; vertices[1].u = 1.0f; vertices[1].v = 0.0f;
+    vertices[2].x = px;      vertices[2].y = py + fh; vertices[2].z = 0.5f; vertices[2].rhw = 1.0f; vertices[2].diffuse = 0xFFFFFFFF; vertices[2].u = 0.0f; vertices[2].v = 1.0f;
+    vertices[3].x = px + fw; vertices[3].y = py + fh; vertices[3].z = 0.5f; vertices[3].rhw = 1.0f; vertices[3].diffuse = 0xFFFFFFFF; vertices[3].u = 1.0f; vertices[3].v = 1.0f;
+
+    mD3dDevice->SetVertexShader(D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1);
+    mD3dDevice->SetTexture(0, texture);
+    mD3dDevice->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+    mD3dDevice->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+    mD3dDevice->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+    mD3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, vertices, sizeof(TEXVERTEX));
     mD3dDevice->SetTexture(0, NULL);
 }

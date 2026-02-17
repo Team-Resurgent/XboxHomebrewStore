@@ -179,7 +179,7 @@ bool UserState::Save( const char* filename )
 
 void UserState::ApplyToStore( StoreItem* pItems, int nItemCount )
 {
-    for( size_t a = 0; a < apps_.size(); a++ )
+    /*for( size_t a = 0; a < apps_.size(); a++ )
     {
         const AppUserState& app = apps_[a];
         for( int i = 0; i < nItemCount; i++ )
@@ -201,12 +201,12 @@ void UserState::ApplyToStore( StoreItem* pItems, int nItemCount )
             }
             break;
         }
-    }
+    }*/
 }
 
 void UserState::UpdateFromStore( StoreItem* pItems, int nItemCount )
 {
-    version_ = "1.0";
+    /*version_ = "1.0";
     last_updated_ = "2026-02-12";
     apps_.clear();
     for( int i = 0; i < nItemCount; i++ )
@@ -233,7 +233,7 @@ void UserState::UpdateFromStore( StoreItem* pItems, int nItemCount )
             appState.versions.push_back( vu );
         }
         apps_.push_back( appState );
-    }
+    }*/
 }
 
 void UserState::MarkAppViewed( const char* appId )

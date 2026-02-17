@@ -74,8 +74,6 @@ private:
     uint32_t GetDisplayState( StoreItem* pItem, int versionIndex );
     
     // Helper functions
-    void DrawRect( LPDIRECT3DDEVICE8 pd3dDevice, float x, float y, float w, float h, DWORD color );
-    void DrawTexturedRect( LPDIRECT3DDEVICE8 pd3dDevice, float x, float y, float w, float h, LPDIRECT3DTEXTURE8 pTexture );
     void DrawAppCard( LPDIRECT3DDEVICE8 pd3dDevice, StoreItem* pItem, float x, float y, BOOL bSelected );
     
     // Input handling

@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-const std::string store_api_url = "https://192.168.1.84:5001";
+const std::string store_api_url = "https://192.168.1.88:5001";
 const std::string store_app_controller = "/api/apps";
 const std::string store_versions = "/versions";
 const std::string store_categories = "/api/categories";
@@ -137,8 +137,6 @@ static bool ParseVersionsResponse(const std::string& raw, VersionsResponse& out)
             ver.changeLog = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "changelog"));
             ver.titleId = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "title_id"));
             ver.region = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "region"));
-            ver.state = 0;
-            ver.install_path = "";
             out.push_back(ver);
         }
     }

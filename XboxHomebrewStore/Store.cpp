@@ -369,7 +369,7 @@ void Store::MarkAppAsViewed( const char* appId )
 //-----------------------------------------------------------------------------
 void Store::SetVersionState( const char* appId, const char* version, int state )
 {
-    for( int i = 0; i < m_nItemCount; i++ )
+    /*for( int i = 0; i < m_nItemCount; i++ )
     {
         if( m_pItems[i].app.id != appId ) continue;
         for( size_t v = 0; v < m_pItems[i].versions.size(); v++ )
@@ -383,29 +383,30 @@ void Store::SetVersionState( const char* appId, const char* version, int state )
                 return;
             }
         }
-    }
+    }*/
 }
 
 BOOL Store::HasUpdateAvailable( StoreItem* pItem )
 {
     if( !pItem || pItem->versions.size() < 2 )
         return FALSE;
-    int installedIndex = -1;
-    for( size_t v = 0; v < pItem->versions.size(); v++ )
-    {
-        if( pItem->versions[v].state == STATE_INSTALLED )
-        {
-            installedIndex = (int)v;
-            break;
-        }
-    }
-    
-    if( installedIndex == -1 ) {
-        return FALSE;  // Nothing installed
-    }
-    
-    // If installed version is not the first (latest), update available
-    return (installedIndex > 0);
+    //int installedIndex = -1;
+    //for( size_t v = 0; v < pItem->versions.size(); v++ )
+    //{
+    //    if( pItem->versions[v].state == STATE_INSTALLED )
+    //    {
+    //        installedIndex = (int)v;
+    //        break;
+    //    }
+    //}
+    //
+    //if( installedIndex == -1 ) {
+    //    return FALSE;  // Nothing installed
+    //}
+    //
+    //// If installed version is not the first (latest), update available
+    //return (installedIndex > 0);
+    return FALSE;
 }
 
 //-----------------------------------------------------------------------------
@@ -414,64 +415,65 @@ BOOL Store::HasUpdateAvailable( StoreItem* pItem )
 //-----------------------------------------------------------------------------
 uint32_t Store::GetDisplayState( StoreItem* pItem, int versionIndex )
 {
-    if( !pItem || versionIndex < 0 || versionIndex >= (int)pItem->versions.size() ) {
-        return 0;
-    }
-    
-    uint32_t actualState = pItem->versions[versionIndex].state;
-    
-    // Card badge (versionIndex == 0): Show best state across ALL versions
-    if( versionIndex == 0 )
-    {
-        // Priority order:
-        // 1. Latest version installed -> GREEN
-        // 2. Any old version installed -> ORANGE (update available)
-        // 3. Any version downloaded -> BLUE
-        // 4. Nothing -> GRAY
-        
-        BOOL hasDownloaded = FALSE;
-        int installedIndex = -1;
-        
-        for( size_t v = 0; v < pItem->versions.size(); v++ )
-        {
-            if( pItem->versions[v].state == STATE_INSTALLED )
-            {
-                installedIndex = (int)v;
-                break;
-            }
-            else if( pItem->versions[v].state == STATE_DOWNLOADED ) {
-                hasDownloaded = TRUE;
-            }
-        }
-        
-        // If something is installed
-        if( installedIndex >= 0 )
-        {
-            // If latest version (index 0) is installed -> GREEN
-            if( installedIndex == 0 ) {
-                return STATE_INSTALLED;  // INSTALLED
-            }
-            
-            // If older version is installed -> ORANGE (update available)
-            return STATE_NOT_DOWNLOADED;  // UPDATE_AVAILABLE
-        }
-        
-        // Nothing installed, but something downloaded -> BLUE
-        if( hasDownloaded ) {
-            return STATE_DOWNLOADED;  // DOWNLOADED
-        }
-        
-        // Nothing at all -> GRAY
-        return STATE_NONE;  // NOT_DOWNLOADED
-    }
-    
-    // Version list: If this is an old version and it's installed, show UPDATE
-    if( actualState == STATE_INSTALLED && versionIndex > 0 )
-    {
-        return STATE_NOT_DOWNLOADED;  // UPDATE_AVAILABLE
-    }
-    
-    return actualState;
+    return 0;
+    //if( !pItem || versionIndex < 0 || versionIndex >= (int)pItem->versions.size() ) {
+    //    return 0;
+    //}
+    //
+    //uint32_t actualState = pItem->versions[versionIndex].state;
+    //
+    //// Card badge (versionIndex == 0): Show best state across ALL versions
+    //if( versionIndex == 0 )
+    //{
+    //    // Priority order:
+    //    // 1. Latest version installed -> GREEN
+    //    // 2. Any old version installed -> ORANGE (update available)
+    //    // 3. Any version downloaded -> BLUE
+    //    // 4. Nothing -> GRAY
+    //    
+    //    BOOL hasDownloaded = FALSE;
+    //    int installedIndex = -1;
+    //    
+    //    for( size_t v = 0; v < pItem->versions.size(); v++ )
+    //    {
+    //        if( pItem->versions[v].state == STATE_INSTALLED )
+    //        {
+    //            installedIndex = (int)v;
+    //            break;
+    //        }
+    //        else if( pItem->versions[v].state == STATE_DOWNLOADED ) {
+    //            hasDownloaded = TRUE;
+    //        }
+    //    }
+    //    
+    //    // If something is installed
+    //    if( installedIndex >= 0 )
+    //    {
+    //        // If latest version (index 0) is installed -> GREEN
+    //        if( installedIndex == 0 ) {
+    //            return STATE_INSTALLED;  // INSTALLED
+    //        }
+    //        
+    //        // If older version is installed -> ORANGE (update available)
+    //        return STATE_NOT_DOWNLOADED;  // UPDATE_AVAILABLE
+    //    }
+    //    
+    //    // Nothing installed, but something downloaded -> BLUE
+    //    if( hasDownloaded ) {
+    //        return STATE_DOWNLOADED;  // DOWNLOADED
+    //    }
+    //    
+    //    // Nothing at all -> GRAY
+    //    return STATE_NONE;  // NOT_DOWNLOADED
+    //}
+    //
+    //// Version list: If this is an old version and it's installed, show UPDATE
+    //if( actualState == STATE_INSTALLED && versionIndex > 0 )
+    //{
+    //    return STATE_NOT_DOWNLOADED;  // UPDATE_AVAILABLE
+    //}
+    //
+    //return actualState;
 }
 
 //-----------------------------------------------------------------------------
@@ -572,7 +574,7 @@ void Store::Render( LPDIRECT3DDEVICE8 pd3dDevice )
 void Store::RenderCategorySidebar( LPDIRECT3DDEVICE8 pd3dDevice )
 {
     // Sidebar background
-    DrawRect( pd3dDevice, 0, 0, m_fSidebarWidth, m_fScreenHeight, COLOR_SIDEBAR );
+    Drawing::DrawFilledRect( (uint32_t)COLOR_SIDEBAR, 0, 0, (int)m_fSidebarWidth, (int)m_fScreenHeight );
     
     // Header with logo area
     Font::DrawText( "Homebrew Store", (uint32_t)COLOR_WHITE, 20, 20 );
@@ -589,7 +591,7 @@ void Store::RenderCategorySidebar( LPDIRECT3DDEVICE8 pd3dDevice )
         // Highlight selected category
         if( i == m_nSelectedCategory )
         {
-            DrawRect( pd3dDevice, 0, itemY, m_fSidebarWidth, itemH, bgColor );
+            Drawing::DrawFilledRect( (uint32_t)bgColor, 0, (int)itemY, (int)m_fSidebarWidth, (int)itemH );
         }
         
         // Category name with count
@@ -612,7 +614,7 @@ void Store::RenderMainGrid( LPDIRECT3DDEVICE8 pd3dDevice )
     RenderCategorySidebar( pd3dDevice );
     
     // Draw title bar (right of sidebar)
-    DrawRect( pd3dDevice, m_fSidebarWidth, 0, m_fScreenWidth - m_fSidebarWidth, 60.0f, COLOR_PRIMARY );
+    Drawing::DrawFilledRect( (uint32_t)COLOR_PRIMARY, (int)m_fSidebarWidth, 0, (int)(m_fScreenWidth - m_fSidebarWidth), 60 );
     
     // Get current category name
     const char* categoryName = "All Apps";
@@ -664,8 +666,7 @@ void Store::RenderMainGrid( LPDIRECT3DDEVICE8 pd3dDevice )
     }
 
     // Draw bottom instructions bar
-    DrawRect( pd3dDevice, m_fSidebarWidth, m_fScreenHeight - 50.0f, 
-              m_fScreenWidth - m_fSidebarWidth, 50.0f, COLOR_SECONDARY );
+    Drawing::DrawFilledRect( (uint32_t)COLOR_SECONDARY, (int)m_fSidebarWidth, (int)(m_fScreenHeight - 50.0f), (int)(m_fScreenWidth - m_fSidebarWidth), 50 );
     
     std::string szInstructions;
     if( m_nTotalPages > 1 ) {
@@ -695,7 +696,7 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
     
     if( pItem->versions.empty() )
     {
-        DrawRect( pd3dDevice, 0, 0, m_fScreenWidth, m_fScreenHeight, COLOR_BG );
+        Drawing::DrawFilledRect( (uint32_t)COLOR_BG, 0, 0, (int)m_fScreenWidth, (int)m_fScreenHeight );
         Font::DrawText( pItem->app.name.c_str(), (uint32_t)COLOR_WHITE, 20, 20 );
         Font::DrawText( "No versions available.", (uint32_t)COLOR_TEXT_GRAY, 20, 60 );
         Font::DrawText( "B: Back", (uint32_t)COLOR_WHITE, 20, (int)(m_fScreenHeight - 40.0f) );
@@ -721,7 +722,7 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
     if( pItem->bViewingVersionDetail )
     {
         // Left content area
-        DrawRect( pd3dDevice, 0, 0, contentW, m_fScreenHeight, COLOR_BG );
+        Drawing::DrawFilledRect( (uint32_t)COLOR_BG, 0, 0, (int)contentW, (int)m_fScreenHeight );
         
         // App title and version
         std::string szTitle = String::Format( "%s v%s", pItem->app.name.c_str(), pCurrentVersion->version.c_str() );
@@ -731,9 +732,9 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
         // Screenshot
         float screenshotY = 70.0f;
         float screenshotH = m_fScreenHeight * 0.45f;
-        DrawRect( pd3dDevice, 20.0f, screenshotY, contentW - 40.0f, screenshotH, COLOR_CARD_BG );
+        Drawing::DrawFilledRect( (uint32_t)COLOR_CARD_BG, (int)20.0f, (int)screenshotY, (int)(contentW - 40.0f), (int)screenshotH );
         if( pItem->pScreenshot ) {
-            DrawTexturedRect( pd3dDevice, 20.0f, screenshotY, contentW - 40.0f, screenshotH, pItem->pScreenshot );
+            Drawing::DrawTexturedRect( (D3DTexture*)pItem->pScreenshot, (int)20.0f, (int)screenshotY, (int)(contentW - 40.0f), (int)screenshotH );
         }
         float descY = screenshotY + screenshotH + 20.0f;
         
@@ -752,7 +753,7 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
         
         // Right sidebar - Version metadata
         float sidebarX = contentW;
-        DrawRect( pd3dDevice, sidebarX, 0, sidebarW, m_fScreenHeight - actionBarH, COLOR_PRIMARY );
+        Drawing::DrawFilledRect( (uint32_t)COLOR_PRIMARY, (int)sidebarX, 0, (int)sidebarW, (int)(m_fScreenHeight - actionBarH) );
         
         float metaY = 20.0f;
         Font::DrawText( "Version:", (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
@@ -805,29 +806,29 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
         metaY += 40.0f;
         
         // Show install path if installed
-        if( pCurrentVersion->state == 2 && !pCurrentVersion->install_path.empty() )
-        {
-            Font::DrawText( "Installed:", (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
-            metaY += 20.0f;
-            
-            // Wrap path if too long - show last part
-            const char* pathToShow = pCurrentVersion->install_path.c_str();
-            if( strlen( pathToShow ) > 20 )
-            {
-                // Show "E:\Apps\..." format
-                std::string shortPath = String::Format( "...%s", pathToShow + strlen(pathToShow) - 15 );
-                Font::DrawText( shortPath.c_str(), (uint32_t)COLOR_TEXT_GRAY, (int)(sidebarX + 15.0f), (int)metaY );
-            }
-            else
-            {
-                Font::DrawText( pathToShow, (uint32_t)COLOR_TEXT_GRAY, (int)(sidebarX + 15.0f), (int)metaY );
-            }
-            metaY += 40.0f;
-        }
+        //if( pCurrentVersion->state == 2 && !pCurrentVersion->install_path.empty() )
+        //{
+        //    Font::DrawText( "Installed:", (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
+        //    metaY += 20.0f;
+        //    
+        //    // Wrap path if too long - show last part
+        //    const char* pathToShow = pCurrentVersion->install_path.c_str();
+        //    if( strlen( pathToShow ) > 20 )
+        //    {
+        //        // Show "E:\Apps\..." format
+        //        std::string shortPath = String::Format( "...%s", pathToShow + strlen(pathToShow) - 15 );
+        //        Font::DrawText( shortPath.c_str(), (uint32_t)COLOR_TEXT_GRAY, (int)(sidebarX + 15.0f), (int)metaY );
+        //    }
+        //    else
+        //    {
+        //        Font::DrawText( pathToShow, (uint32_t)COLOR_TEXT_GRAY, (int)(sidebarX + 15.0f), (int)metaY );
+        //    }
+        //    metaY += 40.0f;
+        //}
         
         // Action buttons - use ACTUAL state for buttons, not display state
         float actionBarY = m_fScreenHeight - actionBarH;
-        DrawRect( pd3dDevice, 0, actionBarY, m_fScreenWidth, actionBarH, COLOR_SECONDARY );
+        Drawing::DrawFilledRect( (uint32_t)COLOR_SECONDARY, 0, (int)actionBarY, (int)m_fScreenWidth, (int)actionBarH );
         
         float btnY = actionBarY + 15.0f;
         float btnH = 40.0f;
@@ -835,27 +836,27 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
         float btnStartX = 40.0f;
         
         // Use actual state for buttons (not displayState which shows UPDATE)
-        int actualState = pCurrentVersion->state;
+        int actualState = 0;// pCurrentVersion->state;
         
         switch( actualState )
         {
             case 0: // NOT_DOWNLOADED
             {
                 float btnW = (m_fScreenWidth - btnStartX * 2 - btnSpacing) / 2.0f;
-                DrawRect( pd3dDevice, btnStartX, btnY, btnW, btnH, COLOR_DOWNLOAD );
+                Drawing::DrawFilledRect( (uint32_t)COLOR_DOWNLOAD, (int)btnStartX, (int)btnY, (int)btnW, (int)btnH );
                 Font::DrawText( "(A) Download", (uint32_t)COLOR_WHITE, (int)(btnStartX + 20.0f), (int)(btnY + 12.0f) );
-                DrawRect( pd3dDevice, btnStartX + btnW + btnSpacing, btnY, btnW, btnH, COLOR_CARD_BG );
+                Drawing::DrawFilledRect( (uint32_t)COLOR_CARD_BG, (int)(btnStartX + btnW + btnSpacing), (int)btnY, (int)btnW, (int)btnH );
                 Font::DrawText( "(B) Back", (uint32_t)COLOR_WHITE, (int)(btnStartX + btnW + btnSpacing + 40.0f), (int)(btnY + 12.0f) );
                 break;
             }
             case 1: // DOWNLOADED
             {
                 float btnW = (m_fScreenWidth - btnStartX * 2 - btnSpacing * 2) / 3.0f;
-                DrawRect( pd3dDevice, btnStartX, btnY, btnW, btnH, COLOR_SUCCESS );
+                Drawing::DrawFilledRect( (uint32_t)COLOR_SUCCESS, (int)btnStartX, (int)btnY, (int)btnW, (int)btnH );
                 Font::DrawText( "(A) Install", (uint32_t)COLOR_WHITE, (int)(btnStartX + 15.0f), (int)(btnY + 12.0f) );
-                DrawRect( pd3dDevice, btnStartX + btnW + btnSpacing, btnY, btnW, btnH, 0xFF9E9E9E );
+                Drawing::DrawFilledRect( (uint32_t)0xFF9E9E9E, (int)(btnStartX + btnW + btnSpacing), (int)btnY, (int)btnW, (int)btnH );
                 Font::DrawText( "(X) Delete", (uint32_t)COLOR_WHITE, (int)(btnStartX + btnW + btnSpacing + 15.0f), (int)(btnY + 12.0f) );
-                DrawRect( pd3dDevice, btnStartX + (btnW + btnSpacing) * 2, btnY, btnW, btnH, COLOR_CARD_BG );
+                Drawing::DrawFilledRect( (uint32_t)COLOR_CARD_BG, (int)(btnStartX + (btnW + btnSpacing) * 2), (int)btnY, (int)btnW, (int)btnH );
                 Font::DrawText( "(B) Back", (uint32_t)COLOR_WHITE, (int)(btnStartX + (btnW + btnSpacing) * 2 + 20.0f), (int)(btnY + 12.0f) );
                 break;
             }
@@ -864,11 +865,11 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
                 // If this is an old version (displayState shows UPDATE), show Launch + Uninstall
                 // If this is latest version, show Launch + Uninstall
                 float btnW = (m_fScreenWidth - btnStartX * 2 - btnSpacing * 2) / 3.0f;
-                DrawRect( pd3dDevice, btnStartX, btnY, btnW, btnH, COLOR_SUCCESS );
+                Drawing::DrawFilledRect( (uint32_t)COLOR_SUCCESS, (int)btnStartX, (int)btnY, (int)btnW, (int)btnH );
                 Font::DrawText( "(A) Launch", (uint32_t)COLOR_WHITE, (int)(btnStartX + 15.0f), (int)(btnY + 12.0f) );
-                DrawRect( pd3dDevice, btnStartX + btnW + btnSpacing, btnY, btnW, btnH, 0xFFD32F2F );
+                Drawing::DrawFilledRect( (uint32_t)0xFFD32F2F, (int)(btnStartX + btnW + btnSpacing), (int)btnY, (int)btnW, (int)btnH );
                 Font::DrawText( "(X) Uninstall", (uint32_t)COLOR_WHITE, (int)(btnStartX + btnW + btnSpacing + 8.0f), (int)(btnY + 12.0f) );
-                DrawRect( pd3dDevice, btnStartX + (btnW + btnSpacing) * 2, btnY, btnW, btnH, COLOR_CARD_BG );
+                Drawing::DrawFilledRect( (uint32_t)COLOR_CARD_BG, (int)(btnStartX + (btnW + btnSpacing) * 2), (int)btnY, (int)btnW, (int)btnH );
                 Font::DrawText( "(B) Back", (uint32_t)COLOR_WHITE, (int)(btnStartX + (btnW + btnSpacing) * 2 + 20.0f), (int)(btnY + 12.0f) );
                 break;
             }
@@ -878,7 +879,7 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
     }
     
     // MODE 2: Version list view (for multiple versions)
-    DrawRect( pd3dDevice, 0, 0, contentW, m_fScreenHeight, COLOR_BG );
+    Drawing::DrawFilledRect( (uint32_t)COLOR_BG, 0, 0, (int)contentW, (int)m_fScreenHeight );
     
     Font::DrawText( pItem->app.name.c_str(), (uint32_t)COLOR_WHITE, 20, 20 );
     Font::DrawText( pItem->app.author.c_str(), (uint32_t)COLOR_TEXT_GRAY, 20, 40 );
@@ -886,9 +887,9 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
     // Screenshot
     float screenshotY = 70.0f;
     float screenshotH = m_fScreenHeight * 0.30f;
-    DrawRect( pd3dDevice, 20.0f, screenshotY, contentW - 40.0f, screenshotH, COLOR_CARD_BG );
+    Drawing::DrawFilledRect( (uint32_t)COLOR_CARD_BG, (int)20.0f, (int)screenshotY, (int)(contentW - 40.0f), (int)screenshotH );
     if( pItem->pScreenshot ) {
-        DrawTexturedRect( pd3dDevice, 20.0f, screenshotY, contentW - 40.0f, screenshotH, pItem->pScreenshot );
+        Drawing::DrawTexturedRect( (D3DTexture*)pItem->pScreenshot, (int)20.0f, (int)screenshotY, (int)(contentW - 40.0f), (int)screenshotH );
     }
     float contentY = screenshotY + screenshotH + 20.0f;
 
@@ -932,7 +933,7 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
             float itemH = 55.0f;
             DWORD bgColor = bSelected ? COLOR_PRIMARY : COLOR_CARD_BG;
             
-            DrawRect( pd3dDevice, 20.0f, contentY, contentW - 40.0f, itemH, bgColor );
+            Drawing::DrawFilledRect( (uint32_t)bgColor, (int)20.0f, (int)contentY, (int)(contentW - 40.0f), (int)itemH );
             
             std::string szVer = String::Format( "v%s", pVer->version.c_str() );
             Font::DrawText( szVer.c_str(), (uint32_t)COLOR_WHITE, (int)30.0f, (int)(contentY + 8.0f) );
@@ -943,14 +944,14 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
             std::string szSize = String::Format( "%.1f MB", pVer->size / (1024.0f * 1024.0f) );
             Font::DrawText( szSize.c_str(), (uint32_t)COLOR_WHITE, (int)(contentW - 120.0f), (int)(contentY + 18.0f) );
             
-            if( pVer->state == STATE_INSTALLED )
-            {
-                Font::DrawText( "INSTALLED", (uint32_t)COLOR_SUCCESS, (int)(contentW - 220.0f), (int)(contentY + 18.0f) );
-            }
-            else if( pVer->state == STATE_DOWNLOADED )
-            {
-                Font::DrawText( "DOWNLOADED", (uint32_t)COLOR_DOWNLOAD, (int)(contentW - 240.0f), (int)(contentY + 18.0f) );
-            }
+            //if( pVer->state == STATE_INSTALLED )
+            //{
+            //    Font::DrawText( "INSTALLED", (uint32_t)COLOR_SUCCESS, (int)(contentW - 220.0f), (int)(contentY + 18.0f) );
+            //}
+            //else if( pVer->state == STATE_DOWNLOADED )
+            //{
+            //    Font::DrawText( "DOWNLOADED", (uint32_t)COLOR_DOWNLOAD, (int)(contentW - 240.0f), (int)(contentY + 18.0f) );
+            //}
             
             contentY += itemH + 5.0f;
         }
@@ -964,7 +965,7 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
     
     // Right sidebar
     float sidebarX = contentW;
-    DrawRect( pd3dDevice, sidebarX, 0, sidebarW, m_fScreenHeight - actionBarH, COLOR_PRIMARY );
+    Drawing::DrawFilledRect( (uint32_t)COLOR_PRIMARY, (int)sidebarX, 0, (int)sidebarW, (int)(m_fScreenHeight - actionBarH) );
     
     float metaY = 20.0f;
     Font::DrawText( "Title:", (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
@@ -981,7 +982,7 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
     
     // Bottom bar
     float actionBarY = m_fScreenHeight - actionBarH;
-    DrawRect( pd3dDevice, 0, actionBarY, m_fScreenWidth, actionBarH, COLOR_SECONDARY );
+    Drawing::DrawFilledRect( (uint32_t)COLOR_SECONDARY, 0, (int)actionBarY, (int)m_fScreenWidth, (int)actionBarH );
     Font::DrawText( "(A) View Version  (B) Back to Grid", (uint32_t)COLOR_WHITE, (int)40.0f, (int)(actionBarY + 25.0f) );
 }
 
@@ -991,7 +992,7 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
 void Store::RenderDownloading( LPDIRECT3DDEVICE8 pd3dDevice )
 {
     // Title bar
-    DrawRect( pd3dDevice, 0, 0, m_fScreenWidth, 60.0f, COLOR_PRIMARY );
+    Drawing::DrawFilledRect( (uint32_t)COLOR_PRIMARY, 0, 0, (int)m_fScreenWidth, 60 );
     Font::DrawText( "DOWNLOADING", (uint32_t)COLOR_WHITE, 20, 20 );
 
     // Center panel
@@ -1001,16 +1002,16 @@ void Store::RenderDownloading( LPDIRECT3DDEVICE8 pd3dDevice )
     float panelX = (m_fScreenWidth - panelW) / 2.0f;
     float panelY = (m_fScreenHeight - panelH) / 2.0f;
     
-    DrawRect( pd3dDevice, panelX, panelY, panelW, panelH, COLOR_CARD_BG );
+    Drawing::DrawFilledRect( (uint32_t)COLOR_CARD_BG, (int)panelX, (int)panelY, (int)panelW, (int)panelH );
     
     Font::DrawText( m_downloadAppName.c_str(), (uint32_t)COLOR_WHITE, (int)(panelX + 20.0f), (int)(panelY + 20.0f) );
     
     float barY = panelY + 80.0f;
     float barW = panelW - 40.0f;
-    DrawRect( pd3dDevice, panelX + 20.0f, barY, barW, 30.0f, COLOR_SECONDARY );
+    Drawing::DrawFilledRect( (uint32_t)COLOR_SECONDARY, (int)(panelX + 20.0f), (int)barY, (int)barW, 30 );
     float pct = (m_downloadTotal > 0) ? (float)m_downloadNow / (float)m_downloadTotal : 0.0f;
     if( pct > 1.0f ) pct = 1.0f;
-    DrawRect( pd3dDevice, panelX + 22.0f, barY + 2.0f, (barW - 4.0f) * pct, 26.0f, COLOR_DOWNLOAD );
+    Drawing::DrawFilledRect( (uint32_t)COLOR_DOWNLOAD, (int)(panelX + 22.0f), (int)(barY + 2.0f), (int)((barW - 4.0f) * pct), 26 );
     
     if( m_downloadDone )
     {
@@ -1031,7 +1032,7 @@ void Store::RenderDownloading( LPDIRECT3DDEVICE8 pd3dDevice )
 void Store::RenderSettings( LPDIRECT3DDEVICE8 pd3dDevice )
 {
     // Title bar
-    DrawRect( pd3dDevice, 0, 0, m_fScreenWidth, 60.0f, COLOR_PRIMARY );
+    Drawing::DrawFilledRect( (uint32_t)COLOR_PRIMARY, 0, 0, (int)m_fScreenWidth, 60 );
     Font::DrawText( "SETTINGS", (uint32_t)COLOR_WHITE, 20, 20 );
 
     // Menu items
@@ -1040,21 +1041,21 @@ void Store::RenderSettings( LPDIRECT3DDEVICE8 pd3dDevice )
     float itemW = m_fScreenWidth - 80.0f;
     
     // Network Settings
-    DrawRect( pd3dDevice, 40.0f, itemY, itemW, itemH, COLOR_CARD_BG );
+    Drawing::DrawFilledRect( (uint32_t)COLOR_CARD_BG, (int)40.0f, (int)itemY, (int)itemW, (int)itemH );
     Font::DrawText( "Network Settings", (uint32_t)COLOR_WHITE, (int)60.0f, (int)(itemY + 15.0f) );
     itemY += itemH + 10.0f;
     
     // Storage Management
-    DrawRect( pd3dDevice, 40.0f, itemY, itemW, itemH, COLOR_CARD_BG );
+    Drawing::DrawFilledRect( (uint32_t)COLOR_CARD_BG, (int)40.0f, (int)itemY, (int)itemW, (int)itemH );
     Font::DrawText( "Storage Management", (uint32_t)COLOR_WHITE, (int)60.0f, (int)(itemY + 15.0f) );
     itemY += itemH + 10.0f;
     
     // About
-    DrawRect( pd3dDevice, 40.0f, itemY, itemW, itemH, COLOR_CARD_BG );
+    Drawing::DrawFilledRect( (uint32_t)COLOR_CARD_BG, (int)40.0f, (int)itemY, (int)itemW, (int)itemH );
     Font::DrawText( "About", (uint32_t)COLOR_WHITE, (int)60.0f, (int)(itemY + 15.0f) );
 
     // Bottom bar
-    DrawRect( pd3dDevice, 0, m_fScreenHeight - 50.0f, m_fScreenWidth, 50.0f, COLOR_SECONDARY );
+    Drawing::DrawFilledRect( (uint32_t)COLOR_SECONDARY, 0, (int)(m_fScreenHeight - 50.0f), (int)m_fScreenWidth, 50 );
     Font::DrawText( "B: Back", (uint32_t)COLOR_WHITE, (int)20.0f, (int)(m_fScreenHeight - 30.0f) );
 }
 
@@ -1144,71 +1145,19 @@ void Store::CalculateLayout()
 }
 
 //-----------------------------------------------------------------------------
-// DrawRect - Draw a filled rectangle
-//-----------------------------------------------------------------------------
-void Store::DrawRect( LPDIRECT3DDEVICE8 pd3dDevice, float x, float y, float w, float h, DWORD color )
-{
-    CUSTOMVERTEX vertices[] =
-    {
-        { x,     y,     0.5f, 1.0f, color },
-        { x + w, y,     0.5f, 1.0f, color },
-        { x,     y + h, 0.5f, 1.0f, color },
-        { x + w, y + h, 0.5f, 1.0f, color },
-    };
-
-    VOID* pVertices;
-    if( FAILED( m_pVB->Lock( 0, sizeof(vertices), (BYTE**)&pVertices, 0 ) ) )
-        return;
-    memcpy( pVertices, vertices, sizeof(vertices) );
-    m_pVB->Unlock();
-
-    pd3dDevice->SetStreamSource( 0, m_pVB, sizeof(CUSTOMVERTEX) );
-    pd3dDevice->SetVertexShader( D3DFVF_CUSTOMVERTEX );
-    pd3dDevice->DrawPrimitive( D3DPT_TRIANGLESTRIP, 0, 2 );
-}
-
-//-----------------------------------------------------------------------------
-// DrawTexturedRect - Draw a textured quad (for icons)
-//-----------------------------------------------------------------------------
-void Store::DrawTexturedRect( LPDIRECT3DDEVICE8 pd3dDevice, float x, float y, float w, float h, LPDIRECT3DTEXTURE8 pTexture )
-{
-    if( !pTexture || !m_pVBTex ) return;
-    TEXVERTEX vertices[] =
-    {
-        { x,     y,     0.5f, 1.0f, 0xFFFFFFFF, 0.0f, 0.0f },
-        { x + w, y,     0.5f, 1.0f, 0xFFFFFFFF, 1.0f, 0.0f },
-        { x,     y + h, 0.5f, 1.0f, 0xFFFFFFFF, 0.0f, 1.0f },
-        { x + w, y + h, 0.5f, 1.0f, 0xFFFFFFFF, 1.0f, 1.0f },
-    };
-    VOID* pV;
-    if( FAILED( m_pVBTex->Lock( 0, sizeof(vertices), (BYTE**)&pV, 0 ) ) ) return;
-    memcpy( pV, vertices, sizeof(vertices) );
-    m_pVBTex->Unlock();
-
-    pd3dDevice->SetTexture( 0, pTexture );
-    pd3dDevice->SetTextureStageState( 0, D3DTSS_COLOROP, D3DTOP_MODULATE );
-    pd3dDevice->SetTextureStageState( 0, D3DTSS_COLORARG1, D3DTA_TEXTURE );
-    pd3dDevice->SetTextureStageState( 0, D3DTSS_COLORARG2, D3DTA_DIFFUSE );
-    pd3dDevice->SetStreamSource( 0, m_pVBTex, sizeof(TEXVERTEX) );
-    pd3dDevice->SetVertexShader( D3DFVF_TEXVERTEX );
-    pd3dDevice->DrawPrimitive( D3DPT_TRIANGLESTRIP, 0, 2 );
-    pd3dDevice->SetTexture( 0, NULL );
-}
-
-//-----------------------------------------------------------------------------
 // DrawAppCard - Draw a single app card (Switch-style, dynamic size)
 //-----------------------------------------------------------------------------
 void Store::DrawAppCard( LPDIRECT3DDEVICE8 pd3dDevice, StoreItem* pItem, float x, float y, BOOL bSelected )
 {
     // Card background - normal color always
     DWORD cardColor = bSelected ? COLOR_SECONDARY : COLOR_CARD_BG;
-    DrawRect( pd3dDevice, x, y, m_fCardWidth, m_fCardHeight, cardColor );
+    Drawing::DrawFilledRect( (uint32_t)cardColor, (int)x, (int)y, (int)m_fCardWidth, (int)m_fCardHeight );
     
     // Selection highlight border
     if( bSelected )
     {
-        DrawRect( pd3dDevice, x - 3, y - 3, m_fCardWidth + 6, m_fCardHeight + 6, COLOR_PRIMARY );
-        DrawRect( pd3dDevice, x, y, m_fCardWidth, m_fCardHeight, cardColor );
+        Drawing::DrawFilledRect( (uint32_t)COLOR_PRIMARY, (int)(x - 3), (int)(y - 3), (int)(m_fCardWidth + 6), (int)(m_fCardHeight + 6) );
+        Drawing::DrawFilledRect( (uint32_t)cardColor, (int)x, (int)y, (int)m_fCardWidth, (int)m_fCardHeight );
     }
     
     // App icon/thumbnail area (square, as large as possible)
@@ -1216,9 +1165,9 @@ void Store::DrawAppCard( LPDIRECT3DDEVICE8 pd3dDevice, StoreItem* pItem, float x
     if( thumbSize > m_fCardHeight - 60.0f ) // Leave room for text
         thumbSize = m_fCardHeight - 60.0f;
     
-    DrawRect( pd3dDevice, x + 10, y + 10, thumbSize, thumbSize, COLOR_BG );
+    Drawing::DrawFilledRect( (uint32_t)COLOR_BG, (int)(x + 10), (int)(y + 10), (int)thumbSize, (int)thumbSize );
     if( pItem->pIcon ) {
-        DrawTexturedRect( pd3dDevice, x + 10, y + 10, thumbSize, thumbSize, pItem->pIcon );
+        Drawing::DrawTexturedRect( (D3DTexture*)pItem->pIcon, (int)(x + 10), (int)(y + 10), (int)thumbSize, (int)thumbSize );
     }
 
     // Status badge (top-right corner) - RED if new, otherwise varies by state
@@ -1250,7 +1199,7 @@ void Store::DrawAppCard( LPDIRECT3DDEVICE8 pd3dDevice, StoreItem* pItem, float x
                 break;
         }
     }
-    DrawRect( pd3dDevice, x + m_fCardWidth - 35, y + 10, 25, 25, badgeColor );
+    Drawing::DrawFilledRect( (uint32_t)badgeColor, (int)(x + m_fCardWidth - 35), (int)(y + 10), 25, 25 );
 
     // App name below thumbnail
     Font::DrawText( pItem->app.name.c_str(), (uint32_t)COLOR_WHITE, (int)(x + 10), (int)(y + thumbSize + 15) );
@@ -1412,74 +1361,74 @@ void Store::HandleInput()
             // If viewing version detail, handle actions for that specific version
             if( pItem->bViewingVersionDetail )
             {
-                VersionItem* pVer = &pItem->versions[pItem->nSelectedVersion];
-                
-                if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_A] )
-                {
-                    switch( pVer->state )
-                    {
-                        case STATE_NONE:
-                            m_downloadVersionId = pVer->id;
-                            m_downloadAppName = pItem->app.name;
-                            m_downloadPath = "T:\\Apps\\" + pItem->app.name + ".zip";
-                            m_downloadNow = 0;
-                            m_downloadTotal = 0;
-                            m_downloadDone = false;
-                            m_downloadCancelRequested = false;
-                            m_downloadThread = NULL;
-                            m_CurrentState = UI_DOWNLOADING;
-                            break; // Download
-                        case STATE_DOWNLOADED:  // Install (this IS the update if newer version exists!)
-                        {
-                            // Generate install path: E:\Apps\AppName_Version
-                            char appName[64];
-                            // Remove spaces and special chars from app name
-                            int j = 0;
-                            for( const char* s = pItem->app.name.c_str(); *s && j < 63; s++ )
-                            {
-                                if( (*s >= 'A' && *s <= 'Z') || (*s >= 'a' && *s <= 'z') || (*s >= '0' && *s <= '9') )
-                                    appName[j++] = *s;
-                            }
-                            appName[j] = '\0';
-                            
-                            // Remove dots from version for path
-                            char verClean[16];
-                            j = 0;
-                            for( const char* s = pVer->version.c_str(); *s && j < 15; s++ )
-                            {
-                                if( *s != '.' && *s != ' ' ) {
-                                    verClean[j++] = *s;
-                                }
-                            }
-                            verClean[j] = '\0';
-                            
-                            // Create install path
-                            pVer->install_path = "T:\\Apps\\";
-                            pVer->install_path += appName;
-                            pVer->install_path += "_";
-                            pVer->install_path += verClean;
-                            pVer->state = STATE_INSTALLED;
-                            m_userState.UpdateFromStore( m_pItems, m_nItemCount );
-                            m_userState.Save( USER_STATE_PATH );
-                            OutputDebugString( String::Format( "Installed to: %s\n", pVer->install_path.c_str() ).c_str() );
-                            break;
-                        }
-                        case 2: /* Launch */ break;
-                    }
-                }
+                //VersionItem* pVer = &pItem->versions[pItem->nSelectedVersion];
+                //
+                //if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_A] )
+                //{
+                //    switch( pVer->state )
+                //    {
+                //        case STATE_NONE:
+                //            m_downloadVersionId = pVer->id;
+                //            m_downloadAppName = pItem->app.name;
+                //            m_downloadPath = "T:\\Apps\\" + pItem->app.name + ".zip";
+                //            m_downloadNow = 0;
+                //            m_downloadTotal = 0;
+                //            m_downloadDone = false;
+                //            m_downloadCancelRequested = false;
+                //            m_downloadThread = NULL;
+                //            m_CurrentState = UI_DOWNLOADING;
+                //            break; // Download
+                //        case STATE_DOWNLOADED:  // Install (this IS the update if newer version exists!)
+                //        {
+                //            // Generate install path: E:\Apps\AppName_Version
+                //            char appName[64];
+                //            // Remove spaces and special chars from app name
+                //            int j = 0;
+                //            for( const char* s = pItem->app.name.c_str(); *s && j < 63; s++ )
+                //            {
+                //                if( (*s >= 'A' && *s <= 'Z') || (*s >= 'a' && *s <= 'z') || (*s >= '0' && *s <= '9') )
+                //                    appName[j++] = *s;
+                //            }
+                //            appName[j] = '\0';
+                //            
+                //            // Remove dots from version for path
+                //            char verClean[16];
+                //            j = 0;
+                //            for( const char* s = pVer->version.c_str(); *s && j < 15; s++ )
+                //            {
+                //                if( *s != '.' && *s != ' ' ) {
+                //                    verClean[j++] = *s;
+                //                }
+                //            }
+                //            verClean[j] = '\0';
+                //            
+                //            // Create install path
+                //            pVer->install_path = "T:\\Apps\\";
+                //            pVer->install_path += appName;
+                //            pVer->install_path += "_";
+                //            pVer->install_path += verClean;
+                //            pVer->state = STATE_INSTALLED;
+                //            m_userState.UpdateFromStore( m_pItems, m_nItemCount );
+                //            m_userState.Save( USER_STATE_PATH );
+                //            OutputDebugString( String::Format( "Installed to: %s\n", pVer->install_path.c_str() ).c_str() );
+                //            break;
+                //        }
+                //        case 2: /* Launch */ break;
+                //    }
+                //}
                 
                 // X button - delete/uninstall
                 if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_X] )
                 {
-                    if( pVer->state == STATE_DOWNLOADED || pVer->state == STATE_INSTALLED )
-                    {
-                        pVer->install_path.clear();
-                        pVer->state = STATE_NONE;
-                        m_userState.UpdateFromStore( m_pItems, m_nItemCount );
-                        m_userState.Save( USER_STATE_PATH );
-                        
-                        OutputDebugString( "Uninstalled and deleted folder\n" );
-                    }
+                    //if( pVer->state == STATE_DOWNLOADED || pVer->state == STATE_INSTALLED )
+                    //{
+                    //    pVer->install_path.clear();
+                    //    pVer->state = STATE_NONE;
+                    //    m_userState.UpdateFromStore( m_pItems, m_nItemCount );
+                    //    m_userState.Save( USER_STATE_PATH );
+                    //    
+                    //    OutputDebugString( "Uninstalled and deleted folder\n" );
+                    //}
                 }
             }
             // If viewing version list
@@ -1512,7 +1461,7 @@ void Store::HandleInput()
             {
                 VersionItem* pVer = &pItem->versions[0];
                 
-                if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_A] )
+                /*if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_A] )
                 {
                     switch( pVer->state )
                     {
@@ -1556,18 +1505,18 @@ void Store::HandleInput()
                             break;
                         }
                         case 2: break;
-                    }
-                }
+                    }*/
+                //}
                 
                 if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_X] )
                 {
-                    if( pVer->state == STATE_DOWNLOADED || pVer->state == STATE_INSTALLED )
-                    {
-                        pVer->install_path.clear();
-                        pVer->state = STATE_NONE;
-                        m_userState.UpdateFromStore( m_pItems, m_nItemCount );
-                        m_userState.Save( USER_STATE_PATH );
-                    }
+                    //if( pVer->state == STATE_DOWNLOADED || pVer->state == STATE_INSTALLED )
+                    //{
+                    //    pVer->install_path.clear();
+                    //    pVer->state = STATE_NONE;
+                    //    m_userState.UpdateFromStore( m_pItems, m_nItemCount );
+                    //    m_userState.Save( USER_STATE_PATH );
+                    //}
                 }
             }
         }
@@ -1592,9 +1541,9 @@ void Store::HandleInput()
                         StoreItem* pItem = &m_pItems[actualItemIndex];
                         if( pItem->nSelectedVersion >= 0 && pItem->nSelectedVersion < (int)pItem->versions.size() )
                         {
-                            pItem->versions[pItem->nSelectedVersion].state = STATE_DOWNLOADED;
-                            m_userState.UpdateFromStore( m_pItems, m_nItemCount );
-                            m_userState.Save( USER_STATE_PATH );
+                            //pItem->versions[pItem->nSelectedVersion].state = STATE_DOWNLOADED;
+                            //m_userState.UpdateFromStore( m_pItems, m_nItemCount );
+                            //m_userState.Save( USER_STATE_PATH );
                         }
                     }
                 }
