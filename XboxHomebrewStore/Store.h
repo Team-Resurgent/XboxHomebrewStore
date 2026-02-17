@@ -63,7 +63,6 @@ private:
     void RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice );
     void RenderDownloading( LPDIRECT3DDEVICE8 pd3dDevice );
     void RenderSettings( LPDIRECT3DDEVICE8 pd3dDevice );
-    void RenderCategorySidebar( LPDIRECT3DDEVICE8 pd3dDevice );
     
     // User state (load/save and apply to store)
     void MarkAppAsViewed( const char* appId );

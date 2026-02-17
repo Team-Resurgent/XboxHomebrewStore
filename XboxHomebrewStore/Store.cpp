@@ -5,26 +5,9 @@
 #include "Main.h"
 #include "Store.h"
 #include "WebManager.h"
-#include "Drawing.h"
 #include "String.h"
 #include <stdlib.h>
 #include <string.h>
-
-// Colors - Modern clean theme inspired by Switch store
-#define COLOR_PRIMARY       0xFFD81B60  // Reddish-pink: top bar and right side panels
-#define COLOR_SECONDARY     0xFF424242  // Dark gray: bottom action bars only
-#define COLOR_BG            0xFF212121  // Very dark gray
-#define COLOR_CARD_BG       0xFF303030  // Card background
-#define COLOR_WHITE         0xFFFFFFFF
-#define COLOR_TEXT_GRAY     0xFFB0B0B0
-#define COLOR_SUCCESS       0xFF4CAF50  // Green for installed
-#define COLOR_DOWNLOAD      0xFF2196F3  // Blue for download
-#define COLOR_NEW           0xFFFF1744  // Bright red for NEW items
-#define COLOR_SIDEBAR       0xFFD81B60  // Reddish-pink: left category sidebar (matches primary)
-#define COLOR_SIDEBAR_HOVER 0xFFAD1457  // Darker pink for selected category
-
-// File paths
-#define USER_STATE_PATH     "T:\\user_state.json"
 
 //-----------------------------------------------------------------------------
 // Constructor
@@ -33,16 +16,9 @@ Store::Store()
 {
     m_pItems = NULL;
     m_nItemCount = 0;
-    m_nSelectedItem = 0;
     m_nFilteredCount = 0;
-    m_CurrentState = UI_MAIN_GRID;
-    m_nSelectedCategory = 0;
-    m_pVB = NULL;
-    m_pVBTex = NULL;
-    m_pGamepads = NULL;
-    m_dwLastButtons = 0;
     m_pd3dDevice = NULL;
-	m_pFilteredIndices = NULL;
+    m_pFilteredIndices = NULL;
     m_downloadNow = 0;
     m_downloadTotal = 0;
     m_downloadDone = false;
@@ -50,14 +26,6 @@ Store::Store()
     m_downloadCancelRequested = false;
     m_downloadThread = NULL;
 
-    // Will be set in Initialize
-    m_fScreenWidth = 640.0f;
-    m_fScreenHeight = 480.0f;
-    m_fSidebarWidth = 200.0f;
-    m_nGridCols = 3;
-    m_nGridRows = 2;
-    
-    // Initialize first category as "All Apps"
     CategoryItem allApps;
     allApps.category = "All Apps";
     allApps.count = 0;
@@ -73,17 +41,11 @@ Store::Store()
 //-----------------------------------------------------------------------------
 Store::~Store()
 {
-    if( m_pVB ) {
-        m_pVB->Release();
-        m_pVB = NULL;
+    if ( m_pFilteredIndices )
+    {
+        delete[] m_pFilteredIndices;
+        m_pFilteredIndices = NULL;
     }
-    if( m_pVBTex ) {
-        m_pVBTex->Release();
-        m_pVBTex = NULL;
-    }
-	if (m_pFilteredIndices) {
-		delete[] m_pFilteredIndices;
-	}
 
     if( m_pItems )
     {
@@ -176,7 +138,7 @@ BOOL Store::LoadCategoriesFromWeb()
 //-----------------------------------------------------------------------------
 // LoadAppsPage - Fetch one page of apps (and optionally filter by category)
 //-----------------------------------------------------------------------------
-BOOL Store::LoadAppsPage( int page, const char* categoryFilter )
+BOOL Store::LoadAppsPage( int page, const char* categoryFilter, int selectedCategoryForCount )
 {
     AppsResponse resp;
     std::string catStr = categoryFilter ? categoryFilter : "";
@@ -192,8 +154,8 @@ BOOL Store::LoadAppsPage( int page, const char* categoryFilter )
         m_nCurrentPage = 1;
         m_nTotalPages = 1;
         m_nTotalCount = 0;
-        if( m_nSelectedCategory >= 0 && m_nSelectedCategory < (int)m_aCategories.size() ) {
-            m_aCategories[m_nSelectedCategory].count = 0;
+        if( selectedCategoryForCount >= 0 && selectedCategoryForCount < (int)m_aCategories.size() ) {
+            m_aCategories[selectedCategoryForCount].count = 0;
         }
         return TRUE;
     }
@@ -253,11 +215,10 @@ BOOL Store::LoadAppsPage( int page, const char* categoryFilter )
     m_nCurrentPage = (int)resp.page;
     m_nTotalPages = (int)resp.totalPages;
     m_nTotalCount = (int)resp.totalCount;
-    if( m_nSelectedCategory >= 0 && m_nSelectedCategory < (int)m_aCategories.size() ) {
-        m_aCategories[m_nSelectedCategory].count = (uint32_t)m_nTotalCount;
+    if( selectedCategoryForCount >= 0 && selectedCategoryForCount < (int)m_aCategories.size() ) {
+        m_aCategories[selectedCategoryForCount].count = (uint32_t)m_nTotalCount;
     }
-    m_nSelectedItem = 0;
-    m_userState.Load( USER_STATE_PATH );
+    m_userState.Load( STORE_USER_STATE_PATH );
     m_userState.ApplyToStore( m_pItems, m_nItemCount );
     for( int i = 0; i < m_nItemCount; i++ ) {
         m_pItems[i].pIcon = TextureHelper::GetCover( m_pd3dDevice );
@@ -282,7 +243,7 @@ void Store::EnsureVersionsForItem( StoreItem* pItem )
     }
     pItem->versions = resp;
     pItem->nSelectedVersion = 0;
-    m_userState.Load( USER_STATE_PATH );
+    m_userState.Load( STORE_USER_STATE_PATH );
     m_userState.ApplyToStore( m_pItems, m_nItemCount );
 }
 
@@ -332,6 +293,34 @@ void Store::StartDownloadThread()
     m_downloadThread = CreateThread( NULL, 0, DownloadThreadProc, this, 0, NULL );
 }
 
+void Store::ProcessImageDownloader()
+{
+    m_imageDownloader.ProcessCompleted( m_pd3dDevice );
+}
+
+void Store::BeginDownload( const std::string& versionId, const std::string& appName, const std::string& path )
+{
+    m_downloadVersionId = versionId;
+    m_downloadAppName = appName;
+    m_downloadPath = path;
+    m_downloadNow = 0;
+    m_downloadTotal = 0;
+    m_downloadDone = false;
+    m_downloadSuccess = false;
+    m_downloadCancelRequested = false;
+    m_downloadThread = NULL;
+}
+
+void Store::CloseDownloadThread()
+{
+    if( m_downloadThread != NULL )
+    {
+        WaitForSingleObject( m_downloadThread, INFINITE );
+        CloseHandle( m_downloadThread );
+        m_downloadThread = NULL;
+    }
+}
+
 //-----------------------------------------------------------------------------
 // LoadCatalogFromWeb - Load categories then first page of apps
 //-----------------------------------------------------------------------------
@@ -339,8 +328,7 @@ BOOL Store::LoadCatalogFromWeb()
 {
     if( !LoadCategoriesFromWeb() )
         return FALSE;
-    m_nSelectedCategory = 0;
-    if( !LoadAppsPage( 1, "" ) )
+    if( !LoadAppsPage( 1, "", 0 ) )
         return FALSE;
     m_aCategories[0].count = (uint32_t)m_nTotalCount;
     return TRUE;
@@ -357,7 +345,7 @@ void Store::MarkAppAsViewed( const char* appId )
         {
             m_pItems[i].app.state = STATE_NONE;
             m_userState.UpdateFromStore( m_pItems, m_nItemCount );
-            m_userState.Save( USER_STATE_PATH );
+            m_userState.Save( STORE_USER_STATE_PATH );
             OutputDebugString( String::Format( "Marked %s as viewed\n", m_pItems[i].app.name.c_str() ).c_str() );
             return;
         }
@@ -378,7 +366,7 @@ void Store::SetVersionState( const char* appId, const char* version, int state )
             {
                 m_pItems[i].versions[v].state = state;
                 m_userState.UpdateFromStore( m_pItems, m_nItemCount );
-                m_userState.Save( USER_STATE_PATH );
+                m_userState.Save( STORE_USER_STATE_PATH );
                 OutputDebugString( String::Format( "Set %s v%s state to %d\n", m_pItems[i].app.name.c_str(), version, state ).c_str() );
                 return;
             }
@@ -386,7 +374,7 @@ void Store::SetVersionState( const char* appId, const char* version, int state )
     }*/
 }
 
-BOOL Store::HasUpdateAvailable( StoreItem* pItem )
+BOOL Store::HasUpdateAvailable( StoreItem* pItem ) const
 {
     if( !pItem || pItem->versions.size() < 2 )
         return FALSE;
@@ -413,7 +401,7 @@ BOOL Store::HasUpdateAvailable( StoreItem* pItem )
 // GetDisplayState - Get state to display (with update detection)
 // RULE: Only show UPDATE if user actually has the app installed
 //-----------------------------------------------------------------------------
-uint32_t Store::GetDisplayState( StoreItem* pItem, int versionIndex )
+uint32_t Store::GetDisplayState( StoreItem* pItem, int versionIndex ) const
 {
     return 0;
     //if( !pItem || versionIndex < 0 || versionIndex >= (int)pItem->versions.size() ) {
@@ -477,45 +465,33 @@ uint32_t Store::GetDisplayState( StoreItem* pItem, int versionIndex )
 }
 
 //-----------------------------------------------------------------------------
+// BuildFilteredIndices - Fill filtered list by category (for StoreScene)
+//-----------------------------------------------------------------------------
+void Store::BuildFilteredIndices( int selectedCategory )
+{
+    m_nFilteredCount = 0;
+    if( !m_pFilteredIndices || !m_pItems )
+        return;
+    for( int i = 0; i < m_nItemCount; i++ )
+    {
+        if( selectedCategory == 0 || m_pItems[i].nCategoryIndex == selectedCategory )
+        {
+            m_pFilteredIndices[m_nFilteredCount++] = i;
+        }
+    }
+}
+
+//-----------------------------------------------------------------------------
 // Initialize
 //-----------------------------------------------------------------------------
 HRESULT Store::Initialize( LPDIRECT3DDEVICE8 pd3dDevice )
 {
-    // Detect screen resolution
-    DetectResolution( pd3dDevice );
-    CalculateLayout();
-    
-    // Create vertex buffer for rendering quads
-    if( FAILED( pd3dDevice->CreateVertexBuffer( 4*sizeof(CUSTOMVERTEX),
-                                                 D3DUSAGE_WRITEONLY, 
-                                                 D3DFVF_CUSTOMVERTEX,
-                                                 D3DPOOL_DEFAULT, 
-                                                 &m_pVB ) ) )
-    {
-        return E_FAIL;
-    }
-    if( FAILED( pd3dDevice->CreateVertexBuffer( 4*sizeof(TEXVERTEX),
-                                                 D3DUSAGE_WRITEONLY,
-                                                 D3DFVF_TEXVERTEX,
-                                                 D3DPOOL_DEFAULT,
-                                                 &m_pVBTex ) ) )
-    {
-        m_pVB->Release();
-        m_pVB = NULL;
-        return E_FAIL;
-    }
-
-    // Font is initialized in Main.cpp via Font::Init()
-
-    // Initialize gamepads
-    XBInput_CreateGamepads( &m_pGamepads );
-
     m_pd3dDevice = pd3dDevice;
-    if( FAILED( TextureHelper::Init( pd3dDevice ) ) ) {
+    if( FAILED( TextureHelper::Init( pd3dDevice ) ) )
+    {
         OutputDebugString( "Warning: TextureHelper Init failed (Cover/Screenshot).\n" );
     }
 
-    // Load app catalog from web (categories + first page of apps)
     if( !LoadCatalogFromWeb() )
     {
         OutputDebugString( "Failed to load from web\n" );
@@ -524,1041 +500,10 @@ HRESULT Store::Initialize( LPDIRECT3DDEVICE8 pd3dDevice )
         m_pItems = NULL;
         m_pFilteredIndices = NULL;
     }
-    
-    // Load user state
-    m_userState.Load( USER_STATE_PATH );
+
+    m_userState.Load( STORE_USER_STATE_PATH );
     m_userState.ApplyToStore( m_pItems, m_nItemCount );
 
     return S_OK;
 }
 
-//-----------------------------------------------------------------------------
-// Update - Handle input and logic
-//-----------------------------------------------------------------------------
-void Store::Update()
-{
-    m_imageDownloader.ProcessCompleted( m_pd3dDevice );
-    if( m_CurrentState == UI_DOWNLOADING && m_downloadThread == NULL && !m_downloadDone )
-        StartDownloadThread();
-    HandleInput();
-}
-
-//-----------------------------------------------------------------------------
-// Render
-//-----------------------------------------------------------------------------
-void Store::Render( LPDIRECT3DDEVICE8 pd3dDevice )
-{
-    switch( m_CurrentState )
-    {
-        case UI_MAIN_GRID:
-            RenderMainGrid( pd3dDevice );
-            break;
-            
-        case UI_ITEM_DETAILS:
-            RenderItemDetails( pd3dDevice );
-            break;
-            
-        case UI_DOWNLOADING:
-            RenderDownloading( pd3dDevice );
-            break;
-            
-        case UI_SETTINGS:
-            RenderSettings( pd3dDevice );
-            break;
-    }
-}
-
-//-----------------------------------------------------------------------------
-// RenderCategorySidebar - Left category menu (dynamic)
-//-----------------------------------------------------------------------------
-void Store::RenderCategorySidebar( LPDIRECT3DDEVICE8 pd3dDevice )
-{
-    // Sidebar background
-    Drawing::DrawFilledRect( (uint32_t)COLOR_SIDEBAR, 0, 0, (int)m_fSidebarWidth, (int)m_fScreenHeight );
-    
-    // Header with logo area
-    Font::DrawText( "Homebrew Store", (uint32_t)COLOR_WHITE, 20, 20 );
-    Font::DrawText( "for Xbox", (uint32_t)COLOR_WHITE, 20, 40 );
-    
-    // Category menu items (dynamic!)
-    float itemY = 100.0f;
-    float itemH = 50.0f;
-    
-    for( size_t i = 0; i < m_aCategories.size(); i++ )
-    {
-        DWORD bgColor = (i == m_nSelectedCategory) ? COLOR_SIDEBAR_HOVER : COLOR_SIDEBAR;
-        
-        // Highlight selected category
-        if( i == m_nSelectedCategory )
-        {
-            Drawing::DrawFilledRect( (uint32_t)bgColor, 0, (int)itemY, (int)m_fSidebarWidth, (int)itemH );
-        }
-        
-        // Category name with count
-        std::string szText = String::Format( "%s (%u)", m_aCategories[i].category.c_str(), (unsigned)m_aCategories[i].count );
-        Font::DrawText( szText.c_str(), (uint32_t)COLOR_WHITE, (int)50.0f, (int)(itemY + 15.0f) );
-        
-        itemY += itemH;
-    }
-    
-    // Hide button at bottom
-    Font::DrawText( "LB: Hide", (uint32_t)COLOR_WHITE, 20, (int)(m_fScreenHeight - 30.0f) );
-}
-
-//-----------------------------------------------------------------------------
-// RenderMainGrid - Main store browser (Switch-style with sidebar)
-//-----------------------------------------------------------------------------
-void Store::RenderMainGrid( LPDIRECT3DDEVICE8 pd3dDevice )
-{
-    // Draw category sidebar
-    RenderCategorySidebar( pd3dDevice );
-    
-    // Draw title bar (right of sidebar)
-    Drawing::DrawFilledRect( (uint32_t)COLOR_PRIMARY, (int)m_fSidebarWidth, 0, (int)(m_fScreenWidth - m_fSidebarWidth), 60 );
-    
-    // Get current category name
-    const char* categoryName = "All Apps";
-    if( m_nSelectedCategory >= 0 && m_nSelectedCategory < (int)m_aCategories.size() ) {
-        categoryName = m_aCategories[m_nSelectedCategory].category.c_str();
-    }
-    
-    Font::DrawText( categoryName, (uint32_t)COLOR_WHITE, (int)(m_fSidebarWidth + 20.0f), 20 );
-    
-    // Build filtered indices array for current category
-    m_nFilteredCount = 0;
-    for( int i = 0; i < m_nItemCount; i++ )
-    {
-        // "All Apps" (index 0) shows everything
-        if( m_nSelectedCategory == 0 || m_pItems[i].nCategoryIndex == m_nSelectedCategory )
-        {
-            m_pFilteredIndices[m_nFilteredCount++] = i;
-        }
-    }
-    
-    // Clamp selection to valid range
-    if( m_nSelectedItem >= m_nFilteredCount ) {
-        m_nSelectedItem = m_nFilteredCount > 0 ? m_nFilteredCount - 1 : 0;
-    }
-    
-    // Draw grid of app cards
-    int visibleItems = m_nGridRows * m_nGridCols;
-    int page = m_nSelectedItem / visibleItems;
-    int startIndex = page * visibleItems;
-    
-    for( int row = 0; row < m_nGridRows; row++ )
-    {
-        for( int col = 0; col < m_nGridCols; col++ )
-        {
-            int gridIndex = startIndex + (row * m_nGridCols + col);
-            if( gridIndex >= m_nFilteredCount ) {
-                break;
-            }
-                
-            // Get actual item index from filtered array
-            int actualItemIndex = m_pFilteredIndices[gridIndex];
-            
-            float x = m_fGridStartX + col * (m_fCardWidth + 20.0f);
-            float y = m_fGridStartY + row * (m_fCardHeight + 20.0f);
-            
-            BOOL bSelected = (gridIndex == m_nSelectedItem);
-            DrawAppCard( pd3dDevice, &m_pItems[actualItemIndex], x, y, bSelected );
-        }
-    }
-
-    // Draw bottom instructions bar
-    Drawing::DrawFilledRect( (uint32_t)COLOR_SECONDARY, (int)m_fSidebarWidth, (int)(m_fScreenHeight - 50.0f), (int)(m_fScreenWidth - m_fSidebarWidth), 50 );
-    
-    std::string szInstructions;
-    if( m_nTotalPages > 1 ) {
-        szInstructions = String::Format( "A: Details  B: Exit  LT/RT: Category  D-pad: Move  (%d apps, page %d/%d)", m_nFilteredCount, m_nCurrentPage, m_nTotalPages );
-    } else {
-        szInstructions = String::Format( "A: Details  B: Exit  LT/RT: Category  (%d apps)", m_nFilteredCount );
-    }
-    Font::DrawText( szInstructions.c_str(), (uint32_t)COLOR_WHITE, (int)(m_fSidebarWidth + 20.0f), (int)(m_fScreenHeight - 30.0f) );
-}
-
-//-----------------------------------------------------------------------------
-// RenderItemDetails - Multi-version detail screen with scrollable list
-//-----------------------------------------------------------------------------
-void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
-{
-    // Get actual item from filtered indices
-    if( m_nSelectedItem < 0 || m_nSelectedItem >= m_nFilteredCount ) {
-        return;
-    }
-        
-    int actualItemIndex = m_pFilteredIndices[m_nSelectedItem];
-    if( actualItemIndex < 0 || actualItemIndex >= m_nItemCount ) {
-        return;
-    }
-
-    StoreItem* pItem = &m_pItems[actualItemIndex];
-    
-    if( pItem->versions.empty() )
-    {
-        Drawing::DrawFilledRect( (uint32_t)COLOR_BG, 0, 0, (int)m_fScreenWidth, (int)m_fScreenHeight );
-        Font::DrawText( pItem->app.name.c_str(), (uint32_t)COLOR_WHITE, 20, 20 );
-        Font::DrawText( "No versions available.", (uint32_t)COLOR_TEXT_GRAY, 20, 60 );
-        Font::DrawText( "B: Back", (uint32_t)COLOR_WHITE, 20, (int)(m_fScreenHeight - 40.0f) );
-        return;
-    }
-    
-    // Clamp selected version
-    if( pItem->nSelectedVersion >= (int)pItem->versions.size() ) {
-        pItem->nSelectedVersion = 0;
-    }
-
-    VersionItem* pCurrentVersion = &pItem->versions[pItem->nSelectedVersion];
-
-    // Calculate layout
-    float sidebarW = m_fScreenWidth * 0.30f;
-    if( sidebarW < 200.0f ) sidebarW = 200.0f;
-    if( sidebarW > 280.0f ) sidebarW = 280.0f;
-    
-    float contentW = m_fScreenWidth - sidebarW;
-    float actionBarH = 70.0f;
-    
-    // MODE 1: Viewing specific version detail (like single app)
-    if( pItem->bViewingVersionDetail )
-    {
-        // Left content area
-        Drawing::DrawFilledRect( (uint32_t)COLOR_BG, 0, 0, (int)contentW, (int)m_fScreenHeight );
-        
-        // App title and version
-        std::string szTitle = String::Format( "%s v%s", pItem->app.name.c_str(), pCurrentVersion->version.c_str() );
-        Font::DrawText( szTitle.c_str(), (uint32_t)COLOR_WHITE, 20, 20 );
-        Font::DrawText( pItem->app.author.c_str(), (uint32_t)COLOR_TEXT_GRAY, 20, 40 );
-        
-        // Screenshot
-        float screenshotY = 70.0f;
-        float screenshotH = m_fScreenHeight * 0.45f;
-        Drawing::DrawFilledRect( (uint32_t)COLOR_CARD_BG, (int)20.0f, (int)screenshotY, (int)(contentW - 40.0f), (int)screenshotH );
-        if( pItem->pScreenshot ) {
-            Drawing::DrawTexturedRect( (D3DTexture*)pItem->pScreenshot, (int)20.0f, (int)screenshotY, (int)(contentW - 40.0f), (int)screenshotH );
-        }
-        float descY = screenshotY + screenshotH + 20.0f;
-        
-        // Description
-        Font::DrawText( "Description:", (uint32_t)COLOR_TEXT_GRAY, 20, (int)descY );
-        descY += 25.0f;
-        Font::DrawText( pItem->app.description.c_str(), (uint32_t)COLOR_WHITE, 20, (int)descY );
-        descY += 50.0f;
-        
-        if( !pCurrentVersion->changeLog.empty() && pCurrentVersion->changeLog != "No changelog available" )
-        {
-            Font::DrawText( "What's New:", (uint32_t)COLOR_TEXT_GRAY, 20, (int)descY );
-            descY += 25.0f;
-            Font::DrawText( pCurrentVersion->changeLog.c_str(), (uint32_t)COLOR_WHITE, 20, (int)descY );
-        }
-        
-        // Right sidebar - Version metadata
-        float sidebarX = contentW;
-        Drawing::DrawFilledRect( (uint32_t)COLOR_PRIMARY, (int)sidebarX, 0, (int)sidebarW, (int)(m_fScreenHeight - actionBarH) );
-        
-        float metaY = 20.0f;
-        Font::DrawText( "Version:", (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
-        metaY += 20.0f;
-        Font::DrawText( pCurrentVersion->version.c_str(), (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
-        metaY += 40.0f;
-        
-        if( !pCurrentVersion->releaseDate.empty() )
-        {
-            Font::DrawText( "Released:", (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
-            metaY += 20.0f;
-            Font::DrawText( pCurrentVersion->releaseDate.c_str(), (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
-            metaY += 40.0f;
-        }
-        
-        Font::DrawText( "Size:", (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
-        metaY += 20.0f;
-        Font::DrawText( String::Format( "%.1f MB", pCurrentVersion->size / (1024.0f * 1024.0f) ).c_str(), (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
-        metaY += 40.0f;
-        
-        if( !pCurrentVersion->titleId.empty() )
-        {
-            Font::DrawText( "Title ID:", (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
-            metaY += 20.0f;
-            Font::DrawText( pCurrentVersion->titleId.c_str(), (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
-            metaY += 40.0f;
-        }
-        
-        if( !pCurrentVersion->region.empty() )
-        {
-            Font::DrawText( "Region:", (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
-            metaY += 20.0f;
-            Font::DrawText( pCurrentVersion->region.c_str(), (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
-            metaY += 40.0f;
-        }
-        
-        uint32_t displayState = GetDisplayState( pItem, pItem->nSelectedVersion );
-        const char* statusText;
-        DWORD statusColor;
-        switch( displayState )
-        {
-            case 2: statusText = "INSTALLED"; statusColor = COLOR_SUCCESS; break;
-            case 1: statusText = "DOWNLOADED"; statusColor = COLOR_DOWNLOAD; break;
-            case 3: statusText = "UPDATE"; statusColor = 0xFFFF9800; break;
-            default: statusText = "NOT DOWNLOADED"; statusColor = COLOR_TEXT_GRAY; break;
-        }
-        Font::DrawText( "Status:", (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
-        metaY += 20.0f;
-        Font::DrawText( statusText, (uint32_t)statusColor, (int)(sidebarX + 15.0f), (int)metaY );
-        metaY += 40.0f;
-        
-        // Show install path if installed
-        //if( pCurrentVersion->state == 2 && !pCurrentVersion->install_path.empty() )
-        //{
-        //    Font::DrawText( "Installed:", (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
-        //    metaY += 20.0f;
-        //    
-        //    // Wrap path if too long - show last part
-        //    const char* pathToShow = pCurrentVersion->install_path.c_str();
-        //    if( strlen( pathToShow ) > 20 )
-        //    {
-        //        // Show "E:\Apps\..." format
-        //        std::string shortPath = String::Format( "...%s", pathToShow + strlen(pathToShow) - 15 );
-        //        Font::DrawText( shortPath.c_str(), (uint32_t)COLOR_TEXT_GRAY, (int)(sidebarX + 15.0f), (int)metaY );
-        //    }
-        //    else
-        //    {
-        //        Font::DrawText( pathToShow, (uint32_t)COLOR_TEXT_GRAY, (int)(sidebarX + 15.0f), (int)metaY );
-        //    }
-        //    metaY += 40.0f;
-        //}
-        
-        // Action buttons - use ACTUAL state for buttons, not display state
-        float actionBarY = m_fScreenHeight - actionBarH;
-        Drawing::DrawFilledRect( (uint32_t)COLOR_SECONDARY, 0, (int)actionBarY, (int)m_fScreenWidth, (int)actionBarH );
-        
-        float btnY = actionBarY + 15.0f;
-        float btnH = 40.0f;
-        float btnSpacing = 20.0f;
-        float btnStartX = 40.0f;
-        
-        // Use actual state for buttons (not displayState which shows UPDATE)
-        int actualState = 0;// pCurrentVersion->state;
-        
-        switch( actualState )
-        {
-            case 0: // NOT_DOWNLOADED
-            {
-                float btnW = (m_fScreenWidth - btnStartX * 2 - btnSpacing) / 2.0f;
-                Drawing::DrawFilledRect( (uint32_t)COLOR_DOWNLOAD, (int)btnStartX, (int)btnY, (int)btnW, (int)btnH );
-                Font::DrawText( "(A) Download", (uint32_t)COLOR_WHITE, (int)(btnStartX + 20.0f), (int)(btnY + 12.0f) );
-                Drawing::DrawFilledRect( (uint32_t)COLOR_CARD_BG, (int)(btnStartX + btnW + btnSpacing), (int)btnY, (int)btnW, (int)btnH );
-                Font::DrawText( "(B) Back", (uint32_t)COLOR_WHITE, (int)(btnStartX + btnW + btnSpacing + 40.0f), (int)(btnY + 12.0f) );
-                break;
-            }
-            case 1: // DOWNLOADED
-            {
-                float btnW = (m_fScreenWidth - btnStartX * 2 - btnSpacing * 2) / 3.0f;
-                Drawing::DrawFilledRect( (uint32_t)COLOR_SUCCESS, (int)btnStartX, (int)btnY, (int)btnW, (int)btnH );
-                Font::DrawText( "(A) Install", (uint32_t)COLOR_WHITE, (int)(btnStartX + 15.0f), (int)(btnY + 12.0f) );
-                Drawing::DrawFilledRect( (uint32_t)0xFF9E9E9E, (int)(btnStartX + btnW + btnSpacing), (int)btnY, (int)btnW, (int)btnH );
-                Font::DrawText( "(X) Delete", (uint32_t)COLOR_WHITE, (int)(btnStartX + btnW + btnSpacing + 15.0f), (int)(btnY + 12.0f) );
-                Drawing::DrawFilledRect( (uint32_t)COLOR_CARD_BG, (int)(btnStartX + (btnW + btnSpacing) * 2), (int)btnY, (int)btnW, (int)btnH );
-                Font::DrawText( "(B) Back", (uint32_t)COLOR_WHITE, (int)(btnStartX + (btnW + btnSpacing) * 2 + 20.0f), (int)(btnY + 12.0f) );
-                break;
-            }
-            case 2: // INSTALLED
-            {
-                // If this is an old version (displayState shows UPDATE), show Launch + Uninstall
-                // If this is latest version, show Launch + Uninstall
-                float btnW = (m_fScreenWidth - btnStartX * 2 - btnSpacing * 2) / 3.0f;
-                Drawing::DrawFilledRect( (uint32_t)COLOR_SUCCESS, (int)btnStartX, (int)btnY, (int)btnW, (int)btnH );
-                Font::DrawText( "(A) Launch", (uint32_t)COLOR_WHITE, (int)(btnStartX + 15.0f), (int)(btnY + 12.0f) );
-                Drawing::DrawFilledRect( (uint32_t)0xFFD32F2F, (int)(btnStartX + btnW + btnSpacing), (int)btnY, (int)btnW, (int)btnH );
-                Font::DrawText( "(X) Uninstall", (uint32_t)COLOR_WHITE, (int)(btnStartX + btnW + btnSpacing + 8.0f), (int)(btnY + 12.0f) );
-                Drawing::DrawFilledRect( (uint32_t)COLOR_CARD_BG, (int)(btnStartX + (btnW + btnSpacing) * 2), (int)btnY, (int)btnW, (int)btnH );
-                Font::DrawText( "(B) Back", (uint32_t)COLOR_WHITE, (int)(btnStartX + (btnW + btnSpacing) * 2 + 20.0f), (int)(btnY + 12.0f) );
-                break;
-            }
-        }
-        
-        return; // Done with single version detail view
-    }
-    
-    // MODE 2: Version list view (for multiple versions)
-    Drawing::DrawFilledRect( (uint32_t)COLOR_BG, 0, 0, (int)contentW, (int)m_fScreenHeight );
-    
-    Font::DrawText( pItem->app.name.c_str(), (uint32_t)COLOR_WHITE, 20, 20 );
-    Font::DrawText( pItem->app.author.c_str(), (uint32_t)COLOR_TEXT_GRAY, 20, 40 );
-    
-    // Screenshot
-    float screenshotY = 70.0f;
-    float screenshotH = m_fScreenHeight * 0.30f;
-    Drawing::DrawFilledRect( (uint32_t)COLOR_CARD_BG, (int)20.0f, (int)screenshotY, (int)(contentW - 40.0f), (int)screenshotH );
-    if( pItem->pScreenshot ) {
-        Drawing::DrawTexturedRect( (D3DTexture*)pItem->pScreenshot, (int)20.0f, (int)screenshotY, (int)(contentW - 40.0f), (int)screenshotH );
-    }
-    float contentY = screenshotY + screenshotH + 20.0f;
-
-    Font::DrawText( "Description:", (uint32_t)COLOR_TEXT_GRAY, (int)20.0f, (int)contentY );
-    contentY += 25.0f;
-    Font::DrawText( pItem->app.description.c_str(), (uint32_t)COLOR_WHITE, (int)20.0f, (int)contentY );
-    contentY += 50.0f;
-    
-    if( pItem->versions.size() > 1 )
-    {
-        Font::DrawText( "Available Versions (UP/DOWN to browse, A to view):", (uint32_t)COLOR_TEXT_GRAY, (int)20.0f, (int)contentY );
-        contentY += 30.0f;
-        
-        // Calculate visible items (max 3-4 depending on space)
-        int maxVisible = 3;
-        
-        // Adjust scroll offset
-        if( pItem->nSelectedVersion < pItem->nVersionScrollOffset ) {
-            pItem->nVersionScrollOffset = pItem->nSelectedVersion;
-        }
-        if( pItem->nSelectedVersion >= pItem->nVersionScrollOffset + maxVisible ) {
-            pItem->nVersionScrollOffset = pItem->nSelectedVersion - maxVisible + 1;
-        }
-        
-        // Show "More above" indicator BEFORE the list
-        if( pItem->nVersionScrollOffset > 0 )
-        {
-            Font::DrawText( "^ More above", (uint32_t)COLOR_TEXT_GRAY, (int)30.0f, (int)contentY );
-            contentY += 20.0f;
-        }
-        
-        float listStartY = contentY;
-        
-        // Draw visible versions
-        for( int i = 0; i < maxVisible && (i + pItem->nVersionScrollOffset) < (int)pItem->versions.size(); i++ )
-        {
-            int vIdx = i + pItem->nVersionScrollOffset;
-            VersionItem* pVer = &pItem->versions[vIdx];
-            BOOL bSelected = (vIdx == pItem->nSelectedVersion);
-            
-            float itemH = 55.0f;
-            DWORD bgColor = bSelected ? COLOR_PRIMARY : COLOR_CARD_BG;
-            
-            Drawing::DrawFilledRect( (uint32_t)bgColor, (int)20.0f, (int)contentY, (int)(contentW - 40.0f), (int)itemH );
-            
-            std::string szVer = String::Format( "v%s", pVer->version.c_str() );
-            Font::DrawText( szVer.c_str(), (uint32_t)COLOR_WHITE, (int)30.0f, (int)(contentY + 8.0f) );
-            
-            if( !pVer->releaseDate.empty() )
-                Font::DrawText( pVer->releaseDate.c_str(), (uint32_t)COLOR_TEXT_GRAY, (int)30.0f, (int)(contentY + 28.0f) );
-            
-            std::string szSize = String::Format( "%.1f MB", pVer->size / (1024.0f * 1024.0f) );
-            Font::DrawText( szSize.c_str(), (uint32_t)COLOR_WHITE, (int)(contentW - 120.0f), (int)(contentY + 18.0f) );
-            
-            //if( pVer->state == STATE_INSTALLED )
-            //{
-            //    Font::DrawText( "INSTALLED", (uint32_t)COLOR_SUCCESS, (int)(contentW - 220.0f), (int)(contentY + 18.0f) );
-            //}
-            //else if( pVer->state == STATE_DOWNLOADED )
-            //{
-            //    Font::DrawText( "DOWNLOADED", (uint32_t)COLOR_DOWNLOAD, (int)(contentW - 240.0f), (int)(contentY + 18.0f) );
-            //}
-            
-            contentY += itemH + 5.0f;
-        }
-        
-        // Show "More below" indicator AFTER the list
-        if( pItem->nVersionScrollOffset + maxVisible < (int)pItem->versions.size() )
-        {
-            Font::DrawText( "v More below", (uint32_t)COLOR_TEXT_GRAY, (int)30.0f, (int)(contentY + 5.0f) );
-        }
-    }
-    
-    // Right sidebar
-    float sidebarX = contentW;
-    Drawing::DrawFilledRect( (uint32_t)COLOR_PRIMARY, (int)sidebarX, 0, (int)sidebarW, (int)(m_fScreenHeight - actionBarH) );
-    
-    float metaY = 20.0f;
-    Font::DrawText( "Title:", (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
-    metaY += 20.0f;
-    Font::DrawText( pItem->app.name.c_str(), (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
-    metaY += 40.0f;
-    
-    Font::DrawText( "Author:", (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
-    metaY += 20.0f;
-    Font::DrawText( pItem->app.author.c_str(), (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
-    metaY += 40.0f;
-    
-    Font::DrawText( String::Format( "%u version(s)", (unsigned)pItem->versions.size() ).c_str(), (uint32_t)COLOR_TEXT_GRAY, (int)(sidebarX + 15.0f), (int)metaY );
-    
-    // Bottom bar
-    float actionBarY = m_fScreenHeight - actionBarH;
-    Drawing::DrawFilledRect( (uint32_t)COLOR_SECONDARY, 0, (int)actionBarY, (int)m_fScreenWidth, (int)actionBarH );
-    Font::DrawText( "(A) View Version  (B) Back to Grid", (uint32_t)COLOR_WHITE, (int)40.0f, (int)(actionBarY + 25.0f) );
-}
-
-//-----------------------------------------------------------------------------
-// RenderDownloading - Download progress screen (Switch-style)
-//-----------------------------------------------------------------------------
-void Store::RenderDownloading( LPDIRECT3DDEVICE8 pd3dDevice )
-{
-    // Title bar
-    Drawing::DrawFilledRect( (uint32_t)COLOR_PRIMARY, 0, 0, (int)m_fScreenWidth, 60 );
-    Font::DrawText( "DOWNLOADING", (uint32_t)COLOR_WHITE, 20, 20 );
-
-    // Center panel
-    float panelW = m_fScreenWidth * 0.7f;
-    if( panelW > 500.0f ) panelW = 500.0f;
-    float panelH = 200.0f;
-    float panelX = (m_fScreenWidth - panelW) / 2.0f;
-    float panelY = (m_fScreenHeight - panelH) / 2.0f;
-    
-    Drawing::DrawFilledRect( (uint32_t)COLOR_CARD_BG, (int)panelX, (int)panelY, (int)panelW, (int)panelH );
-    
-    Font::DrawText( m_downloadAppName.c_str(), (uint32_t)COLOR_WHITE, (int)(panelX + 20.0f), (int)(panelY + 20.0f) );
-    
-    float barY = panelY + 80.0f;
-    float barW = panelW - 40.0f;
-    Drawing::DrawFilledRect( (uint32_t)COLOR_SECONDARY, (int)(panelX + 20.0f), (int)barY, (int)barW, 30 );
-    float pct = (m_downloadTotal > 0) ? (float)m_downloadNow / (float)m_downloadTotal : 0.0f;
-    if( pct > 1.0f ) pct = 1.0f;
-    Drawing::DrawFilledRect( (uint32_t)COLOR_DOWNLOAD, (int)(panelX + 22.0f), (int)(barY + 2.0f), (int)((barW - 4.0f) * pct), 26 );
-    
-    if( m_downloadDone )
-    {
-        Font::DrawText( m_downloadSuccess ? "Complete" : "Failed", (uint32_t)(m_downloadSuccess ? COLOR_SUCCESS : COLOR_NEW), (int)(panelX + 20.0f), (int)(barY + 50.0f) );
-        Font::DrawText( "B: Back", (uint32_t)COLOR_TEXT_GRAY, (int)(panelX + 20.0f), (int)(barY + 70.0f) );
-    }
-    else
-    {
-        Font::DrawText( String::Format( "%u%%", m_downloadTotal > 0 ? (unsigned)( pct * 100.0f ) : 0u ).c_str(), (uint32_t)COLOR_WHITE, (int)(panelX + 20.0f), (int)(barY + 50.0f) );
-        Font::DrawText( String::Format( "%u KB / %u KB", (unsigned)( m_downloadNow / 1024 ), (unsigned)( m_downloadTotal / 1024 ) ).c_str(), (uint32_t)COLOR_TEXT_GRAY, (int)(panelX + 20.0f), (int)(barY + 70.0f) );
-        Font::DrawText( "B: Cancel", (uint32_t)COLOR_TEXT_GRAY, (int)(panelX + 20.0f), (int)(barY + 95.0f) );
-    }
-}
-
-//-----------------------------------------------------------------------------
-// RenderSettings - Settings screen (Switch-style)
-//-----------------------------------------------------------------------------
-void Store::RenderSettings( LPDIRECT3DDEVICE8 pd3dDevice )
-{
-    // Title bar
-    Drawing::DrawFilledRect( (uint32_t)COLOR_PRIMARY, 0, 0, (int)m_fScreenWidth, 60 );
-    Font::DrawText( "SETTINGS", (uint32_t)COLOR_WHITE, 20, 20 );
-
-    // Menu items
-    float itemY = 100.0f;
-    float itemH = 50.0f;
-    float itemW = m_fScreenWidth - 80.0f;
-    
-    // Network Settings
-    Drawing::DrawFilledRect( (uint32_t)COLOR_CARD_BG, (int)40.0f, (int)itemY, (int)itemW, (int)itemH );
-    Font::DrawText( "Network Settings", (uint32_t)COLOR_WHITE, (int)60.0f, (int)(itemY + 15.0f) );
-    itemY += itemH + 10.0f;
-    
-    // Storage Management
-    Drawing::DrawFilledRect( (uint32_t)COLOR_CARD_BG, (int)40.0f, (int)itemY, (int)itemW, (int)itemH );
-    Font::DrawText( "Storage Management", (uint32_t)COLOR_WHITE, (int)60.0f, (int)(itemY + 15.0f) );
-    itemY += itemH + 10.0f;
-    
-    // About
-    Drawing::DrawFilledRect( (uint32_t)COLOR_CARD_BG, (int)40.0f, (int)itemY, (int)itemW, (int)itemH );
-    Font::DrawText( "About", (uint32_t)COLOR_WHITE, (int)60.0f, (int)(itemY + 15.0f) );
-
-    // Bottom bar
-    Drawing::DrawFilledRect( (uint32_t)COLOR_SECONDARY, 0, (int)(m_fScreenHeight - 50.0f), (int)m_fScreenWidth, 50 );
-    Font::DrawText( "B: Back", (uint32_t)COLOR_WHITE, (int)20.0f, (int)(m_fScreenHeight - 30.0f) );
-}
-
-//-----------------------------------------------------------------------------
-// DetectResolution - Get the current display mode resolution
-//-----------------------------------------------------------------------------
-void Store::DetectResolution( LPDIRECT3DDEVICE8 pd3dDevice )
-{
-    D3DPRESENT_PARAMETERS pp;
-    ZeroMemory( &pp, sizeof(pp) );
-    
-    // Get current backbuffer dimensions
-    LPDIRECT3DSURFACE8 pBackBuffer = NULL;
-    if( SUCCEEDED( pd3dDevice->GetBackBuffer( 0, D3DBACKBUFFER_TYPE_MONO, &pBackBuffer ) ) )
-    {
-        D3DSURFACE_DESC desc;
-        if( SUCCEEDED( pBackBuffer->GetDesc( &desc ) ) )
-        {
-            m_fScreenWidth = (float)desc.Width;
-            m_fScreenHeight = (float)desc.Height;
-            
-            OutputDebugString( String::Format( "Detected resolution: %.0fx%.0f\n", m_fScreenWidth, m_fScreenHeight ).c_str() );
-        }
-        pBackBuffer->Release();
-    }
-    
-    // Fallback to common Xbox resolutions if detection failed
-    if( m_fScreenWidth < 100.0f )
-    {
-        m_fScreenWidth = 640.0f;
-        m_fScreenHeight = 480.0f;
-        OutputDebugString( "Using default 640x480 resolution\n" );
-    }
-}
-
-//-----------------------------------------------------------------------------
-// CalculateLayout - Calculate dynamic layout based on resolution
-//-----------------------------------------------------------------------------
-void Store::CalculateLayout()
-{
-    // Sidebar width scales with resolution
-    m_fSidebarWidth = m_fScreenWidth * 0.25f;  // 25% of screen width
-    if( m_fSidebarWidth < 180.0f ) m_fSidebarWidth = 180.0f;
-    if( m_fSidebarWidth > 250.0f ) m_fSidebarWidth = 250.0f;
-    
-    // Calculate grid dimensions
-    float contentWidth = m_fScreenWidth - m_fSidebarWidth - 80.0f; // Minus margins
-    float contentHeight = m_fScreenHeight - 170.0f; // Minus header and footer
-    
-    // Determine grid layout based on resolution
-    if( m_fScreenWidth >= 1280.0f )
-    {
-        // HD resolutions: 4x2 grid
-        m_nGridCols = 4;
-        m_nGridRows = 2;
-    }
-    else if( m_fScreenWidth >= 1024.0f )
-    {
-        // 1024x768: 3x2 grid
-        m_nGridCols = 3;
-        m_nGridRows = 2;
-    }
-    else if( m_fScreenWidth >= 720.0f )
-    {
-        // 720p: 3x2 grid
-        m_nGridCols = 3;
-        m_nGridRows = 2;
-    }
-    else
-    {
-        // 480p/640x480: 2x2 grid
-        m_nGridCols = 2;
-        m_nGridRows = 2;
-    }
-    
-    // Calculate card size based on available space
-    float cardSpacing = 20.0f;
-    m_fCardWidth = (contentWidth - (m_nGridCols + 1) * cardSpacing) / m_nGridCols;
-    m_fCardHeight = (contentHeight - (m_nGridRows + 1) * cardSpacing) / m_nGridRows;
-    
-    // Set grid starting position
-    m_fGridStartX = m_fSidebarWidth + 40.0f;
-    m_fGridStartY = 100.0f;
-    
-    OutputDebugString( String::Format( "Layout: %dx%d grid, cards %.0fx%.0f, sidebar %.0f\n",
-             m_nGridCols, m_nGridRows, m_fCardWidth, m_fCardHeight, m_fSidebarWidth ).c_str() );
-}
-
-//-----------------------------------------------------------------------------
-// DrawAppCard - Draw a single app card (Switch-style, dynamic size)
-//-----------------------------------------------------------------------------
-void Store::DrawAppCard( LPDIRECT3DDEVICE8 pd3dDevice, StoreItem* pItem, float x, float y, BOOL bSelected )
-{
-    // Card background - normal color always
-    DWORD cardColor = bSelected ? COLOR_SECONDARY : COLOR_CARD_BG;
-    Drawing::DrawFilledRect( (uint32_t)cardColor, (int)x, (int)y, (int)m_fCardWidth, (int)m_fCardHeight );
-    
-    // Selection highlight border
-    if( bSelected )
-    {
-        Drawing::DrawFilledRect( (uint32_t)COLOR_PRIMARY, (int)(x - 3), (int)(y - 3), (int)(m_fCardWidth + 6), (int)(m_fCardHeight + 6) );
-        Drawing::DrawFilledRect( (uint32_t)cardColor, (int)x, (int)y, (int)m_fCardWidth, (int)m_fCardHeight );
-    }
-    
-    // App icon/thumbnail area (square, as large as possible)
-    float thumbSize = m_fCardWidth - 20.0f;
-    if( thumbSize > m_fCardHeight - 60.0f ) // Leave room for text
-        thumbSize = m_fCardHeight - 60.0f;
-    
-    Drawing::DrawFilledRect( (uint32_t)COLOR_BG, (int)(x + 10), (int)(y + 10), (int)thumbSize, (int)thumbSize );
-    if( pItem->pIcon ) {
-        Drawing::DrawTexturedRect( (D3DTexture*)pItem->pIcon, (int)(x + 10), (int)(y + 10), (int)thumbSize, (int)thumbSize );
-    }
-
-    // Status badge (top-right corner) - RED if new, otherwise varies by state
-    DWORD badgeColor;
-  
-    if( pItem->app.state == STATE_NEW )
-    {
-        // NEW items get bright red badge
-        badgeColor = COLOR_NEW;
-    }
-    else
-    {
-        // Normal state colors - use display state for update detection
-        uint32_t state = (!pItem->versions.empty()) ? GetDisplayState( pItem, 0 ) : 0;
-        
-        switch( state )
-        {
-            case STATE_INSTALLED: // STATE_INSTALLED
-                badgeColor = COLOR_SUCCESS; // Green checkmark
-                break;
-            case STATE_DOWNLOADED: // STATE_DOWNLOADED
-                badgeColor = COLOR_DOWNLOAD; // Blue - ready to install
-                break;
-            case STATE_NOT_DOWNLOADED: // STATE_UPDATE_AVAILABLE
-                badgeColor = 0xFFFF9800; // Orange - update available
-                break;
-            default: // STATE_NOT_DOWNLOADED
-                badgeColor = COLOR_TEXT_GRAY; // Gray - not downloaded
-                break;
-        }
-    }
-    Drawing::DrawFilledRect( (uint32_t)badgeColor, (int)(x + m_fCardWidth - 35), (int)(y + 10), 25, 25 );
-
-    // App name below thumbnail
-    Font::DrawText( pItem->app.name.c_str(), (uint32_t)COLOR_WHITE, (int)(x + 10), (int)(y + thumbSize + 15) );
-    
-    if( m_fCardHeight > 180.0f )
-    {
-        Font::DrawText( pItem->app.author.c_str(), (uint32_t)COLOR_TEXT_GRAY, (int)(x + 10), (int)(y + thumbSize + 35) );
-    }
-}
-
-//-----------------------------------------------------------------------------
-// HandleInput - Process controller input
-//-----------------------------------------------------------------------------
-void Store::HandleInput()
-{
-    // Get input from all gamepads
-    XBInput_GetInput( m_pGamepads );
-    
-    // Use gamepad 0
-    XBGAMEPAD* pGamepad = &m_pGamepads[0];
-    
-    // Get pressed buttons (buttons that just went down this frame)
-    WORD wPressed = pGamepad->wPressedButtons;
-
-    if( m_CurrentState == UI_MAIN_GRID )
-    {
-        // Left trigger - previous category
-        if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_LEFT_TRIGGER] )
-        {
-            m_nSelectedCategory--;
-            if( m_nSelectedCategory < 0 ) { m_nSelectedCategory = (int)m_aCategories.size() - 1; }
-            m_nSelectedItem = 0;
-            const char* catFilter = ( m_nSelectedCategory == 0 ) ? "" : m_aCategories[m_nSelectedCategory].category.c_str();
-            LoadAppsPage( 1, catFilter );
-        }
-        
-        // Right trigger - next category
-        if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_RIGHT_TRIGGER] )
-        {
-            m_nSelectedCategory++;
-            if( m_nSelectedCategory >= (int)m_aCategories.size() ) { m_nSelectedCategory = 0; }
-            m_nSelectedItem = 0;
-            const char* catFilter = ( m_nSelectedCategory == 0 ) ? "" : m_aCategories[m_nSelectedCategory].category.c_str();
-            LoadAppsPage( 1, catFilter );
-        }
-        
-        // Navigate grid with D-pad (auto-load next/prev page when moving past edge)
-        const char* catFilter = ( m_nSelectedCategory == 0 ) ? "" : m_aCategories[m_nSelectedCategory].category.c_str();
-        if( wPressed & XINPUT_GAMEPAD_DPAD_LEFT )
-        {
-            if( m_nSelectedItem % m_nGridCols > 0 ) {
-                m_nSelectedItem--;
-            }
-        }
-        if( wPressed & XINPUT_GAMEPAD_DPAD_RIGHT )
-        {
-            if( m_nSelectedItem % m_nGridCols < m_nGridCols - 1 ) {
-                m_nSelectedItem++;
-            }
-        }
-        if( wPressed & XINPUT_GAMEPAD_DPAD_UP )
-        {
-            if( m_nSelectedItem >= m_nGridCols )
-            {
-                m_nSelectedItem -= m_nGridCols;
-            }
-            else if( m_nCurrentPage > 1 )
-            {
-                if( LoadAppsPage( m_nCurrentPage - 1, catFilter ) ) {
-                    m_nSelectedItem = m_nFilteredCount > 0 ? m_nFilteredCount - 1 : 0;
-                }
-            }
-            else
-            {
-                m_nSelectedItem = 0;
-            }
-        }
-        if( wPressed & XINPUT_GAMEPAD_DPAD_DOWN )
-        {
-            int nextRow = m_nSelectedItem + m_nGridCols;
-            if( nextRow < m_nFilteredCount )
-            {
-                m_nSelectedItem = nextRow;
-            }
-            else if( m_nCurrentPage < m_nTotalPages )
-            {
-                if( LoadAppsPage( m_nCurrentPage + 1, catFilter ) )
-                    m_nSelectedItem = 0;
-            }
-            else
-            {
-                m_nSelectedItem = m_nFilteredCount > 0 ? m_nFilteredCount - 1 : 0;
-            }
-        }
-
-        // A button - select item
-        if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_A] )
-        {
-            if( m_nSelectedItem >= 0 && m_nSelectedItem < m_nFilteredCount )
-            {
-                int actualItemIndex = m_pFilteredIndices[m_nSelectedItem];
-                if( actualItemIndex >= 0 && actualItemIndex < m_nItemCount )
-                {
-                    EnsureVersionsForItem( &m_pItems[actualItemIndex] );
-                    m_pItems[actualItemIndex].app.state = STATE_NONE;
-                    m_userState.UpdateFromStore( m_pItems, m_nItemCount );
-                    m_userState.Save( USER_STATE_PATH );
-                    StoreItem* pItem = &m_pItems[actualItemIndex];
-                    if( pItem->versions.size() == 1 ) {
-                        pItem->bViewingVersionDetail = TRUE;
-                        EnsureScreenshotForItem( pItem );
-                    } else {
-                        pItem->bViewingVersionDetail = FALSE;
-                        EnsureScreenshotForItem( pItem );
-                    }
-                }
-            }
-            m_CurrentState = UI_ITEM_DETAILS;
-        }
-
-        // Y button - settings
-        if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_Y] )
-        {
-            m_CurrentState = UI_SETTINGS;
-        }
-    }
-    else if( m_CurrentState == UI_ITEM_DETAILS )
-    {
-        // Get actual item index
-        if( m_nSelectedItem >= 0 && m_nSelectedItem < m_nFilteredCount )
-        {
-            int actualItemIndex = m_pFilteredIndices[m_nSelectedItem];
-            StoreItem* pItem = &m_pItems[actualItemIndex];
-            
-            // B button - back
-            if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_B] )
-            {
-                if( pItem->bViewingVersionDetail )
-                {
-                    // If single version, go back to grid
-                    // If multi version, go back to version list
-                    if( pItem->versions.size() == 1 )
-                    {
-                        m_CurrentState = UI_MAIN_GRID;
-                    }
-                    else
-                    {
-                        // Back to version list
-                        pItem->bViewingVersionDetail = FALSE;
-                    }
-                }
-                else
-                {
-                    // Back to grid
-                    m_CurrentState = UI_MAIN_GRID;
-                }
-            }
-            
-            // If viewing version detail, handle actions for that specific version
-            if( pItem->bViewingVersionDetail )
-            {
-                //VersionItem* pVer = &pItem->versions[pItem->nSelectedVersion];
-                //
-                //if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_A] )
-                //{
-                //    switch( pVer->state )
-                //    {
-                //        case STATE_NONE:
-                //            m_downloadVersionId = pVer->id;
-                //            m_downloadAppName = pItem->app.name;
-                //            m_downloadPath = "T:\\Apps\\" + pItem->app.name + ".zip";
-                //            m_downloadNow = 0;
-                //            m_downloadTotal = 0;
-                //            m_downloadDone = false;
-                //            m_downloadCancelRequested = false;
-                //            m_downloadThread = NULL;
-                //            m_CurrentState = UI_DOWNLOADING;
-                //            break; // Download
-                //        case STATE_DOWNLOADED:  // Install (this IS the update if newer version exists!)
-                //        {
-                //            // Generate install path: E:\Apps\AppName_Version
-                //            char appName[64];
-                //            // Remove spaces and special chars from app name
-                //            int j = 0;
-                //            for( const char* s = pItem->app.name.c_str(); *s && j < 63; s++ )
-                //            {
-                //                if( (*s >= 'A' && *s <= 'Z') || (*s >= 'a' && *s <= 'z') || (*s >= '0' && *s <= '9') )
-                //                    appName[j++] = *s;
-                //            }
-                //            appName[j] = '\0';
-                //            
-                //            // Remove dots from version for path
-                //            char verClean[16];
-                //            j = 0;
-                //            for( const char* s = pVer->version.c_str(); *s && j < 15; s++ )
-                //            {
-                //                if( *s != '.' && *s != ' ' ) {
-                //                    verClean[j++] = *s;
-                //                }
-                //            }
-                //            verClean[j] = '\0';
-                //            
-                //            // Create install path
-                //            pVer->install_path = "T:\\Apps\\";
-                //            pVer->install_path += appName;
-                //            pVer->install_path += "_";
-                //            pVer->install_path += verClean;
-                //            pVer->state = STATE_INSTALLED;
-                //            m_userState.UpdateFromStore( m_pItems, m_nItemCount );
-                //            m_userState.Save( USER_STATE_PATH );
-                //            OutputDebugString( String::Format( "Installed to: %s\n", pVer->install_path.c_str() ).c_str() );
-                //            break;
-                //        }
-                //        case 2: /* Launch */ break;
-                //    }
-                //}
-                
-                // X button - delete/uninstall
-                if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_X] )
-                {
-                    //if( pVer->state == STATE_DOWNLOADED || pVer->state == STATE_INSTALLED )
-                    //{
-                    //    pVer->install_path.clear();
-                    //    pVer->state = STATE_NONE;
-                    //    m_userState.UpdateFromStore( m_pItems, m_nItemCount );
-                    //    m_userState.Save( USER_STATE_PATH );
-                    //    
-                    //    OutputDebugString( "Uninstalled and deleted folder\n" );
-                    //}
-                }
-            }
-            // If viewing version list
-            else if( pItem->versions.size() > 1 )
-            {
-                if( wPressed & XINPUT_GAMEPAD_DPAD_UP )
-                {
-                    pItem->nSelectedVersion--;
-                    if( pItem->nSelectedVersion < 0 ) {
-                        pItem->nSelectedVersion = (int)pItem->versions.size() - 1;
-                    }
-                }
-                if( wPressed & XINPUT_GAMEPAD_DPAD_DOWN )
-                {
-                    pItem->nSelectedVersion++;
-                    if( pItem->nSelectedVersion >= (int)pItem->versions.size() ) {
-                        pItem->nSelectedVersion = 0;
-                    }
-                }
-                
-                // A button - view selected version details
-                if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_A] )
-                {
-                    pItem->bViewingVersionDetail = TRUE;
-                    EnsureScreenshotForItem( pItem );
-                }
-            }
-            // Single version - act immediately
-            else
-            {
-                VersionItem* pVer = &pItem->versions[0];
-                
-                /*if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_A] )
-                {
-                    switch( pVer->state )
-                    {
-                        case STATE_NONE:
-                            m_downloadVersionId = pVer->id;
-                            m_downloadAppName = pItem->app.name;
-                            m_downloadPath = "T:\\Apps\\" + pItem->app.name + ".zip";
-                            m_downloadNow = 0;
-                            m_downloadTotal = 0;
-                            m_downloadDone = false;
-                            m_downloadCancelRequested = false;
-                            m_downloadThread = NULL;
-                            m_CurrentState = UI_DOWNLOADING;
-                            break;
-                        case STATE_DOWNLOADED:
-                        {
-                            char appName[64];
-                            int j = 0;
-                            for( const char* s = pItem->app.name.c_str(); *s && j < 63; s++ )
-                            {
-                                if( (*s >= 'A' && *s <= 'Z') || (*s >= 'a' && *s <= 'z') || (*s >= '0' && *s <= '9') )
-                                    appName[j++] = *s;
-                            }
-                            appName[j] = '\0';
-                            char verClean[16];
-                            j = 0;
-                            for( const char* s = pVer->version.c_str(); *s && j < 15; s++ )
-                            {
-                                if( *s != '.' && *s != ' ' ) {
-                                    verClean[j++] = *s;
-                                }
-                            }
-                            verClean[j] = '\0';
-                            pVer->install_path = "T:\\Apps\\";
-                            pVer->install_path += appName;
-                            pVer->install_path += "_";
-                            pVer->install_path += verClean;
-                            pVer->state = STATE_INSTALLED;
-                            m_userState.UpdateFromStore( m_pItems, m_nItemCount );
-                            m_userState.Save( USER_STATE_PATH );
-                            break;
-                        }
-                        case 2: break;
-                    }*/
-                //}
-                
-                if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_X] )
-                {
-                    //if( pVer->state == STATE_DOWNLOADED || pVer->state == STATE_INSTALLED )
-                    //{
-                    //    pVer->install_path.clear();
-                    //    pVer->state = STATE_NONE;
-                    //    m_userState.UpdateFromStore( m_pItems, m_nItemCount );
-                    //    m_userState.Save( USER_STATE_PATH );
-                    //}
-                }
-            }
-        }
-    }
-    else if( m_CurrentState == UI_DOWNLOADING )
-    {
-        if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_B] )
-        {
-            if( m_downloadDone )
-            {
-                if( m_downloadThread != NULL )
-                {
-                    WaitForSingleObject( m_downloadThread, INFINITE );
-                    CloseHandle( m_downloadThread );
-                    m_downloadThread = NULL;
-                }
-                if( m_downloadSuccess && m_nSelectedItem >= 0 && m_nSelectedItem < m_nFilteredCount )
-                {
-                    int actualItemIndex = m_pFilteredIndices[m_nSelectedItem];
-                    if( actualItemIndex >= 0 && actualItemIndex < m_nItemCount )
-                    {
-                        StoreItem* pItem = &m_pItems[actualItemIndex];
-                        if( pItem->nSelectedVersion >= 0 && pItem->nSelectedVersion < (int)pItem->versions.size() )
-                        {
-                            //pItem->versions[pItem->nSelectedVersion].state = STATE_DOWNLOADED;
-                            //m_userState.UpdateFromStore( m_pItems, m_nItemCount );
-                            //m_userState.Save( USER_STATE_PATH );
-                        }
-                    }
-                }
-                m_CurrentState = UI_ITEM_DETAILS;
-            }
-            else
-                m_downloadCancelRequested = true;
-        }
-    }
-    else if( m_CurrentState == UI_SETTINGS )
-    {
-        // B button - back
-        if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_B] )
-        {
-            m_CurrentState = UI_MAIN_GRID;
-        }
-    }
-}

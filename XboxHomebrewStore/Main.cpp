@@ -12,6 +12,9 @@
 #include "Font.h"
 #include "Debug.h"
 #include "String.h"
+#include "Context.h"
+#include "Scenes/SceneManager.h"
+#include "Scenes/StoreScene.h"
 
 static void CoverDownloadProgress(uint32_t dlNow, uint32_t dlTotal, void* userData)
 {
@@ -24,9 +27,10 @@ static void CoverDownloadProgress(uint32_t dlNow, uint32_t dlTotal, void* userDa
 //-----------------------------------------------------------------------------
 // Global variables
 //-----------------------------------------------------------------------------
-LPDIRECT3D8             g_pD3D       = NULL;
-LPDIRECT3DDEVICE8       g_pd3dDevice = NULL;
-Store*                  g_pStore     = NULL;
+LPDIRECT3D8             g_pD3D          = NULL;
+LPDIRECT3DDEVICE8       g_pd3dDevice    = NULL;
+Store*                  g_pStore        = NULL;
+SceneManager*           g_pSceneManager = NULL;
 
 //-----------------------------------------------------------------------------
 // DeleteImageCache() - Remove all files in T:\Cache\Covers and T:\Cache\Screenshots
@@ -130,11 +134,21 @@ d3dpp.FullScreen_PresentationInterval = D3DPRESENT_INTERVAL_ONE;
 //-----------------------------------------------------------------------------
 VOID Cleanup()
 {
+    if( g_pSceneManager != NULL )
+    {
+        while( g_pSceneManager->HasScene() ) {
+            g_pSceneManager->PopScene();
+        }
+        delete g_pSceneManager;
+        g_pSceneManager = NULL;
+    }
     if( g_pStore != NULL )
     {
         delete g_pStore;
         g_pStore = NULL;
     }
+    Context::SetDevice( NULL );
+    Context::SetSceneManager( NULL );
 
     if( g_pd3dDevice != NULL )
     {
@@ -162,11 +176,9 @@ VOID Render()
     // Begin the scene
     if( SUCCEEDED( g_pd3dDevice->BeginScene() ) )
     {
-        // Render the store UI
-        if( g_pStore )
-            g_pStore->Render( g_pd3dDevice );
+        if( g_pSceneManager && g_pSceneManager->HasScene() )
+            g_pSceneManager->Render( g_pd3dDevice );
 
-        // End the scene
         g_pd3dDevice->EndScene();
     }
 
@@ -232,6 +244,12 @@ VOID __cdecl main()
 
  
 
+    Context::SetDevice( g_pd3dDevice );
+    Context::SetScreenSize( 1280, 720 );
+
+    g_pSceneManager = new SceneManager();
+    Context::SetSceneManager( g_pSceneManager );
+
     // Initialize the store
     g_pStore = new Store();
     if( FAILED( g_pStore->Initialize( g_pd3dDevice ) ) )
@@ -241,15 +259,13 @@ VOID __cdecl main()
         return;
     }
 
+    g_pSceneManager->PushScene( new StoreScene( g_pStore ) );
+
     OutputDebugString( "Xbox Homebrew Store initialized successfully!\n" );
 
-    // Enter the message loop
     while( TRUE )
     {
-        // Update store logic (handle input, etc)
-        g_pStore->Update();
-
-        // Render the scene
+        g_pSceneManager->Update();
         Render();
     }
 
