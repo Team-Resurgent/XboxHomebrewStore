@@ -11,8 +11,8 @@
 #include <string.h>
 
 // Colors - Modern clean theme inspired by Switch store
-#define COLOR_PRIMARY       0xFFE91E63  // Pink/Red accent
-#define COLOR_SECONDARY     0xFF424242  // Dark gray
+#define COLOR_PRIMARY       0xFFD81B60  // Reddish-pink: top bar and right side panels
+#define COLOR_SECONDARY     0xFF424242  // Dark gray: bottom action bars only
 #define COLOR_BG            0xFF212121  // Very dark gray
 #define COLOR_CARD_BG       0xFF303030  // Card background
 #define COLOR_WHITE         0xFFFFFFFF
@@ -20,8 +20,8 @@
 #define COLOR_SUCCESS       0xFF4CAF50  // Green for installed
 #define COLOR_DOWNLOAD      0xFF2196F3  // Blue for download
 #define COLOR_NEW           0xFFFF1744  // Bright red for NEW items
-#define COLOR_SIDEBAR       0xFFD81B60  // Sidebar pink
-#define COLOR_SIDEBAR_HOVER 0xFFC2185B  // Darker pink for selected
+#define COLOR_SIDEBAR       0xFFD81B60  // Reddish-pink: left category sidebar (matches primary)
+#define COLOR_SIDEBAR_HOVER 0xFFAD1457  // Darker pink for selected category
 
 // File paths
 #define USER_STATE_PATH     "T:\\user_state.json"

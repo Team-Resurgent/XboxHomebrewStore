@@ -332,6 +332,5 @@ void Drawing::DrawFont(BitmapFont* font, const char* message, uint32_t color, in
         offset += batchVerts;
     }
 
- //   mD3dDevice->EndScene();
-	//mD3dDevice->Present(NULL, NULL, NULL, NULL);
+    mD3dDevice->SetTexture(0, NULL);
 }
