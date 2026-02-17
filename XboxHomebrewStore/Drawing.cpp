@@ -191,145 +191,66 @@ bool Drawing::TryGenerateBitmapFont(void* context, const std::string fontName, i
 
 void Drawing::DrawFont(BitmapFont* font, const char* message, uint32_t color, int x, int y)
 {
-    std::vector<TEXVERTEX> vertices;
-
-    int xPos = x;
-    int yPos = y;
-
-    char* currentCharPos = (char*)message;
-    while (*currentCharPos) 
-    {
-        char* nextCharPos = currentCharPos;
-        uint32_t unicode = ssfn_utf8(&nextCharPos);
-
-        int32_t length = nextCharPos - currentCharPos;
-        char* currentChar = (char*)malloc(length + 1);
-        memcpy(currentChar, currentCharPos, length);
-        currentChar[length] = 0;
-
-        currentCharPos = nextCharPos;
-
-        Rect rect = font->charmap[unicode];
-        //if doesnt exist skip
-
-        float uvX = rect.x / (float)font->image.width;
-        float uvY = rect.y / (float)font->image.height;
-        float uvWidth = rect.width / (float)font->image.width;
-        float uvHeight = rect.height / (float)font->image.height;
-
-        uint32_t charColor = color;
-        //if (unicode == 161) {
-        //    charColor = theme::getJoyButtonAColor();
-        //} else if (unicode == 162) {
-        //    charColor = theme::getJoyButtonBColor();
-        //} else if (unicode == 163) {
-        //    charColor = theme::getJoyButtonXColor();
-        //} else if (unicode == 164) {
-        //    charColor = theme::getJoyButtonYColor();
-        //} else if (unicode == 182) {
-        //    charColor = theme::getJoyButtonBlackColor();
-        //} else if (unicode == 181) {
-        //    charColor = theme::getJoyButtonWhiteColor();
-        //}
-
-  
-        float u0 = uvX;
-        float v0 = uvY;
-        float u1 = uvX + uvWidth;
-        float v1 = uvY + uvHeight;
-
-        float px = xPos - 0.5f;
-        float py = yPos - 0.5f;
-        float pz = 0.0f;
-        float fw = font->image.width * uvWidth;
-        float fh = font->image.height *uvHeight;
-
-        /* Flip quad vertically: swap py and py+fh so texture maps right-way up */
-        TEXVERTEX tv0;
-        tv0.x = px + fw;
-        tv0.y = py;
-        tv0.z = pz;
-        tv0.rhw = 1.0f;
-        tv0.diffuse = color;
-        tv0.u = u1;
-        tv0.v = v0;
-        vertices.push_back(tv0);
-
-        TEXVERTEX tv1;
-        tv1.x = px + fw;
-        tv1.y = py + fh;
-        tv1.z = pz;
-        tv1.rhw = 1.0f;
-        tv1.diffuse = color;
-        tv1.u = u1;
-        tv1.v = v1;
-        vertices.push_back(tv1);
-
-        TEXVERTEX tv2;
-        tv2.x = px;
-        tv2.y = py + fh;
-        tv2.z = pz;
-        tv2.rhw = 1.0f;
-        tv2.diffuse = color;
-        tv2.u = u0;
-        tv2.v = v1;
-        vertices.push_back(tv2);
-
-        TEXVERTEX tv3;
-        tv3.x = px + fw;
-        tv3.y = py;
-        tv3.z = pz;
-        tv3.rhw = 1.0f;
-        tv3.diffuse = color;
-        tv3.u = u1;
-        tv3.v = v0;
-        vertices.push_back(tv3);
-
-        TEXVERTEX tv4;
-        tv4.x = px;
-        tv4.y = py + fh;
-        tv4.z = pz;
-        tv4.rhw = 1.0f;
-        tv4.diffuse = color;
-        tv4.u = u0;
-        tv4.v = v1;
-        vertices.push_back(tv4);
-
-        TEXVERTEX tv5;
-        tv5.x = px;
-        tv5.y = py;
-        tv5.z = pz;
-        tv5.rhw = 1.0f;
-        tv5.diffuse = color;
-        tv5.u = u0;
-        tv5.v = v0;
-        vertices.push_back(tv5);
-
-        xPos = xPos + rect.width + font->spacing;
-        free(currentChar);
-    }
-
-    if (vertices.size() == 0)
-    {
+    if (!message || !message[0]) {
         return;
     }
 
-    //mD3dDevice->BeginScene();
-    //mD3dDevice->Clear(0L, NULL, D3DCLEAR_TARGET|D3DCLEAR_ZBUFFER|D3DCLEAR_STENCIL, 0xff000000, 1.0f, 0L);
+    static TEXVERTEX batchBuf[DRAW_BATCH_MAX_VERTS];
+    UINT vertexCount = 0;
 
-    mD3dDevice->SetVertexShader( D3DFVF_XYZRHW|D3DFVF_DIFFUSE|D3DFVF_TEX1 );
+    int xPos = x;
+    int yPos = y;
+    const float invW = 1.0f / (float)font->image.width;
+    const float invH = 1.0f / (float)font->image.height;
+
+    mD3dDevice->SetVertexShader(D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1);
     mD3dDevice->SetTexture(0, font->image.texture);
-    for (uint32_t offset = 0; offset < vertices.size(); )
+
+    const char* p = message;
+    while (*p)
     {
-        int batchVerts = vertices.size() - offset;
-        if (batchVerts > DRAW_BATCH_MAX_VERTS)
-            batchVerts = DRAW_BATCH_MAX_VERTS;
-        mD3dDevice->DrawPrimitiveUP(
-            D3DPT_TRIANGLELIST,
-            batchVerts / 3,
-            &vertices[offset],
-            sizeof(TEXVERTEX));
-        offset += batchVerts;
+        char* cursor = (char*)p;
+        uint32_t unicode = ssfn_utf8(&cursor);
+        p = cursor;
+
+        std::map<uint32_t, Rect>::const_iterator it = font->charmap.find(unicode);
+        if (it == font->charmap.end()) {
+            continue;
+        }
+        
+        const Rect& rect = it->second;
+
+        if (vertexCount + 6 > (UINT)DRAW_BATCH_MAX_VERTS)
+        {
+            mD3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLELIST, vertexCount / 3, batchBuf, sizeof(TEXVERTEX));
+            vertexCount = 0;
+        }
+
+        float uvX = rect.x * invW;
+        float uvY = rect.y * invH;
+        float uvW = rect.width * invW;
+        float uvH = rect.height * invH;
+        float u0 = uvX, v0 = uvY, u1 = uvX + uvW, v1 = uvY + uvH;
+
+        float px = (float)xPos - 0.5f;
+        float py = (float)yPos - 0.5f;
+        float fw = (float)rect.width;
+        float fh = (float)rect.height;
+
+        TEXVERTEX* v = &batchBuf[vertexCount];
+        v[0].x = px + fw; v[0].y = py;     v[0].z = 0.5f; v[0].rhw = 1.0f; v[0].diffuse = color; v[0].u = u1; v[0].v = v0;
+        v[1].x = px + fw; v[1].y = py+fh; v[1].z = 0.5f; v[1].rhw = 1.0f; v[1].diffuse = color; v[1].u = u1; v[1].v = v1;
+        v[2].x = px;      v[2].y = py+fh; v[2].z = 0.5f; v[2].rhw = 1.0f; v[2].diffuse = color; v[2].u = u0; v[2].v = v1;
+        v[3].x = px + fw; v[3].y = py;     v[3].z = 0.5f; v[3].rhw = 1.0f; v[3].diffuse = color; v[3].u = u1; v[3].v = v0;
+        v[4].x = px;      v[4].y = py+fh; v[4].z = 0.5f; v[4].rhw = 1.0f; v[4].diffuse = color; v[4].u = u0; v[4].v = v1;
+        v[5].x = px;      v[5].y = py;     v[5].z = 0.5f; v[5].rhw = 1.0f; v[5].diffuse = color; v[5].u = u0; v[5].v = v0;
+
+        vertexCount += 6;
+        xPos += rect.width + font->spacing;
+    }
+
+    if (vertexCount > 0) {
+        mD3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLELIST, vertexCount / 3, batchBuf, sizeof(TEXVERTEX));
     }
 
     mD3dDevice->SetTexture(0, NULL);
