@@ -342,9 +342,6 @@
 				RelativePath=".\WebManager.cpp">
 			</File>
 			<File
-				RelativePath=".\xbfont.cpp">
-			</File>
-			<File
 				RelativePath=".\xbinput.cpp">
 			</File>
 			<File
@@ -428,9 +425,6 @@
 			</File>
 			<File
 				RelativePath=".\WebManager.h">
-			</File>
-			<File
-				RelativePath=".\xbfont.h">
 			</File>
 			<File
 				RelativePath=".\xbinput.h">

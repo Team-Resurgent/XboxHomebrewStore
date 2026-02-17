@@ -76,7 +76,6 @@ private:
     // Helper functions
     void DrawRect( LPDIRECT3DDEVICE8 pd3dDevice, float x, float y, float w, float h, DWORD color );
     void DrawTexturedRect( LPDIRECT3DDEVICE8 pd3dDevice, float x, float y, float w, float h, LPDIRECT3DTEXTURE8 pTexture );
-    void DrawText( LPDIRECT3DDEVICE8 pd3dDevice, const char* text, float x, float y, DWORD color );
     void DrawAppCard( LPDIRECT3DDEVICE8 pd3dDevice, StoreItem* pItem, float x, float y, BOOL bSelected );
     
     // Input handling

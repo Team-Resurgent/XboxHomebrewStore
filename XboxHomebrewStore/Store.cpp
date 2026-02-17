@@ -575,8 +575,8 @@ void Store::RenderCategorySidebar( LPDIRECT3DDEVICE8 pd3dDevice )
     DrawRect( pd3dDevice, 0, 0, m_fSidebarWidth, m_fScreenHeight, COLOR_SIDEBAR );
     
     // Header with logo area
-    DrawText( pd3dDevice, "Homebrew Store", 20.0f, 20.0f, COLOR_WHITE );
-    DrawText( pd3dDevice, "for Xbox", 20.0f, 40.0f, COLOR_WHITE );
+    Font::DrawText( "Homebrew Store", (uint32_t)COLOR_WHITE, 20, 20 );
+    Font::DrawText( "for Xbox", (uint32_t)COLOR_WHITE, 20, 40 );
     
     // Category menu items (dynamic!)
     float itemY = 100.0f;
@@ -594,13 +594,13 @@ void Store::RenderCategorySidebar( LPDIRECT3DDEVICE8 pd3dDevice )
         
         // Category name with count
         std::string szText = String::Format( "%s (%u)", m_aCategories[i].category.c_str(), (unsigned)m_aCategories[i].count );
-        DrawText( pd3dDevice, szText.c_str(), 50.0f, itemY + 15.0f, COLOR_WHITE );
+        Font::DrawText( szText.c_str(), (uint32_t)COLOR_WHITE, (int)50.0f, (int)(itemY + 15.0f) );
         
         itemY += itemH;
     }
     
     // Hide button at bottom
-    DrawText( pd3dDevice, "LB: Hide", 20.0f, m_fScreenHeight - 30.0f, COLOR_WHITE );
+    Font::DrawText( "LB: Hide", (uint32_t)COLOR_WHITE, 20, (int)(m_fScreenHeight - 30.0f) );
 }
 
 //-----------------------------------------------------------------------------
@@ -620,7 +620,7 @@ void Store::RenderMainGrid( LPDIRECT3DDEVICE8 pd3dDevice )
         categoryName = m_aCategories[m_nSelectedCategory].category.c_str();
     }
     
-    DrawText( pd3dDevice, categoryName, m_fSidebarWidth + 20.0f, 20.0f, COLOR_WHITE );
+    Font::DrawText( categoryName, (uint32_t)COLOR_WHITE, (int)(m_fSidebarWidth + 20.0f), 20 );
     
     // Build filtered indices array for current category
     m_nFilteredCount = 0;
@@ -673,7 +673,7 @@ void Store::RenderMainGrid( LPDIRECT3DDEVICE8 pd3dDevice )
     } else {
         szInstructions = String::Format( "A: Details  B: Exit  LT/RT: Category  (%d apps)", m_nFilteredCount );
     }
-    DrawText( pd3dDevice, szInstructions.c_str(), m_fSidebarWidth + 20.0f, m_fScreenHeight - 30.0f, COLOR_WHITE );
+    Font::DrawText( szInstructions.c_str(), (uint32_t)COLOR_WHITE, (int)(m_fSidebarWidth + 20.0f), (int)(m_fScreenHeight - 30.0f) );
 }
 
 //-----------------------------------------------------------------------------
@@ -696,9 +696,9 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
     if( pItem->versions.empty() )
     {
         DrawRect( pd3dDevice, 0, 0, m_fScreenWidth, m_fScreenHeight, COLOR_BG );
-        DrawText( pd3dDevice, pItem->app.name.c_str(), 20.0f, 20.0f, COLOR_WHITE );
-        DrawText( pd3dDevice, "No versions available.", 20.0f, 60.0f, COLOR_TEXT_GRAY );
-        DrawText( pd3dDevice, "B: Back", 20.0f, m_fScreenHeight - 40.0f, COLOR_WHITE );
+        Font::DrawText( pItem->app.name.c_str(), (uint32_t)COLOR_WHITE, 20, 20 );
+        Font::DrawText( "No versions available.", (uint32_t)COLOR_TEXT_GRAY, 20, 60 );
+        Font::DrawText( "B: Back", (uint32_t)COLOR_WHITE, 20, (int)(m_fScreenHeight - 40.0f) );
         return;
     }
     
@@ -725,8 +725,8 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
         
         // App title and version
         std::string szTitle = String::Format( "%s v%s", pItem->app.name.c_str(), pCurrentVersion->version.c_str() );
-        DrawText( pd3dDevice, szTitle.c_str(), 20.0f, 20.0f, COLOR_WHITE );
-        DrawText( pd3dDevice, pItem->app.author.c_str(), 20.0f, 40.0f, COLOR_TEXT_GRAY );
+        Font::DrawText( szTitle.c_str(), (uint32_t)COLOR_WHITE, 20, 20 );
+        Font::DrawText( pItem->app.author.c_str(), (uint32_t)COLOR_TEXT_GRAY, 20, 40 );
         
         // Screenshot
         float screenshotY = 70.0f;
@@ -738,16 +738,16 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
         float descY = screenshotY + screenshotH + 20.0f;
         
         // Description
-        DrawText( pd3dDevice, "Description:", 20.0f, descY, COLOR_TEXT_GRAY );
+        Font::DrawText( "Description:", (uint32_t)COLOR_TEXT_GRAY, 20, (int)descY );
         descY += 25.0f;
-        DrawText( pd3dDevice, pItem->app.description.c_str(), 20.0f, descY, COLOR_WHITE );
+        Font::DrawText( pItem->app.description.c_str(), (uint32_t)COLOR_WHITE, 20, (int)descY );
         descY += 50.0f;
         
         if( !pCurrentVersion->changeLog.empty() && pCurrentVersion->changeLog != "No changelog available" )
         {
-            DrawText( pd3dDevice, "What's New:", 20.0f, descY, COLOR_TEXT_GRAY );
+            Font::DrawText( "What's New:", (uint32_t)COLOR_TEXT_GRAY, 20, (int)descY );
             descY += 25.0f;
-            DrawText( pd3dDevice, pCurrentVersion->changeLog.c_str(), 20.0f, descY, COLOR_WHITE );
+            Font::DrawText( pCurrentVersion->changeLog.c_str(), (uint32_t)COLOR_WHITE, 20, (int)descY );
         }
         
         // Right sidebar - Version metadata
@@ -755,37 +755,37 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
         DrawRect( pd3dDevice, sidebarX, 0, sidebarW, m_fScreenHeight - actionBarH, COLOR_PRIMARY );
         
         float metaY = 20.0f;
-        DrawText( pd3dDevice, "Version:", sidebarX + 15.0f, metaY, COLOR_WHITE );
+        Font::DrawText( "Version:", (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
         metaY += 20.0f;
-        DrawText( pd3dDevice, pCurrentVersion->version.c_str(), sidebarX + 15.0f, metaY, COLOR_WHITE );
+        Font::DrawText( pCurrentVersion->version.c_str(), (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
         metaY += 40.0f;
         
         if( !pCurrentVersion->releaseDate.empty() )
         {
-            DrawText( pd3dDevice, "Released:", sidebarX + 15.0f, metaY, COLOR_WHITE );
+            Font::DrawText( "Released:", (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
             metaY += 20.0f;
-            DrawText( pd3dDevice, pCurrentVersion->releaseDate.c_str(), sidebarX + 15.0f, metaY, COLOR_WHITE );
+            Font::DrawText( pCurrentVersion->releaseDate.c_str(), (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
             metaY += 40.0f;
         }
         
-        DrawText( pd3dDevice, "Size:", sidebarX + 15.0f, metaY, COLOR_WHITE );
+        Font::DrawText( "Size:", (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
         metaY += 20.0f;
-        DrawText( pd3dDevice, String::Format( "%.1f MB", pCurrentVersion->size / (1024.0f * 1024.0f) ).c_str(), sidebarX + 15.0f, metaY, COLOR_WHITE );
+        Font::DrawText( String::Format( "%.1f MB", pCurrentVersion->size / (1024.0f * 1024.0f) ).c_str(), (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
         metaY += 40.0f;
         
         if( !pCurrentVersion->titleId.empty() )
         {
-            DrawText( pd3dDevice, "Title ID:", sidebarX + 15.0f, metaY, COLOR_WHITE );
+            Font::DrawText( "Title ID:", (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
             metaY += 20.0f;
-            DrawText( pd3dDevice, pCurrentVersion->titleId.c_str(), sidebarX + 15.0f, metaY, COLOR_WHITE );
+            Font::DrawText( pCurrentVersion->titleId.c_str(), (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
             metaY += 40.0f;
         }
         
         if( !pCurrentVersion->region.empty() )
         {
-            DrawText( pd3dDevice, "Region:", sidebarX + 15.0f, metaY, COLOR_WHITE );
+            Font::DrawText( "Region:", (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
             metaY += 20.0f;
-            DrawText( pd3dDevice, pCurrentVersion->region.c_str(), sidebarX + 15.0f, metaY, COLOR_WHITE );
+            Font::DrawText( pCurrentVersion->region.c_str(), (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
             metaY += 40.0f;
         }
         
@@ -799,15 +799,15 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
             case 3: statusText = "UPDATE"; statusColor = 0xFFFF9800; break;
             default: statusText = "NOT DOWNLOADED"; statusColor = COLOR_TEXT_GRAY; break;
         }
-        DrawText( pd3dDevice, "Status:", sidebarX + 15.0f, metaY, COLOR_WHITE );
+        Font::DrawText( "Status:", (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
         metaY += 20.0f;
-        DrawText( pd3dDevice, statusText, sidebarX + 15.0f, metaY, statusColor );
+        Font::DrawText( statusText, (uint32_t)statusColor, (int)(sidebarX + 15.0f), (int)metaY );
         metaY += 40.0f;
         
         // Show install path if installed
         if( pCurrentVersion->state == 2 && !pCurrentVersion->install_path.empty() )
         {
-            DrawText( pd3dDevice, "Installed:", sidebarX + 15.0f, metaY, COLOR_WHITE );
+            Font::DrawText( "Installed:", (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
             metaY += 20.0f;
             
             // Wrap path if too long - show last part
@@ -816,11 +816,11 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
             {
                 // Show "E:\Apps\..." format
                 std::string shortPath = String::Format( "...%s", pathToShow + strlen(pathToShow) - 15 );
-                DrawText( pd3dDevice, shortPath.c_str(), sidebarX + 15.0f, metaY, COLOR_TEXT_GRAY );
+                Font::DrawText( shortPath.c_str(), (uint32_t)COLOR_TEXT_GRAY, (int)(sidebarX + 15.0f), (int)metaY );
             }
             else
             {
-                DrawText( pd3dDevice, pathToShow, sidebarX + 15.0f, metaY, COLOR_TEXT_GRAY );
+                Font::DrawText( pathToShow, (uint32_t)COLOR_TEXT_GRAY, (int)(sidebarX + 15.0f), (int)metaY );
             }
             metaY += 40.0f;
         }
@@ -843,20 +843,20 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
             {
                 float btnW = (m_fScreenWidth - btnStartX * 2 - btnSpacing) / 2.0f;
                 DrawRect( pd3dDevice, btnStartX, btnY, btnW, btnH, COLOR_DOWNLOAD );
-                DrawText( pd3dDevice, "(A) Download", btnStartX + 20.0f, btnY + 12.0f, COLOR_WHITE );
+                Font::DrawText( "(A) Download", (uint32_t)COLOR_WHITE, (int)(btnStartX + 20.0f), (int)(btnY + 12.0f) );
                 DrawRect( pd3dDevice, btnStartX + btnW + btnSpacing, btnY, btnW, btnH, COLOR_CARD_BG );
-                DrawText( pd3dDevice, "(B) Back", btnStartX + btnW + btnSpacing + 40.0f, btnY + 12.0f, COLOR_WHITE );
+                Font::DrawText( "(B) Back", (uint32_t)COLOR_WHITE, (int)(btnStartX + btnW + btnSpacing + 40.0f), (int)(btnY + 12.0f) );
                 break;
             }
             case 1: // DOWNLOADED
             {
                 float btnW = (m_fScreenWidth - btnStartX * 2 - btnSpacing * 2) / 3.0f;
                 DrawRect( pd3dDevice, btnStartX, btnY, btnW, btnH, COLOR_SUCCESS );
-                DrawText( pd3dDevice, "(A) Install", btnStartX + 15.0f, btnY + 12.0f, COLOR_WHITE );
+                Font::DrawText( "(A) Install", (uint32_t)COLOR_WHITE, (int)(btnStartX + 15.0f), (int)(btnY + 12.0f) );
                 DrawRect( pd3dDevice, btnStartX + btnW + btnSpacing, btnY, btnW, btnH, 0xFF9E9E9E );
-                DrawText( pd3dDevice, "(X) Delete", btnStartX + btnW + btnSpacing + 15.0f, btnY + 12.0f, COLOR_WHITE );
+                Font::DrawText( "(X) Delete", (uint32_t)COLOR_WHITE, (int)(btnStartX + btnW + btnSpacing + 15.0f), (int)(btnY + 12.0f) );
                 DrawRect( pd3dDevice, btnStartX + (btnW + btnSpacing) * 2, btnY, btnW, btnH, COLOR_CARD_BG );
-                DrawText( pd3dDevice, "(B) Back", btnStartX + (btnW + btnSpacing) * 2 + 20.0f, btnY + 12.0f, COLOR_WHITE );
+                Font::DrawText( "(B) Back", (uint32_t)COLOR_WHITE, (int)(btnStartX + (btnW + btnSpacing) * 2 + 20.0f), (int)(btnY + 12.0f) );
                 break;
             }
             case 2: // INSTALLED
@@ -865,11 +865,11 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
                 // If this is latest version, show Launch + Uninstall
                 float btnW = (m_fScreenWidth - btnStartX * 2 - btnSpacing * 2) / 3.0f;
                 DrawRect( pd3dDevice, btnStartX, btnY, btnW, btnH, COLOR_SUCCESS );
-                DrawText( pd3dDevice, "(A) Launch", btnStartX + 15.0f, btnY + 12.0f, COLOR_WHITE );
+                Font::DrawText( "(A) Launch", (uint32_t)COLOR_WHITE, (int)(btnStartX + 15.0f), (int)(btnY + 12.0f) );
                 DrawRect( pd3dDevice, btnStartX + btnW + btnSpacing, btnY, btnW, btnH, 0xFFD32F2F );
-                DrawText( pd3dDevice, "(X) Uninstall", btnStartX + btnW + btnSpacing + 8.0f, btnY + 12.0f, COLOR_WHITE );
+                Font::DrawText( "(X) Uninstall", (uint32_t)COLOR_WHITE, (int)(btnStartX + btnW + btnSpacing + 8.0f), (int)(btnY + 12.0f) );
                 DrawRect( pd3dDevice, btnStartX + (btnW + btnSpacing) * 2, btnY, btnW, btnH, COLOR_CARD_BG );
-                DrawText( pd3dDevice, "(B) Back", btnStartX + (btnW + btnSpacing) * 2 + 20.0f, btnY + 12.0f, COLOR_WHITE );
+                Font::DrawText( "(B) Back", (uint32_t)COLOR_WHITE, (int)(btnStartX + (btnW + btnSpacing) * 2 + 20.0f), (int)(btnY + 12.0f) );
                 break;
             }
         }
@@ -880,8 +880,8 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
     // MODE 2: Version list view (for multiple versions)
     DrawRect( pd3dDevice, 0, 0, contentW, m_fScreenHeight, COLOR_BG );
     
-    DrawText( pd3dDevice, pItem->app.name.c_str(), 20.0f, 20.0f, COLOR_WHITE );
-    DrawText( pd3dDevice, pItem->app.author.c_str(), 20.0f, 40.0f, COLOR_TEXT_GRAY );
+    Font::DrawText( pItem->app.name.c_str(), (uint32_t)COLOR_WHITE, 20, 20 );
+    Font::DrawText( pItem->app.author.c_str(), (uint32_t)COLOR_TEXT_GRAY, 20, 40 );
     
     // Screenshot
     float screenshotY = 70.0f;
@@ -892,14 +892,14 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
     }
     float contentY = screenshotY + screenshotH + 20.0f;
 
-    DrawText( pd3dDevice, "Description:", 20.0f, contentY, COLOR_TEXT_GRAY );
+    Font::DrawText( "Description:", (uint32_t)COLOR_TEXT_GRAY, (int)20.0f, (int)contentY );
     contentY += 25.0f;
-    DrawText( pd3dDevice, pItem->app.description.c_str(), 20.0f, contentY, COLOR_WHITE );
+    Font::DrawText( pItem->app.description.c_str(), (uint32_t)COLOR_WHITE, (int)20.0f, (int)contentY );
     contentY += 50.0f;
     
     if( pItem->versions.size() > 1 )
     {
-        DrawText( pd3dDevice, "Available Versions (UP/DOWN to browse, A to view):", 20.0f, contentY, COLOR_TEXT_GRAY );
+        Font::DrawText( "Available Versions (UP/DOWN to browse, A to view):", (uint32_t)COLOR_TEXT_GRAY, (int)20.0f, (int)contentY );
         contentY += 30.0f;
         
         // Calculate visible items (max 3-4 depending on space)
@@ -916,7 +916,7 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
         // Show "More above" indicator BEFORE the list
         if( pItem->nVersionScrollOffset > 0 )
         {
-            DrawText( pd3dDevice, "^ More above", 30.0f, contentY, COLOR_TEXT_GRAY );
+            Font::DrawText( "^ More above", (uint32_t)COLOR_TEXT_GRAY, (int)30.0f, (int)contentY );
             contentY += 20.0f;
         }
         
@@ -935,21 +935,21 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
             DrawRect( pd3dDevice, 20.0f, contentY, contentW - 40.0f, itemH, bgColor );
             
             std::string szVer = String::Format( "v%s", pVer->version.c_str() );
-            DrawText( pd3dDevice, szVer.c_str(), 30.0f, contentY + 8.0f, COLOR_WHITE );
+            Font::DrawText( szVer.c_str(), (uint32_t)COLOR_WHITE, (int)30.0f, (int)(contentY + 8.0f) );
             
             if( !pVer->releaseDate.empty() )
-                DrawText( pd3dDevice, pVer->releaseDate.c_str(), 30.0f, contentY + 28.0f, COLOR_TEXT_GRAY );
+                Font::DrawText( pVer->releaseDate.c_str(), (uint32_t)COLOR_TEXT_GRAY, (int)30.0f, (int)(contentY + 28.0f) );
             
             std::string szSize = String::Format( "%.1f MB", pVer->size / (1024.0f * 1024.0f) );
-            DrawText( pd3dDevice, szSize.c_str(), contentW - 120.0f, contentY + 18.0f, COLOR_WHITE );
+            Font::DrawText( szSize.c_str(), (uint32_t)COLOR_WHITE, (int)(contentW - 120.0f), (int)(contentY + 18.0f) );
             
             if( pVer->state == STATE_INSTALLED )
             {
-                DrawText( pd3dDevice, "INSTALLED", contentW - 220.0f, contentY + 18.0f, COLOR_SUCCESS );
+                Font::DrawText( "INSTALLED", (uint32_t)COLOR_SUCCESS, (int)(contentW - 220.0f), (int)(contentY + 18.0f) );
             }
             else if( pVer->state == STATE_DOWNLOADED )
             {
-                DrawText( pd3dDevice, "DOWNLOADED", contentW - 240.0f, contentY + 18.0f, COLOR_DOWNLOAD );
+                Font::DrawText( "DOWNLOADED", (uint32_t)COLOR_DOWNLOAD, (int)(contentW - 240.0f), (int)(contentY + 18.0f) );
             }
             
             contentY += itemH + 5.0f;
@@ -958,7 +958,7 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
         // Show "More below" indicator AFTER the list
         if( pItem->nVersionScrollOffset + maxVisible < (int)pItem->versions.size() )
         {
-            DrawText( pd3dDevice, "v More below", 30.0f, contentY + 5.0f, COLOR_TEXT_GRAY );
+            Font::DrawText( "v More below", (uint32_t)COLOR_TEXT_GRAY, (int)30.0f, (int)(contentY + 5.0f) );
         }
     }
     
@@ -967,22 +967,22 @@ void Store::RenderItemDetails( LPDIRECT3DDEVICE8 pd3dDevice )
     DrawRect( pd3dDevice, sidebarX, 0, sidebarW, m_fScreenHeight - actionBarH, COLOR_PRIMARY );
     
     float metaY = 20.0f;
-    DrawText( pd3dDevice, "Title:", sidebarX + 15.0f, metaY, COLOR_WHITE );
+    Font::DrawText( "Title:", (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
     metaY += 20.0f;
-    DrawText( pd3dDevice, pItem->app.name.c_str(), sidebarX + 15.0f, metaY, COLOR_WHITE );
+    Font::DrawText( pItem->app.name.c_str(), (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
     metaY += 40.0f;
     
-    DrawText( pd3dDevice, "Author:", sidebarX + 15.0f, metaY, COLOR_WHITE );
+    Font::DrawText( "Author:", (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
     metaY += 20.0f;
-    DrawText( pd3dDevice, pItem->app.author.c_str(), sidebarX + 15.0f, metaY, COLOR_WHITE );
+    Font::DrawText( pItem->app.author.c_str(), (uint32_t)COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
     metaY += 40.0f;
     
-    DrawText( pd3dDevice, String::Format( "%u version(s)", (unsigned)pItem->versions.size() ).c_str(), sidebarX + 15.0f, metaY, COLOR_TEXT_GRAY );
+    Font::DrawText( String::Format( "%u version(s)", (unsigned)pItem->versions.size() ).c_str(), (uint32_t)COLOR_TEXT_GRAY, (int)(sidebarX + 15.0f), (int)metaY );
     
     // Bottom bar
     float actionBarY = m_fScreenHeight - actionBarH;
     DrawRect( pd3dDevice, 0, actionBarY, m_fScreenWidth, actionBarH, COLOR_SECONDARY );
-    DrawText( pd3dDevice, "(A) View Version  (B) Back to Grid", 40.0f, actionBarY + 25.0f, COLOR_WHITE );
+    Font::DrawText( "(A) View Version  (B) Back to Grid", (uint32_t)COLOR_WHITE, (int)40.0f, (int)(actionBarY + 25.0f) );
 }
 
 //-----------------------------------------------------------------------------
@@ -992,7 +992,7 @@ void Store::RenderDownloading( LPDIRECT3DDEVICE8 pd3dDevice )
 {
     // Title bar
     DrawRect( pd3dDevice, 0, 0, m_fScreenWidth, 60.0f, COLOR_PRIMARY );
-    DrawText( pd3dDevice, "DOWNLOADING", 20.0f, 20.0f, COLOR_WHITE );
+    Font::DrawText( "DOWNLOADING", (uint32_t)COLOR_WHITE, 20, 20 );
 
     // Center panel
     float panelW = m_fScreenWidth * 0.7f;
@@ -1003,7 +1003,7 @@ void Store::RenderDownloading( LPDIRECT3DDEVICE8 pd3dDevice )
     
     DrawRect( pd3dDevice, panelX, panelY, panelW, panelH, COLOR_CARD_BG );
     
-    DrawText( pd3dDevice, m_downloadAppName.c_str(), panelX + 20.0f, panelY + 20.0f, COLOR_WHITE );
+    Font::DrawText( m_downloadAppName.c_str(), (uint32_t)COLOR_WHITE, (int)(panelX + 20.0f), (int)(panelY + 20.0f) );
     
     float barY = panelY + 80.0f;
     float barW = panelW - 40.0f;
@@ -1014,14 +1014,14 @@ void Store::RenderDownloading( LPDIRECT3DDEVICE8 pd3dDevice )
     
     if( m_downloadDone )
     {
-        DrawText( pd3dDevice, m_downloadSuccess ? "Complete" : "Failed", panelX + 20.0f, barY + 50.0f, m_downloadSuccess ? COLOR_SUCCESS : COLOR_NEW );
-        DrawText( pd3dDevice, "B: Back", panelX + 20.0f, barY + 70.0f, COLOR_TEXT_GRAY );
+        Font::DrawText( m_downloadSuccess ? "Complete" : "Failed", (uint32_t)(m_downloadSuccess ? COLOR_SUCCESS : COLOR_NEW), (int)(panelX + 20.0f), (int)(barY + 50.0f) );
+        Font::DrawText( "B: Back", (uint32_t)COLOR_TEXT_GRAY, (int)(panelX + 20.0f), (int)(barY + 70.0f) );
     }
     else
     {
-        DrawText( pd3dDevice, String::Format( "%u%%", m_downloadTotal > 0 ? (unsigned)( pct * 100.0f ) : 0u ).c_str(), panelX + 20.0f, barY + 50.0f, COLOR_WHITE );
-        DrawText( pd3dDevice, String::Format( "%u KB / %u KB", (unsigned)( m_downloadNow / 1024 ), (unsigned)( m_downloadTotal / 1024 ) ).c_str(), panelX + 20.0f, barY + 70.0f, COLOR_TEXT_GRAY );
-        DrawText( pd3dDevice, "B: Cancel", panelX + 20.0f, barY + 95.0f, COLOR_TEXT_GRAY );
+        Font::DrawText( String::Format( "%u%%", m_downloadTotal > 0 ? (unsigned)( pct * 100.0f ) : 0u ).c_str(), (uint32_t)COLOR_WHITE, (int)(panelX + 20.0f), (int)(barY + 50.0f) );
+        Font::DrawText( String::Format( "%u KB / %u KB", (unsigned)( m_downloadNow / 1024 ), (unsigned)( m_downloadTotal / 1024 ) ).c_str(), (uint32_t)COLOR_TEXT_GRAY, (int)(panelX + 20.0f), (int)(barY + 70.0f) );
+        Font::DrawText( "B: Cancel", (uint32_t)COLOR_TEXT_GRAY, (int)(panelX + 20.0f), (int)(barY + 95.0f) );
     }
 }
 
@@ -1032,7 +1032,7 @@ void Store::RenderSettings( LPDIRECT3DDEVICE8 pd3dDevice )
 {
     // Title bar
     DrawRect( pd3dDevice, 0, 0, m_fScreenWidth, 60.0f, COLOR_PRIMARY );
-    DrawText( pd3dDevice, "SETTINGS", 20.0f, 20.0f, COLOR_WHITE );
+    Font::DrawText( "SETTINGS", (uint32_t)COLOR_WHITE, 20, 20 );
 
     // Menu items
     float itemY = 100.0f;
@@ -1041,21 +1041,21 @@ void Store::RenderSettings( LPDIRECT3DDEVICE8 pd3dDevice )
     
     // Network Settings
     DrawRect( pd3dDevice, 40.0f, itemY, itemW, itemH, COLOR_CARD_BG );
-    DrawText( pd3dDevice, "Network Settings", 60.0f, itemY + 15.0f, COLOR_WHITE );
+    Font::DrawText( "Network Settings", (uint32_t)COLOR_WHITE, (int)60.0f, (int)(itemY + 15.0f) );
     itemY += itemH + 10.0f;
     
     // Storage Management
     DrawRect( pd3dDevice, 40.0f, itemY, itemW, itemH, COLOR_CARD_BG );
-    DrawText( pd3dDevice, "Storage Management", 60.0f, itemY + 15.0f, COLOR_WHITE );
+    Font::DrawText( "Storage Management", (uint32_t)COLOR_WHITE, (int)60.0f, (int)(itemY + 15.0f) );
     itemY += itemH + 10.0f;
     
     // About
     DrawRect( pd3dDevice, 40.0f, itemY, itemW, itemH, COLOR_CARD_BG );
-    DrawText( pd3dDevice, "About", 60.0f, itemY + 15.0f, COLOR_WHITE );
+    Font::DrawText( "About", (uint32_t)COLOR_WHITE, (int)60.0f, (int)(itemY + 15.0f) );
 
     // Bottom bar
     DrawRect( pd3dDevice, 0, m_fScreenHeight - 50.0f, m_fScreenWidth, 50.0f, COLOR_SECONDARY );
-    DrawText( pd3dDevice, "B: Back", 20.0f, m_fScreenHeight - 30.0f, COLOR_WHITE );
+    Font::DrawText( "B: Back", (uint32_t)COLOR_WHITE, (int)20.0f, (int)(m_fScreenHeight - 30.0f) );
 }
 
 //-----------------------------------------------------------------------------
@@ -1196,14 +1196,6 @@ void Store::DrawTexturedRect( LPDIRECT3DDEVICE8 pd3dDevice, float x, float y, fl
 }
 
 //-----------------------------------------------------------------------------
-// DrawText - Draw text using Font (Drawing bitmap font)
-//-----------------------------------------------------------------------------
-void Store::DrawText( LPDIRECT3DDEVICE8 pd3dDevice, const char* text, float x, float y, DWORD color )
-{
-    Font::DrawText( text, (uint32_t)color, (int)x, (int)y );
-}
-
-//-----------------------------------------------------------------------------
 // DrawAppCard - Draw a single app card (Switch-style, dynamic size)
 //-----------------------------------------------------------------------------
 void Store::DrawAppCard( LPDIRECT3DDEVICE8 pd3dDevice, StoreItem* pItem, float x, float y, BOOL bSelected )
@@ -1261,11 +1253,11 @@ void Store::DrawAppCard( LPDIRECT3DDEVICE8 pd3dDevice, StoreItem* pItem, float x
     DrawRect( pd3dDevice, x + m_fCardWidth - 35, y + 10, 25, 25, badgeColor );
 
     // App name below thumbnail
-    DrawText( pd3dDevice, pItem->app.name.c_str(), x + 10, y + thumbSize + 15, COLOR_WHITE );
+    Font::DrawText( pItem->app.name.c_str(), (uint32_t)COLOR_WHITE, (int)(x + 10), (int)(y + thumbSize + 15) );
     
     if( m_fCardHeight > 180.0f )
     {
-        DrawText( pd3dDevice, pItem->app.author.c_str(), x + 10, y + thumbSize + 35, COLOR_TEXT_GRAY );
+        Font::DrawText( pItem->app.author.c_str(), (uint32_t)COLOR_TEXT_GRAY, (int)(x + 10), (int)(y + thumbSize + 35) );
     }
 }
 
