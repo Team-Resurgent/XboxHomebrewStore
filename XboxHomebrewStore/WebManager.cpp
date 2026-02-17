@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-const std::string store_api_url = "https://192.168.1.88:5001";
+const std::string store_api_url = "https://192.168.1.84:5001";
 const std::string store_app_controller = "/api/apps";
 const std::string store_versions = "/versions";
 const std::string store_categories = "/api/categories";
@@ -25,6 +25,9 @@ struct ProgressContext
     void* userData;
     volatile bool* pCancelRequested;
 };
+
+// Persistent curl handle for connection reuse (avoids repeated TCP/SSL handshake)
+static CURL* s_persistentCurl = NULL;
 
 static size_t StringWriteCallback(char* ptr, size_t size, size_t nmemb, void* userdata)
 {
@@ -159,21 +162,54 @@ static int ProgressCallback(void* clientp, double dltotal, double dlnow, double 
     return 0;
 }
 
+// Helper: get or create persistent curl handle
+static CURL* GetCurl()
+{
+    if (s_persistentCurl != NULL)
+    {
+        curl_easy_reset(s_persistentCurl);
+        return s_persistentCurl;
+    }
+    s_persistentCurl = curl_easy_init();
+    return s_persistentCurl;
+}
+
+// Helper: apply common performance options to a curl handle
+static void ApplyCommonOptions(CURL* curl)
+{
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
+    curl_easy_setopt(curl, CURLOPT_BUFFERSIZE, 65536L);       // 64KB receive buffer (default is 16KB)
+    curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, 1L);
+    curl_easy_setopt(curl, CURLOPT_TCP_NODELAY, 1L);          // Disable Nagle's algorithm
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+}
+
 bool WebManager::Init()
 {
     return curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK;
+}
+
+void WebManager::Cleanup()
+{
+    if (s_persistentCurl != NULL)
+    {
+        curl_easy_cleanup(s_persistentCurl);
+        s_persistentCurl = NULL;
+    }
+    curl_global_cleanup();
 }
 
 bool WebManager::TryGetFileSize(const std::string& url, uint32_t& outSize)
 {
     outSize = 0;
 
-    CURL* curl = curl_easy_init();
+    CURL* curl = GetCurl();
+    if (curl == NULL) return false;
+
+    ApplyCommonOptions(curl);
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);
-    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
 
     long http_code = 0;
     CURLcode res = curl_easy_perform(curl);
@@ -191,7 +227,6 @@ bool WebManager::TryGetFileSize(const std::string& url, uint32_t& outSize)
         }
     }
 
-    curl_easy_cleanup(curl);
     return (res == CURLE_OK && http_code == 200);
 }
 
@@ -207,14 +242,26 @@ bool WebManager::TryDownload(const std::string& url, const std::string& filePath
         return false;
     }
 
+    // Use a dedicated handle for downloads so API calls can still use the persistent one
     CURL* curl = curl_easy_init();
+    if (curl == NULL)
+    {
+        fclose(fp);
+        return false;
+    }
+
+    ApplyCommonOptions(curl);
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 0L);
-    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, (size_t (*)(void*, size_t, size_t, void*))fwrite);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+
+    // Set larger file write buffer via setvbuf for fewer disk writes
+    char* fileBuf = (char*)malloc(65536);
+    if (fileBuf != NULL)
+    {
+        setvbuf(fp, fileBuf, _IOFBF, 65536);
+    }
 
     ProgressContext progCtx;
     progCtx.fn = progressFn;
@@ -241,6 +288,11 @@ bool WebManager::TryDownload(const std::string& url, const std::string& filePath
     fclose(fp);
     curl_easy_cleanup(curl);
 
+    if (fileBuf != NULL)
+    {
+        free(fileBuf);
+    }
+
     if (res != CURLE_OK || http_code != 200)
     {
         remove(filePath.c_str());
@@ -263,13 +315,13 @@ bool WebManager::TryGetApps(AppsResponse& result, uint32_t page, uint32_t pageSi
     }
 
     std::string raw;
-    CURL* curl = curl_easy_init();
+    CURL* curl = GetCurl();
+    if (curl == NULL) return false;
+
+    ApplyCommonOptions(curl);
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
-    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, StringWriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &raw);
 
@@ -280,7 +332,6 @@ bool WebManager::TryGetApps(AppsResponse& result, uint32_t page, uint32_t pageSi
         res = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
     }
 
-    curl_easy_cleanup(curl);
     if (res != CURLE_OK || http_code != 200) {
         return false;
     }
@@ -293,16 +344,12 @@ bool WebManager::TryGetCategories(CategoriesResponse& result)
     std::string url = store_api_url + store_categories;
 
     std::string raw;
-    CURL* curl = curl_easy_init();
-    if (curl == NULL)
-    {
-        return false;
-    }
+    CURL* curl = GetCurl();
+    if (curl == NULL) return false;
+
+    ApplyCommonOptions(curl);
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
-    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, StringWriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &raw);
 
@@ -312,7 +359,6 @@ bool WebManager::TryGetCategories(CategoriesResponse& result)
     {
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
     }
-    curl_easy_cleanup(curl);
 
     if (res != CURLE_OK || http_code != 200) {
         return false;
@@ -326,12 +372,12 @@ bool WebManager::TryGetVersions(const std::string& id, VersionsResponse& result)
     std::string url = store_api_url + store_app_controller + "/" + id + store_versions;
 
     std::string raw;
-    CURL* curl = curl_easy_init();
+    CURL* curl = GetCurl();
+    if (curl == NULL) return false;
+
+    ApplyCommonOptions(curl);
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
-    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, StringWriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &raw);
 
@@ -341,7 +387,6 @@ bool WebManager::TryGetVersions(const std::string& id, VersionsResponse& result)
     {
         res = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
     }
-    curl_easy_cleanup(curl);
 
     if (res != CURLE_OK || http_code != 200) {
         return false;
@@ -375,7 +420,7 @@ bool WebManager::TryDownloadApp(const std::string& id, const std::string& filePa
     {
         return false;
     }
-    std::string url = store_api_url + "/api/Download/" + id;;
+    std::string url = store_api_url + "/api/Download/" + id;
     return TryDownload(url, filePath, progressFn, progressUserData, pCancelRequested);
 }
 
@@ -400,6 +445,7 @@ bool WebManager::TrySyncTime()
     int addrLen = sizeof(addr);
     int recvLen = recvfrom(sock, (char*)packet, sizeof(packet), 0, (sockaddr*)&addr, &addrLen);
     if (recvLen < 0) {
+        closesocket(sock);  // Fixed: was leaking socket on error
         return false;
     }
 
