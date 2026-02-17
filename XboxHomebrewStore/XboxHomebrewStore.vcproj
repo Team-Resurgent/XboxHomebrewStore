@@ -303,6 +303,9 @@
 			Filter="cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx"
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}">
 			<File
+				RelativePath=".\Context.cpp">
+			</File>
+			<File
 				RelativePath=".\Debug.cpp">
 			</File>
 			<File
@@ -325,6 +328,18 @@
 			</File>
 			<File
 				RelativePath=".\parson.c">
+			</File>
+			<File
+				RelativePath=".\Scenes\SceneManager.cpp">
+			</File>
+			<File
+				RelativePath=".\Scenes\StoreScene.cpp">
+			</File>
+			<File
+				RelativePath=".\Scenes\VersionScene.cpp">
+			</File>
+			<File
+				RelativePath=".\Scenes\VersionDetailsScene.cpp">
 			</File>
 			<File
 				RelativePath=".\Store.cpp">
@@ -376,6 +391,9 @@
 			Filter="h;hpp;hxx;hm;inl;inc;xsd"
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}">
 			<File
+				RelativePath=".\Context.h">
+			</File>
+			<File
 				RelativePath=".\Debug.h">
 			</File>
 			<File
@@ -401,6 +419,21 @@
 			</File>
 			<File
 				RelativePath=".\parson.h">
+			</File>
+			<File
+				RelativePath=".\Scenes\Scene.h">
+			</File>
+			<File
+				RelativePath=".\Scenes\SceneManager.h">
+			</File>
+			<File
+				RelativePath=".\Scenes\StoreScene.h">
+			</File>
+			<File
+				RelativePath=".\Scenes\VersionScene.h">
+			</File>
+			<File
+				RelativePath=".\Scenes\VersionDetailsScene.h">
 			</File>
 			<File
 				RelativePath=".\ssfn.h">
