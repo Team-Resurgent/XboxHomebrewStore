@@ -5,8 +5,8 @@
 #ifndef VERSIONSCENE_H
 #define VERSIONSCENE_H
 
+#include "..\Main.h"
 #include "Scene.h"
-#include "Main.h"
 #include <string>
 #include <vector>
 

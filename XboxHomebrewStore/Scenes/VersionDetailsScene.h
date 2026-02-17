@@ -5,8 +5,8 @@
 #ifndef VERSIONDETAILSSCENE_H
 #define VERSIONDETAILSSCENE_H
 
+#include "..\Main.h"
 #include "Scene.h"
-#include "Main.h"
 #include "VersionScene.h"
 
 class VersionDetailsScene : public Scene

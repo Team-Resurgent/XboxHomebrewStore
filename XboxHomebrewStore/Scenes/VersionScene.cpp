@@ -2,14 +2,14 @@
 // VersionScene.cpp - Version list (A = open detail, B = back)
 //=============================================================================
 
+#include "..\Context.h"
+#include "..\Drawing.h"
+#include "..\Font.h"
+#include "..\String.h"
+#include "..\XBInput.h"
 #include "VersionScene.h"
 #include "VersionDetailsScene.h"
-#include "Context.h"
 #include "SceneManager.h"
-#include "Drawing.h"
-#include "Font.h"
-#include "String.h"
-#include "XBInput.h"
 
 #define COLOR_BG            0xFF212121
 #define COLOR_WHITE         0xFFFFFFFF

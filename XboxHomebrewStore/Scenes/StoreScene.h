@@ -5,9 +5,9 @@
 #ifndef STORESCENE_H
 #define STORESCENE_H
 
+#include "..\Main.h"
+#include "..\Store.h"
 #include "Scene.h"
-#include "Main.h"
-#include "Store.h"
 
 class StoreScene : public Scene
 {

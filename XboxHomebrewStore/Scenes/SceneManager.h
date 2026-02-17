@@ -5,7 +5,7 @@
 #ifndef SCENEMANAGER_H
 #define SCENEMANAGER_H
 
-#include "Main.h"
+#include "..\Main.h"
 #include "Scene.h"
 
 class SceneManager

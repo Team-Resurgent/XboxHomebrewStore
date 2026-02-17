@@ -2,14 +2,15 @@
 // StoreScene.cpp - Store UI (main grid, sidebar, downloading, settings)
 //=============================================================================
 
+#include "..\Main.h"
+#include "..\Context.h"
+#include "..\Drawing.h"
+#include "..\Font.h"
+#include "..\String.h"
+#include "..\XBInput.h"
 #include "StoreScene.h"
-#include "Context.h"
-#include "Scenes/SceneManager.h"
-#include "Scenes/VersionScene.h"
-#include "Drawing.h"
-#include "Font.h"
-#include "String.h"
-#include "XBInput.h"
+#include "SceneManager.h"
+#include "VersionScene.h"
 
 #define COLOR_BG            0xFF212121
 #define COLOR_WHITE         0xFFFFFFFF
@@ -236,7 +237,7 @@ void StoreScene::HandleInput()
     int numCategories = (int)cats.size();
     if( numCategories > 0 )
     {
-        if( pGamepad->wPressedButtons & XINPUT_GAMEPAD_LEFT_SHOULDER )
+        if( pGamepad->wPressedButtons & XINPUT_GAMEPAD_LEFT_TRIGGER )
         {
             m_nSelectedCategory--;
             if( m_nSelectedCategory < 0 ) m_nSelectedCategory = numCategories - 1;
@@ -244,7 +245,7 @@ void StoreScene::HandleInput()
             m_pStore->LoadAppsPage( 1, filter, m_nSelectedCategory );
             m_nSelectedItem = 0;
         }
-        if( pGamepad->wPressedButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER )
+        if( pGamepad->wPressedButtons & XINPUT_GAMEPAD_RIGHT_TRIGGER )
         {
             m_nSelectedCategory++;
             if( m_nSelectedCategory >= numCategories ) m_nSelectedCategory = 0;

@@ -270,10 +270,6 @@ void Drawing::DrawFilledRect(uint32_t color, int x, int y, int width, int height
 
 void Drawing::DrawTexturedRect(D3DTexture* texture, int x, int y, int width, int height)
 {
-    if (!pTexture) {
-        return;
-    }
-
     TEXVERTEX vertices[4];
 
     float px = (float)x;

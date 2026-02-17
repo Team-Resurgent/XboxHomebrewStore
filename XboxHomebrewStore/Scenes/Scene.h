@@ -5,7 +5,7 @@
 #ifndef SCENE_H
 #define SCENE_H
 
-#include "Main.h"
+#include "..\Main.h"
 
 class Scene
 {
