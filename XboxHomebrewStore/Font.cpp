@@ -17,9 +17,9 @@ void Font::Init(D3DDevice* d3dDevice)
     {
         Drawing::TryGenerateBitmapFont(&mMainFontContext, "FreeSans", SSFN_STYLE_REGULAR, 16, 16, 0, 256, &mMainFont);
     }
+}
 
-    //while(true)
-    //{
-    //    Drawing::DrawFont(&mMainFont, "Hello World", 0xffffffff, 0, 0);
-    //}
+void Font::DrawText(const char* message, uint32_t color, int x, int y)
+{
+    Drawing::DrawFont(&mMainFont, "Hello World", 0xffffffff, 0, 0);
 }
