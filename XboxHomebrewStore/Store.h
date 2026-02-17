@@ -7,7 +7,7 @@
 
 #include <xtl.h>
 #include <xgraphics.h>
-#include "XBFont.h"
+#include "Font.h"
 #include "XBInput.h"
 #include "WebManager.h"
 #include "Models.h"
@@ -131,7 +131,6 @@ private:
     // D3D resources
     LPDIRECT3DVERTEXBUFFER8 m_pVB;
     LPDIRECT3DVERTEXBUFFER8 m_pVBTex;
-    CXBFont m_Font;
     
     // Controller state
     XBGAMEPAD* m_pGamepads;

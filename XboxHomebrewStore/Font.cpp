@@ -21,5 +21,5 @@ void Font::Init(D3DDevice* d3dDevice)
 
 void Font::DrawText(const char* message, uint32_t color, int x, int y)
 {
-    Drawing::DrawFont(&mMainFont, "Hello World", 0xffffffff, 0, 0);
+    Drawing::DrawFont(&mMainFont, message, color, x, y);
 }

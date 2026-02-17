@@ -314,8 +314,8 @@ void Drawing::DrawFont(BitmapFont* font, const char* message, uint32_t color, in
         return;
     }
 
-    mD3dDevice->BeginScene();
-    mD3dDevice->Clear(0L, NULL, D3DCLEAR_TARGET|D3DCLEAR_ZBUFFER|D3DCLEAR_STENCIL, 0xff000000, 1.0f, 0L);
+    //mD3dDevice->BeginScene();
+    //mD3dDevice->Clear(0L, NULL, D3DCLEAR_TARGET|D3DCLEAR_ZBUFFER|D3DCLEAR_STENCIL, 0xff000000, 1.0f, 0L);
 
     mD3dDevice->SetVertexShader( D3DFVF_XYZRHW|D3DFVF_DIFFUSE|D3DFVF_TEX1 );
     mD3dDevice->SetTexture(0, font->image.texture);
@@ -332,6 +332,6 @@ void Drawing::DrawFont(BitmapFont* font, const char* message, uint32_t color, in
         offset += batchVerts;
     }
 
-    mD3dDevice->EndScene();
-	mD3dDevice->Present(NULL, NULL, NULL, NULL);
+ //   mD3dDevice->EndScene();
+	//mD3dDevice->Present(NULL, NULL, NULL, NULL);
 }

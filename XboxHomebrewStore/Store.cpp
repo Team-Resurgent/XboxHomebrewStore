@@ -81,8 +81,6 @@ Store::~Store()
         m_pVBTex->Release();
         m_pVBTex = NULL;
     }
-    m_Font.Destroy();
-
 	if (m_pFilteredIndices) {
 		delete[] m_pFilteredIndices;
 	}
@@ -505,11 +503,7 @@ HRESULT Store::Initialize( LPDIRECT3DDEVICE8 pd3dDevice )
         return E_FAIL;
     }
 
-    // Initialize font using bundled font files
-    if( FAILED( m_Font.Create( "D:\\Media\\Fonts\\Arial_16.xpr" ) ) )
-    {
-        OutputDebugString( "Warning: Could not load Arial_16.xpr font file.\n" );
-    }
+    // Font is initialized in Main.cpp via Font::Init()
 
     // Initialize gamepads
     XBInput_CreateGamepads( &m_pGamepads );
@@ -1202,15 +1196,11 @@ void Store::DrawTexturedRect( LPDIRECT3DDEVICE8 pd3dDevice, float x, float y, fl
 }
 
 //-----------------------------------------------------------------------------
-// DrawText - Draw text using CXBFont
+// DrawText - Draw text using Font (Drawing bitmap font)
 //-----------------------------------------------------------------------------
 void Store::DrawText( LPDIRECT3DDEVICE8 pd3dDevice, const char* text, float x, float y, DWORD color )
 {
-    // Convert to wide string for CXBFont
-    WCHAR wstr[256];
-    MultiByteToWideChar( CP_ACP, 0, text, -1, wstr, 256 );
-    
-    m_Font.DrawText( x, y, color, wstr, XBFONT_LEFT );
+    Font::DrawText( text, (uint32_t)color, (int)x, (int)y );
 }
 
 //-----------------------------------------------------------------------------
