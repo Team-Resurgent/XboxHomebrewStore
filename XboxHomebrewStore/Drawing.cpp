@@ -191,6 +191,10 @@ bool Drawing::TryGenerateBitmapFont(void* context, const std::string fontName, i
 
 void Drawing::DrawFont(BitmapFont* font, const char* message, uint32_t color, int x, int y)
 {
+    if (!message || !message[0]) {
+        return;
+    }
+
     static TEXVERTEX batchBuf[DRAW_BATCH_MAX_VERTS];
     UINT vertexCount = 0;
 
@@ -216,8 +220,9 @@ void Drawing::DrawFont(BitmapFont* font, const char* message, uint32_t color, in
         
         const Rect& rect = it->second;
 
-        if (vertexCount + 4 > (UINT)DRAW_BATCH_MAX_VERTS) {
-            mD3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, vertexCount - 2, batchBuf, sizeof(TEXVERTEX));
+        if (vertexCount + 6 > (UINT)DRAW_BATCH_MAX_VERTS)
+        {
+            mD3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLELIST, vertexCount / 3, batchBuf, sizeof(TEXVERTEX));
             vertexCount = 0;
         }
 
@@ -233,17 +238,19 @@ void Drawing::DrawFont(BitmapFont* font, const char* message, uint32_t color, in
         float fh = (float)rect.height;
 
         TEXVERTEX* v = &batchBuf[vertexCount];
-        v[0].x = px;      v[0].y = py;      v[0].z = 0.5f; v[0].rhw = 1.0f; v[0].diffuse = color; v[0].u = u0; v[0].v = v0;
-        v[1].x = px + fw; v[1].y = py;      v[1].z = 0.5f; v[1].rhw = 1.0f; v[1].diffuse = color; v[1].u = u1; v[1].v = v0;
-        v[2].x = px;      v[2].y = py + fh; v[2].z = 0.5f; v[2].rhw = 1.0f; v[2].diffuse = color; v[2].u = u0; v[2].v = v1;
-        v[3].x = px + fw; v[3].y = py + fh; v[3].z = 0.5f; v[3].rhw = 1.0f; v[3].diffuse = color; v[3].u = u1; v[3].v = v1;
+        v[0].x = px + fw; v[0].y = py;     v[0].z = 0.5f; v[0].rhw = 1.0f; v[0].diffuse = color; v[0].u = u1; v[0].v = v0;
+        v[1].x = px + fw; v[1].y = py+fh; v[1].z = 0.5f; v[1].rhw = 1.0f; v[1].diffuse = color; v[1].u = u1; v[1].v = v1;
+        v[2].x = px;      v[2].y = py+fh; v[2].z = 0.5f; v[2].rhw = 1.0f; v[2].diffuse = color; v[2].u = u0; v[2].v = v1;
+        v[3].x = px + fw; v[3].y = py;     v[3].z = 0.5f; v[3].rhw = 1.0f; v[3].diffuse = color; v[3].u = u1; v[3].v = v0;
+        v[4].x = px;      v[4].y = py+fh; v[4].z = 0.5f; v[4].rhw = 1.0f; v[4].diffuse = color; v[4].u = u0; v[4].v = v1;
+        v[5].x = px;      v[5].y = py;     v[5].z = 0.5f; v[5].rhw = 1.0f; v[5].diffuse = color; v[5].u = u0; v[5].v = v0;
 
-        vertexCount += 4;
+        vertexCount += 6;
         xPos += rect.width + font->spacing;
     }
 
     if (vertexCount > 0) {
-        mD3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, vertexCount - 2, batchBuf, sizeof(TEXVERTEX));
+        mD3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLELIST, vertexCount / 3, batchBuf, sizeof(TEXVERTEX));
     }
 
     mD3dDevice->SetTexture(0, NULL);
