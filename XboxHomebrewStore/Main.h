@@ -11,3 +11,4 @@
 #include <curl/curl.h>
 #include <winsockx.h>
 #include <vector>
+#include <map>

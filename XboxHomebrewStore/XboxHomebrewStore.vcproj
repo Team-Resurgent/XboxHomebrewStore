@@ -59,7 +59,7 @@
 				ForceCopy="TRUE"/>
 			<Tool
 				Name="XboxImageTool"
-				StackSize="65536"
+				StackSize="0x40000"
 				IncludeDebugInfo="TRUE"
 				NoLibWarn="TRUE"
 				TitleID="0x54520099"/>
@@ -117,7 +117,7 @@
 				ForceCopy="TRUE"/>
 			<Tool
 				Name="XboxImageTool"
-				StackSize="65536"
+				StackSize="0x40000"
 				IncludeDebugInfo="TRUE"
 				NoLibWarn="TRUE"
 				TitleID="0x54520099"/>
@@ -176,7 +176,7 @@
 				ForceCopy="TRUE"/>
 			<Tool
 				Name="XboxImageTool"
-				StackSize="65536"
+				StackSize="0x40000"
 				IncludeDebugInfo="TRUE"
 				NoLibWarn="TRUE"
 				TitleID="0x54520099"/>
@@ -234,7 +234,7 @@
 				ForceCopy="TRUE"/>
 			<Tool
 				Name="XboxImageTool"
-				StackSize="65536"
+				StackSize="0x40000"
 				TitleID="0x54520099"/>
 		</Configuration>
 		<Configuration
@@ -291,7 +291,7 @@
 				ForceCopy="TRUE"/>
 			<Tool
 				Name="XboxImageTool"
-				StackSize="65536"
+				StackSize="0x40000"
 				TitleID="0x54520099"/>
 		</Configuration>
 	</Configurations>
@@ -304,6 +304,12 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}">
 			<File
 				RelativePath=".\Debug.cpp">
+			</File>
+			<File
+				RelativePath=".\Drawing.cpp">
+			</File>
+			<File
+				RelativePath=".\Font.cpp">
 			</File>
 			<File
 				RelativePath=".\ImageDownloader.cpp">
@@ -350,11 +356,20 @@
 			<Filter
 				Name="Media"
 				Filter="">
+				<File
+					RelativePath=".\Media\Cover.jpg">
+				</File>
+				<File
+					RelativePath=".\Media\Screenshot.jpg">
+				</File>
 				<Filter
 					Name="Fonts"
 					Filter="">
 					<File
 						RelativePath=".\Media\Fonts\Arial_16.xpr">
+					</File>
+					<File
+						RelativePath=".\Media\Fonts\Font.sfn">
 					</File>
 				</Filter>
 			</Filter>
@@ -365,6 +380,12 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}">
 			<File
 				RelativePath=".\Debug.h">
+			</File>
+			<File
+				RelativePath=".\Drawing.h">
+			</File>
+			<File
+				RelativePath=".\Font.h">
 			</File>
 			<File
 				RelativePath=".\ImageDownloader.h">
@@ -383,6 +404,9 @@
 			</File>
 			<File
 				RelativePath=".\parson.h">
+			</File>
+			<File
+				RelativePath=".\ssfn.h">
 			</File>
 			<File
 				RelativePath=".\stb.h">

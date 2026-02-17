@@ -8,6 +8,8 @@
 #include "Network.h"
 #include "WebManager.h"
 #include "TextureHelper.h"
+#include "Drawing.h"
+#include "Font.h"
 #include "Debug.h"
 #include "String.h"
 
@@ -204,8 +206,12 @@ VOID __cdecl main()
     Network::Init();
     WebManager::Init();
     WebManager::TrySyncTime();
+
     TextureHelper::Init(g_pd3dDevice);
+    Drawing::Init(g_pd3dDevice);
+    //Font::Init(g_pd3dDevice);
     
+
     /*AppsResponse appsResp;
     if (WebManager::TryGetApps(appsResp, 1, 20))
     {

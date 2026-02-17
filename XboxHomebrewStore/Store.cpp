@@ -5,6 +5,7 @@
 #include "Main.h"
 #include "Store.h"
 #include "WebManager.h"
+#include "Drawing.h"
 #include "String.h"
 #include <stdlib.h>
 #include <string.h>

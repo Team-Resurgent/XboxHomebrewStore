@@ -134,6 +134,8 @@ static bool ParseVersionsResponse(const std::string& raw, VersionsResponse& out)
             ver.changeLog = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "changelog"));
             ver.titleId = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "title_id"));
             ver.region = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "region"));
+            ver.state = 0;
+            ver.install_path = "";
             out.push_back(ver);
         }
     }

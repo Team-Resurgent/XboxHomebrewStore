@@ -39,9 +39,9 @@ struct StoreItem
 #define STATE_NONE 0
 #define STATE_NEW 1
 #define STATE_UPDATE 2
-#define STATE_DOWNLOADED 3
-#define STATE_INSTALLED 4
-#define STATE_NOT_DOWNLOADED 5
+#define STATE_NOT_DOWNLOADED 3
+#define STATE_DOWNLOADED 4
+#define STATE_INSTALLED 5
 
 #include "UserState.h"
 
@@ -162,12 +162,6 @@ struct CUSTOMVERTEX
 #define D3DFVF_CUSTOMVERTEX (D3DFVF_XYZRHW|D3DFVF_DIFFUSE)
 
 // Vertex format for textured quads (icon/screenshot)
-struct TEXVERTEX
-{
-    FLOAT x, y, z, rhw;
-    DWORD color;
-    FLOAT tu, tv;
-};
 
 #define D3DFVF_TEXVERTEX (D3DFVF_XYZRHW|D3DFVF_DIFFUSE|D3DFVF_TEX1)
 

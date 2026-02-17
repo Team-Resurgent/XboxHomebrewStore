@@ -1,0 +1,44 @@
+#pragma once
+
+#include "Main.h"
+
+typedef struct {
+    int x;
+    int y;
+    int width;
+    int height;
+} Rect;
+
+typedef struct {
+    int width;
+    int height;
+    float uv_width;
+    float uv_height;
+    D3DTexture* texture;
+} Image;
+
+typedef struct 
+{    
+    std::map<uint32_t, Rect> charmap;
+    int line_height;
+    int spacing;
+    Image image;
+} BitmapFont;
+
+typedef struct
+{
+    float x, y, z, rhw;
+    uint32_t diffuse;
+    float u, v;
+} TEXVERTEX;
+
+class Drawing
+{
+public:
+    static void Init(D3DDevice* d3dDevice);
+    static void Swizzle(const void* src, const uint32_t& depth, const uint32_t& width, const uint32_t& height, void* dest);
+    static bool TryCreateImage(uint8_t* imageData, D3DFORMAT format, int width, int height, Image* image);
+    static bool LoadFont(const std::string filePath, void* context);
+    static bool TryGenerateBitmapFont(void* context, const std::string fontName, int fontStyle, int fontSize, int lineHeight, int spacing, int textureDimension, BitmapFont* bitmapFont);
+    static void DrawFont(BitmapFont* font, const char* message, uint32_t color, int x, int y);
+};
