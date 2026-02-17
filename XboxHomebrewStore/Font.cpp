@@ -15,11 +15,11 @@ void Font::Init(D3DDevice* d3dDevice)
 
     if (Drawing::LoadFont("D:\\Media\\Fonts\\Font.sfn", &mMainFontContext))
     {
-        Drawing::TryGenerateBitmapFont(&mMainFontContext, "FreeSans", SSFN_STYLE_REGULAR, 32, 32, 0, 1024, &mMainFont);
+        Drawing::TryGenerateBitmapFont(&mMainFontContext, "FreeSans", SSFN_STYLE_REGULAR, 16, 16, 0, 256, &mMainFont);
     }
 
-    while(true)
-    {
-        Drawing::DrawFont(&mMainFont, "Hello World", 0xffffffff, 50, 50);
-    }
+    //while(true)
+    //{
+    //    Drawing::DrawFont(&mMainFont, "Hello World", 0xffffffff, 0, 0);
+    //}
 }

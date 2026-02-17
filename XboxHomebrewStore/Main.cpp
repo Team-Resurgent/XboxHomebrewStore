@@ -209,7 +209,7 @@ VOID __cdecl main()
 
     TextureHelper::Init(g_pd3dDevice);
     Drawing::Init(g_pd3dDevice);
-    //Font::Init(g_pd3dDevice);
+    Font::Init(g_pd3dDevice);
     
 
     /*AppsResponse appsResp;

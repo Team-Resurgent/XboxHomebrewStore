@@ -7,7 +7,6 @@
 #define SSFN_realloc realloc
 #define SSFN_free free
 #include "ssfn.h"
-#include "freesans_sfn.h"
 
 #define DRAW_BATCH_MAX_VERTS 16380
 
@@ -245,9 +244,10 @@ void Drawing::DrawFont(BitmapFont* font, const char* message, uint32_t color, in
         float fw = font->image.width * uvWidth;
         float fh = font->image.height *uvHeight;
 
+        /* Flip quad vertically: swap py and py+fh so texture maps right-way up */
         TEXVERTEX tv0;
         tv0.x = px + fw;
-        tv0.y = py + fh;
+        tv0.y = py;
         tv0.z = pz;
         tv0.rhw = 1.0f;
         tv0.diffuse = color;
@@ -257,7 +257,7 @@ void Drawing::DrawFont(BitmapFont* font, const char* message, uint32_t color, in
 
         TEXVERTEX tv1;
         tv1.x = px + fw;
-        tv1.y = py;
+        tv1.y = py + fh;
         tv1.z = pz;
         tv1.rhw = 1.0f;
         tv1.diffuse = color;
@@ -267,7 +267,7 @@ void Drawing::DrawFont(BitmapFont* font, const char* message, uint32_t color, in
 
         TEXVERTEX tv2;
         tv2.x = px;
-        tv2.y = py;
+        tv2.y = py + fh;
         tv2.z = pz;
         tv2.rhw = 1.0f;
         tv2.diffuse = color;
@@ -277,7 +277,7 @@ void Drawing::DrawFont(BitmapFont* font, const char* message, uint32_t color, in
 
         TEXVERTEX tv3;
         tv3.x = px + fw;
-        tv3.y = py + fh;
+        tv3.y = py;
         tv3.z = pz;
         tv3.rhw = 1.0f;
         tv3.diffuse = color;
@@ -287,7 +287,7 @@ void Drawing::DrawFont(BitmapFont* font, const char* message, uint32_t color, in
 
         TEXVERTEX tv4;
         tv4.x = px;
-        tv4.y = py;
+        tv4.y = py + fh;
         tv4.z = pz;
         tv4.rhw = 1.0f;
         tv4.diffuse = color;
@@ -297,7 +297,7 @@ void Drawing::DrawFont(BitmapFont* font, const char* message, uint32_t color, in
 
         TEXVERTEX tv5;
         tv5.x = px;
-        tv5.y = py + fh;
+        tv5.y = py;
         tv5.z = pz;
         tv5.rhw = 1.0f;
         tv5.diffuse = color;
