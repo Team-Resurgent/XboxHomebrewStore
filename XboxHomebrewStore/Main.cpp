@@ -193,9 +193,6 @@ VOID Render()
 //-----------------------------------------------------------------------------
 VOID __cdecl main()
 {
-    // Initialize Xbox input devices - MUST be called before XBInput functions
-    XInitDevices( 0, NULL );
-
     // Initialize Direct3D
     if( FAILED( InitD3D() ) )
     {

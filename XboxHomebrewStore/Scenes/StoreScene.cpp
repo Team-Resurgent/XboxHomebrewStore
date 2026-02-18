@@ -14,6 +14,9 @@
 StoreScene::StoreScene( Store* pStore )
     : m_pStore( pStore )
     , m_CurrentState( UI_MAIN_GRID )
+    , m_bFocusOnSidebar( FALSE )
+    , m_nSelectedCol( 0 )
+    , m_nSelectedRow( 0 )
     , m_nSelectedItem( 0 )
     , m_nSelectedCategory( 0 )
     , m_fScreenWidth( 1280.0f )
@@ -85,9 +88,16 @@ void StoreScene::RenderCategorySidebar()
     int32_t y = sisebarY + 20;
     for (uint32_t i = 0; i < categories.size(); i++)
     {
-        bool selected = i == m_nSelectedCategory;
-        uint32_t background = selected ? COLOR_PRIMARY : COLOR_CARD_BG;
-        Drawing::DrawFilledRect(background, 8, y, sidebarWidth - 16, 36);
+        bool selected = ( i == m_nSelectedCategory );
+        bool focused = m_bFocusOnSidebar && selected;
+        uint32_t background;
+        if( focused )
+            background = (uint32_t)COLOR_PRIMARY;
+        else if( selected )
+            background = (uint32_t)COLOR_SECONDARY;
+        else
+            background = COLOR_CARD_BG;
+        Drawing::DrawFilledRect( background, 8, y, sidebarWidth - 16, 36 );
         Font::DrawText(categories[i].category.c_str(), COLOR_WHITE, 16, y + 8);
         y += 44;
     }
@@ -127,6 +137,10 @@ void StoreScene::RenderMainGrid( LPDIRECT3DDEVICE8 pd3dDevice )
         Font::DrawText( "No apps in this category.", (uint32_t)COLOR_TEXT_GRAY, (int)m_fGridStartX, (int)m_fGridStartY );
         return;
     }
+    int selectedSlot = m_nSelectedRow * m_nGridCols + m_nSelectedCol;
+    if( selectedSlot >= count ) selectedSlot = count - 1;
+    if( selectedSlot < 0 ) selectedSlot = 0;
+    m_nSelectedItem = selectedSlot;
     int totalSlots = m_nGridCols * m_nGridRows;
     for( int slot = 0; slot < totalSlots; slot++ )
     {
@@ -136,7 +150,7 @@ void StoreScene::RenderMainGrid( LPDIRECT3DDEVICE8 pd3dDevice )
         int col = slot % m_nGridCols;
         float x = m_fGridStartX + col * ( m_fCardWidth + CARD_GAP );
         float y = m_fGridStartY + row * ( m_fCardHeight + CARD_GAP );
-        BOOL selected = ( slot == m_nSelectedItem );
+        BOOL selected = ( !m_bFocusOnSidebar && slot == selectedSlot );
         DrawAppCard( pd3dDevice, slot, x, y, m_fCardWidth, m_fCardHeight, selected );
     }
     float pageY = m_fScreenHeight - 50.0f;
@@ -234,88 +248,147 @@ void StoreScene::HandleInput()
     // UI_MAIN_GRID
     const std::vector<CategoryItem>& cats = m_pStore->GetCategories();
     int numCategories = (int)cats.size();
-    if( numCategories > 0 )
-    {
-        if(InputManager::ControllerPressed(ControllerLTrigger, -1))
-        {
-            m_nSelectedCategory--;
-            if( m_nSelectedCategory < 0 ) m_nSelectedCategory = numCategories - 1;
-            const char* filter = ( m_nSelectedCategory == 0 ) ? "" : cats[m_nSelectedCategory].category.c_str();
-            m_pStore->LoadAppsPage( 1, filter, m_nSelectedCategory );
-            m_nSelectedItem = 0;
-        }
-        if(InputManager::ControllerPressed(ControllerRTrigger, -1))
-        {
-            m_nSelectedCategory++;
-            if( m_nSelectedCategory >= numCategories ) m_nSelectedCategory = 0;
-            const char* filter = ( m_nSelectedCategory == 0 ) ? "" : cats[m_nSelectedCategory].category.c_str();
-            m_pStore->LoadAppsPage( 1, filter, m_nSelectedCategory );
-            m_nSelectedItem = 0;
-        }
-    }
-
     m_pStore->BuildFilteredIndices( m_nSelectedCategory );
     int count = m_pStore->GetFilteredCount();
     int totalSlots = m_nGridCols * m_nGridRows;
-    if( count > 0 && totalSlots > 0 )
+
+    if( m_bFocusOnSidebar )
     {
-        if(InputManager::ControllerPressed(ControllerDpadLeft, -1))
+        if( InputManager::ControllerPressed( ControllerDpadRight, -1 ) )
         {
-            m_nSelectedItem--;
-            if( m_nSelectedItem < 0 ) m_nSelectedItem = count - 1;
+            m_bFocusOnSidebar = FALSE;
+            m_nSelectedCol = 0;
+            m_nSelectedRow = 0;
         }
-        if(InputManager::ControllerPressed(ControllerDpadRight, -1))
+        else if( numCategories > 0 )
         {
-            m_nSelectedItem++;
-            if( m_nSelectedItem >= count ) m_nSelectedItem = 0;
-        }
-        if(InputManager::ControllerPressed(ControllerDpadUp, -1))
-        {
-            m_nSelectedItem -= m_nGridCols;
-            if( m_nSelectedItem < 0 ) m_nSelectedItem = count - 1;
-        }
-        if(InputManager::ControllerPressed(ControllerDpadDown, -1))
-        {
-            m_nSelectedItem += m_nGridCols;
-            if( m_nSelectedItem >= count ) m_nSelectedItem = 0;
-        }
-        if(InputManager::ControllerPressed(ControllerA, -1))
-        {
-            int* pFiltered = m_pStore->GetFilteredIndices();
-            StoreItem* pItems = m_pStore->GetItems();
-            if( pFiltered && pItems && m_nSelectedItem < count )
+            if( InputManager::ControllerPressed( ControllerDpadUp, -1 ) )
             {
-                StoreItem* pItem = &pItems[pFiltered[m_nSelectedItem]];
-                m_pStore->EnsureVersionsForItem( pItem );
-                m_pStore->EnsureScreenshotForItem( pItem );
-                m_pStore->MarkAppAsViewed( pItem->app.id.c_str() );
-                SelectedAppInfo info;
-                info.appId = pItem->app.id;
-                info.appName = pItem->app.name;
-                info.author = pItem->app.author;
-                info.description = pItem->app.description;
-                info.pScreenshot = pItem->pScreenshot;
-                for( size_t v = 0; v < pItem->versions.size(); v++ )
+                m_nSelectedCategory--;
+                if( m_nSelectedCategory < 0 ) m_nSelectedCategory = numCategories - 1;
+                const char* filter = ( m_nSelectedCategory == 0 ) ? "" : cats[m_nSelectedCategory].category.c_str();
+                m_pStore->LoadAppsPage( 1, filter, m_nSelectedCategory );
+                m_nSelectedCol = 0;
+                m_nSelectedRow = 0;
+            }
+            if( InputManager::ControllerPressed( ControllerDpadDown, -1 ) )
+            {
+                m_nSelectedCategory++;
+                if( m_nSelectedCategory >= numCategories ) m_nSelectedCategory = 0;
+                const char* filter = ( m_nSelectedCategory == 0 ) ? "" : cats[m_nSelectedCategory].category.c_str();
+                m_pStore->LoadAppsPage( 1, filter, m_nSelectedCategory );
+                m_nSelectedCol = 0;
+                m_nSelectedRow = 0;
+            }
+        }
+    }
+    else
+    {
+        if( numCategories > 0 )
+        {
+            if( InputManager::ControllerPressed( ControllerLTrigger, -1 ) )
+            {
+                m_nSelectedCategory--;
+                if( m_nSelectedCategory < 0 ) m_nSelectedCategory = numCategories - 1;
+                const char* filter = ( m_nSelectedCategory == 0 ) ? "" : cats[m_nSelectedCategory].category.c_str();
+                m_pStore->LoadAppsPage( 1, filter, m_nSelectedCategory );
+                m_nSelectedCol = 0;
+                m_nSelectedRow = 0;
+            }
+            if( InputManager::ControllerPressed( ControllerRTrigger, -1 ) )
+            {
+                m_nSelectedCategory++;
+                if( m_nSelectedCategory >= numCategories ) m_nSelectedCategory = 0;
+                const char* filter = ( m_nSelectedCategory == 0 ) ? "" : cats[m_nSelectedCategory].category.c_str();
+                m_pStore->LoadAppsPage( 1, filter, m_nSelectedCategory );
+                m_nSelectedCol = 0;
+                m_nSelectedRow = 0;
+            }
+        }
+
+        if( count > 0 && totalSlots > 0 )
+        {
+            if( InputManager::ControllerPressed( ControllerDpadLeft, -1 ) )
+            {
+                if( m_nSelectedCol > 0 )
+                    m_nSelectedCol--;
+                else
+                    m_bFocusOnSidebar = TRUE;
+            }
+            else if( InputManager::ControllerPressed( ControllerDpadRight, -1 ) )
+            {
+                int newCol = m_nSelectedCol + 1;
+                if( newCol < m_nGridCols )
                 {
-                    VersionInfo vi;
-                    vi.id = pItem->versions[v].id;
-                    vi.version = pItem->versions[v].version;
-                    vi.size = pItem->versions[v].size;
-                    vi.releaseDate = pItem->versions[v].releaseDate;
-                    vi.changeLog = pItem->versions[v].changeLog;
-                    vi.titleId = pItem->versions[v].titleId;
-                    vi.region = pItem->versions[v].region;
-                    vi.state = (int)m_pStore->GetDisplayState( pItem, (int)v );
-                    info.versions.push_back( vi );
+                    int newSlot = m_nSelectedRow * m_nGridCols + newCol;
+                    if( newSlot < count )
+                        m_nSelectedCol = newCol;
                 }
-                SceneManager* pMgr = Context::GetSceneManager();
-                if( pMgr )
-                    pMgr->PushScene( new VersionScene( info ) );
+            }
+            else if( InputManager::ControllerPressed( ControllerDpadUp, -1 ) )
+            {
+                int page = m_pStore->GetCurrentPage();
+                if( page > 1 )
+                {
+                    const char* filter = ( m_nSelectedCategory == 0 || numCategories == 0 ) ? "" : cats[m_nSelectedCategory].category.c_str();
+                    m_pStore->LoadAppsPage( page - 1, filter, m_nSelectedCategory );
+                    m_nSelectedCol = 0;
+                    m_nSelectedRow = 0;
+                }
+            }
+            else if( InputManager::ControllerPressed( ControllerDpadDown, -1 ) )
+            {
+                int page = m_pStore->GetCurrentPage();
+                int totalPages = m_pStore->GetTotalPages();
+                if( page < totalPages )
+                {
+                    const char* filter = ( m_nSelectedCategory == 0 || numCategories == 0 ) ? "" : cats[m_nSelectedCategory].category.c_str();
+                    m_pStore->LoadAppsPage( page + 1, filter, m_nSelectedCategory );
+                    m_nSelectedCol = 0;
+                    m_nSelectedRow = 0;
+                }
+            }
+            else if( InputManager::ControllerPressed( ControllerA, -1 ) )
+            {
+                m_nSelectedItem = m_nSelectedRow * m_nGridCols + m_nSelectedCol;
+                if( m_nSelectedItem >= count ) m_nSelectedItem = count - 1;
+                if( m_nSelectedItem < 0 ) m_nSelectedItem = 0;
+                int* pFiltered = m_pStore->GetFilteredIndices();
+                StoreItem* pItems = m_pStore->GetItems();
+                if( pFiltered && pItems && m_nSelectedItem < count )
+                {
+                    StoreItem* pItem = &pItems[pFiltered[m_nSelectedItem]];
+                    m_pStore->EnsureVersionsForItem( pItem );
+                    m_pStore->EnsureScreenshotForItem( pItem );
+                    m_pStore->MarkAppAsViewed( pItem->app.id.c_str() );
+                    SelectedAppInfo info;
+                    info.appId = pItem->app.id;
+                    info.appName = pItem->app.name;
+                    info.author = pItem->app.author;
+                    info.description = pItem->app.description;
+                    info.pScreenshot = pItem->pScreenshot;
+                    for( size_t v = 0; v < pItem->versions.size(); v++ )
+                    {
+                        VersionInfo vi;
+                        vi.id = pItem->versions[v].id;
+                        vi.version = pItem->versions[v].version;
+                        vi.size = pItem->versions[v].size;
+                        vi.releaseDate = pItem->versions[v].releaseDate;
+                        vi.changeLog = pItem->versions[v].changeLog;
+                        vi.titleId = pItem->versions[v].titleId;
+                        vi.region = pItem->versions[v].region;
+                        vi.state = (int)m_pStore->GetDisplayState( pItem, (int)v );
+                        info.versions.push_back( vi );
+                    }
+                    SceneManager* pMgr = Context::GetSceneManager();
+                    if( pMgr )
+                        pMgr->PushScene( new VersionScene( info ) );
+                }
             }
         }
     }
 
-    if(InputManager::ControllerPressed(ControllerY, -1))
+    if( InputManager::ControllerPressed( ControllerY, -1 ) )
         m_CurrentState = UI_SETTINGS;
 }
 

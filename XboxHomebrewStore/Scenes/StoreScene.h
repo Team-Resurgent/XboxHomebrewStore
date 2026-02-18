@@ -25,6 +25,9 @@ private:
 
     Store* m_pStore;
     UIState m_CurrentState;
+    BOOL m_bFocusOnSidebar;
+    int m_nSelectedCol;
+    int m_nSelectedRow;
     int m_nSelectedItem;
     int m_nSelectedCategory;
     float m_fScreenWidth;
