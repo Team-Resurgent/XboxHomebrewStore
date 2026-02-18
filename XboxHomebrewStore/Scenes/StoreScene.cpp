@@ -1,25 +1,15 @@
-//=============================================================================
-// StoreScene.cpp - Store UI (main grid, sidebar, downloading, settings)
-//=============================================================================
+#include "StoreScene.h"
+#include "SceneManager.h"
+#include "VersionScene.h"
 
 #include "..\Main.h"
+#include "..\Math.h"
+#include "..\Defines.h"
 #include "..\Context.h"
 #include "..\Drawing.h"
 #include "..\Font.h"
 #include "..\String.h"
 #include "..\XBInput.h"
-#include "StoreScene.h"
-#include "SceneManager.h"
-#include "VersionScene.h"
-
-#define COLOR_BG            0xFF212121
-#define COLOR_WHITE         0xFFFFFFFF
-#define COLOR_TEXT_GRAY     0xFFB0B0B0
-#define COLOR_PRIMARY       0xFFD81B60
-#define COLOR_SECONDARY     0xFF424242
-#define COLOR_CARD_BG       0xFF303030
-#define COLOR_CARD_SEL      0xFF4A4A4A
-#define CARD_GAP            16.0f
 
 StoreScene::StoreScene( Store* pStore )
     : m_pStore( pStore )
@@ -56,6 +46,9 @@ void StoreScene::CalculateLayout()
     m_fSidebarWidth = m_fScreenWidth * 0.22f;
     if( m_fSidebarWidth < 180.0f ) m_fSidebarWidth = 180.0f;
     if( m_fSidebarWidth > 260.0f ) m_fSidebarWidth = 260.0f;
+
+
+
     m_fGridStartX = m_fSidebarWidth + 20.0f;
     m_fGridStartY = 60.0f;
     m_fCardWidth = 160.0f;
@@ -78,19 +71,25 @@ void StoreScene::EnsureLayout( LPDIRECT3DDEVICE8 pd3dDevice )
     m_bLayoutValid = TRUE;
 }
 
-void StoreScene::RenderCategorySidebar( LPDIRECT3DDEVICE8 pd3dDevice )
+void StoreScene::RenderCategorySidebar()
 {
-    (void)pd3dDevice;
-    Drawing::DrawFilledRect( (uint32_t)COLOR_SECONDARY, 0, 0, (int)m_fSidebarWidth, (int)m_fScreenHeight );
-    const std::vector<CategoryItem>& cats = m_pStore->GetCategories();
-    float y = 20.0f;
-    for( size_t i = 0; i < cats.size(); i++ )
+    int32_t sidebarX = 0;
+    int32_t sisebarY = 40;
+    int32_t sidebarWidth = (int32_t)(Context::GetScreenWidth() * 0.22f);
+    sidebarWidth = Math::ClampInt32(sidebarWidth, 180, 260);
+    int32_t sidebarHeight = (Context::GetScreenHeight() - sisebarY) - 40;
+    Drawing::DrawFilledRect((uint32_t)COLOR_SIDE_PANEL, sidebarX, sisebarY, sidebarWidth, sidebarHeight);
+
+    const std::vector<CategoryItem>& categories = m_pStore->GetCategories();
+
+    int32_t y = sisebarY + 20;
+    for (uint32_t i = 0; i < categories.size(); i++)
     {
-        BOOL sel = ( (int)i == m_nSelectedCategory );
-        DWORD bg = sel ? (uint32_t)COLOR_PRIMARY : (uint32_t)COLOR_CARD_BG;
-        Drawing::DrawFilledRect( bg, 8, (int)y, (int)( m_fSidebarWidth - 16.0f ), 36 );
-        Font::DrawText( cats[i].category.c_str(), COLOR_WHITE, 16, (int)( y + 8.0f ) );
-        y += 44.0f;
+        bool selected = i == m_nSelectedCategory;
+        uint32_t background = selected ? COLOR_PRIMARY : COLOR_CARD_BG;
+        Drawing::DrawFilledRect(background, 8, y, sidebarWidth - 16, 36);
+        Font::DrawText(categories[i].category.c_str(), COLOR_WHITE, 16, y + 8);
+        y += 44;
     }
 }
 
@@ -184,11 +183,12 @@ void StoreScene::Render( LPDIRECT3DDEVICE8 pd3dDevice )
     if( !m_pStore || !pd3dDevice )
         return;
     EnsureLayout( pd3dDevice );
-    Drawing::DrawFilledRect( (uint32_t)COLOR_BG, 0, 0, (int)m_fScreenWidth, (int)m_fScreenHeight );
+
+    Drawing::DrawTexturedRect(TextureHelper::GetBackground(), 0, 0, (int)m_fScreenWidth, (int)m_fScreenHeight );
     switch( m_CurrentState )
     {
         case UI_MAIN_GRID:
-            RenderCategorySidebar( pd3dDevice );
+            RenderCategorySidebar();
             RenderMainGrid( pd3dDevice );
             break;
         case UI_DOWNLOADING:
@@ -199,7 +199,7 @@ void StoreScene::Render( LPDIRECT3DDEVICE8 pd3dDevice )
             RenderSettings( pd3dDevice );
             break;
         default:
-            RenderCategorySidebar( pd3dDevice );
+            RenderCategorySidebar();
             RenderMainGrid( pd3dDevice );
             break;
     }

@@ -1,27 +1,15 @@
-//=============================================================================
-// TextureHelper.h - Load and store media textures (Screenshot.jpg, Cover.jpg)
-//=============================================================================
-
 #pragma once
 
-#include <xtl.h>
-#include <xgraphics.h>
+#include "Main.h"
 
 class TextureHelper
 {
 public:
-    // Load Screenshot.jpg and Cover.jpg from Media folder. Returns S_OK on success.
-    static HRESULT Init( LPDIRECT3DDEVICE8 pd3dDevice );
-
-    // Load a texture from a full path (e.g. "D:\\temp.jpg"). Caller must Release. Returns NULL on failure.
-    static LPDIRECT3DTEXTURE8 LoadFromFile( LPDIRECT3DDEVICE8 pd3dDevice, const char* filePath );
-
-    // Return a copy of the texture (caller must Release). Returns NULL if not initialized or copy fails.
-    static LPDIRECT3DTEXTURE8 GetScreenshot( LPDIRECT3DDEVICE8 pd3dDevice );
-    static LPDIRECT3DTEXTURE8 GetCover( LPDIRECT3DDEVICE8 pd3dDevice );
-
+    static bool Init(D3DDevice* d3dDevice);
+    static D3DTexture* LoadFromFile(const std::string filePath);
+    static D3DTexture* GetBackground();
+    static D3DTexture* GetScreenshot();
+    static D3DTexture* GetCover();
 private:
-    static LPDIRECT3DTEXTURE8 s_pScreenshot;
-    static LPDIRECT3DTEXTURE8 s_pCover;
-    static LPDIRECT3DTEXTURE8 CopyTexture( LPDIRECT3DDEVICE8 pd3dDevice, LPDIRECT3DTEXTURE8 pSource );
+    static D3DTexture* CopyTexture(D3DTexture* source);
 };

@@ -221,7 +221,7 @@ BOOL Store::LoadAppsPage( int page, const char* categoryFilter, int selectedCate
     m_userState.Load( STORE_USER_STATE_PATH );
     m_userState.ApplyToStore( m_pItems, m_nItemCount );
     for( int i = 0; i < m_nItemCount; i++ ) {
-        m_pItems[i].pIcon = TextureHelper::GetCover( m_pd3dDevice );
+        m_pItems[i].pIcon = TextureHelper::GetCover();
         m_imageDownloader.Queue( &m_pItems[i].pIcon, m_pItems[i].app.id, IMAGE_COVER );
     }
     OutputDebugString( String::Format( "Loaded page %d: %d apps (total %d)\n", m_nCurrentPage, m_nItemCount, m_nTotalCount ).c_str() );
@@ -257,7 +257,7 @@ void Store::EnsureScreenshotForItem( StoreItem* pItem )
         pItem->pScreenshot->Release();
         pItem->pScreenshot = NULL;
     }
-    pItem->pScreenshot = TextureHelper::GetScreenshot( m_pd3dDevice );
+    pItem->pScreenshot = TextureHelper::GetScreenshot();
     if( !pItem->app.id.empty() )
         m_imageDownloader.Queue( &pItem->pScreenshot, pItem->app.id, IMAGE_SCREENSHOT );
 }

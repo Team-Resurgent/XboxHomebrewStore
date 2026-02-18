@@ -1,9 +1,4 @@
-//=============================================================================
-// VersionScene.h - Scene shown when user selects a store item (app versions list)
-//=============================================================================
-
-#ifndef VERSIONSCENE_H
-#define VERSIONSCENE_H
+#pragma once
 
 #include "..\Main.h"
 #include "Scene.h"
@@ -47,5 +42,3 @@ private:
     SelectedAppInfo m_info;
     int             m_selectedIndex;
 };
-
-#endif // VERSIONSCENE_H

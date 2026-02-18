@@ -8,6 +8,7 @@
 #include "Network.h"
 #include "WebManager.h"
 #include "TextureHelper.h"
+#include "InputManager.h"
 #include "Drawing.h"
 #include "Font.h"
 #include "Debug.h"
@@ -215,6 +216,8 @@ VOID __cdecl main()
         OutputDebugString( "Could not create T:\\Cache\\Screenshots\n" );
     }
     //DeleteImageCache();  // Uncomment to clear image cache on startup
+
+    InputManager::Init();
     Network::Init();
     WebManager::Init();
     WebManager::TrySyncTime();

@@ -1,22 +1,13 @@
-//=============================================================================
-// VersionScene.cpp - Version list (A = open detail, B = back)
-//=============================================================================
-
-#include "..\Context.h"
-#include "..\Drawing.h"
-#include "..\Font.h"
-#include "..\String.h"
-#include "..\XBInput.h"
 #include "VersionScene.h"
 #include "VersionDetailsScene.h"
 #include "SceneManager.h"
 
-#define COLOR_BG            0xFF212121
-#define COLOR_WHITE         0xFFFFFFFF
-#define COLOR_TEXT_GRAY     0xFFB0B0B0
-#define COLOR_PRIMARY       0xFFD81B60
-#define COLOR_SECONDARY     0xFF424242
-#define COLOR_CARD_BG       0xFF303030
+#include "..\Context.h"
+#include "..\Defines.h"
+#include "..\Drawing.h"
+#include "..\Font.h"
+#include "..\String.h"
+#include "..\XBInput.h"
 
 VersionScene::VersionScene( const SelectedAppInfo& info )
     : m_info( info )

@@ -318,28 +318,22 @@
 				RelativePath=".\ImageDownloader.cpp">
 			</File>
 			<File
+				RelativePath=".\InputManager.cpp">
+			</File>
+			<File
 				RelativePath=".\JsonHelper.cpp">
 			</File>
 			<File
 				RelativePath=".\Main.cpp">
 			</File>
 			<File
+				RelativePath=".\Math.cpp">
+			</File>
+			<File
 				RelativePath=".\Network.cpp">
 			</File>
 			<File
 				RelativePath=".\parson.c">
-			</File>
-			<File
-				RelativePath=".\Scenes\SceneManager.cpp">
-			</File>
-			<File
-				RelativePath=".\Scenes\StoreScene.cpp">
-			</File>
-			<File
-				RelativePath=".\Scenes\VersionScene.cpp">
-			</File>
-			<File
-				RelativePath=".\Scenes\VersionDetailsScene.cpp">
 			</File>
 			<File
 				RelativePath=".\Store.cpp">
@@ -385,6 +379,22 @@
 					</File>
 				</Filter>
 			</Filter>
+			<Filter
+				Name="Scenes"
+				Filter="">
+				<File
+					RelativePath=".\Scenes\SceneManager.cpp">
+				</File>
+				<File
+					RelativePath=".\Scenes\StoreScene.cpp">
+				</File>
+				<File
+					RelativePath=".\Scenes\VersionDetailsScene.cpp">
+				</File>
+				<File
+					RelativePath=".\Scenes\VersionScene.cpp">
+				</File>
+			</Filter>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -397,6 +407,9 @@
 				RelativePath=".\Debug.h">
 			</File>
 			<File
+				RelativePath=".\Defines.h">
+			</File>
+			<File
 				RelativePath=".\Drawing.h">
 			</File>
 			<File
@@ -406,10 +419,16 @@
 				RelativePath=".\ImageDownloader.h">
 			</File>
 			<File
+				RelativePath=".\InputManager.h">
+			</File>
+			<File
 				RelativePath=".\JsonHelper.h">
 			</File>
 			<File
 				RelativePath=".\Main.h">
+			</File>
+			<File
+				RelativePath=".\Math.h">
 			</File>
 			<File
 				RelativePath=".\Models.h">
@@ -419,21 +438,6 @@
 			</File>
 			<File
 				RelativePath=".\parson.h">
-			</File>
-			<File
-				RelativePath=".\Scenes\Scene.h">
-			</File>
-			<File
-				RelativePath=".\Scenes\SceneManager.h">
-			</File>
-			<File
-				RelativePath=".\Scenes\StoreScene.h">
-			</File>
-			<File
-				RelativePath=".\Scenes\VersionScene.h">
-			</File>
-			<File
-				RelativePath=".\Scenes\VersionDetailsScene.h">
 			</File>
 			<File
 				RelativePath=".\ssfn.h">
@@ -497,6 +501,25 @@
 				</File>
 				<File
 					RelativePath="..\Libraries\libcurl\include\curl\urlapi.h">
+				</File>
+			</Filter>
+			<Filter
+				Name="Scenes"
+				Filter="">
+				<File
+					RelativePath=".\Scenes\Scene.h">
+				</File>
+				<File
+					RelativePath=".\Scenes\SceneManager.h">
+				</File>
+				<File
+					RelativePath=".\Scenes\StoreScene.h">
+				</File>
+				<File
+					RelativePath=".\Scenes\VersionDetailsScene.h">
+				</File>
+				<File
+					RelativePath=".\Scenes\VersionScene.h">
 				</File>
 			</Filter>
 		</Filter>

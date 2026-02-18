@@ -1,9 +1,4 @@
-//=============================================================================
-// SceneManager.h - Stack of scenes (push/pop, render/update top)
-//=============================================================================
-
-#ifndef SCENEMANAGER_H
-#define SCENEMANAGER_H
+#pragma once
 
 #include "..\Main.h"
 #include "Scene.h"
@@ -29,5 +24,3 @@ private:
     };
     SceneNode* m_pStack;
 };
-
-#endif // SCENEMANAGER_H

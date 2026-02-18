@@ -172,7 +172,7 @@ void ImageDownloader::ProcessCompleted( LPDIRECT3DDEVICE8 pd3dDevice )
             (*c.pOutTexture)->Release();
             *c.pOutTexture = NULL;
         }
-        LPDIRECT3DTEXTURE8 pTex = TextureHelper::LoadFromFile( pd3dDevice, c.filePath.c_str() );
+        LPDIRECT3DTEXTURE8 pTex = TextureHelper::LoadFromFile(c.filePath);
         if( pTex )
             *c.pOutTexture = pTex;
     }

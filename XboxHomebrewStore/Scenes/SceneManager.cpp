@@ -1,24 +1,21 @@
-//=============================================================================
-// SceneManager.cpp
-//=============================================================================
-
 #include "SceneManager.h"
 
-SceneManager::SceneManager()
-    : m_pStack( NULL )
+SceneManager::SceneManager() : m_pStack(NULL)
 {
 }
 
 SceneManager::~SceneManager()
 {
-    while ( HasScene() )
+    while (HasScene()) {
         PopScene();
+    }
 }
 
-void SceneManager::PushScene( Scene* pScene )
+void SceneManager::PushScene(Scene* pScene)
 {
-    if ( !pScene )
+    if (!pScene) {
         return;
+    }
     SceneNode* pNode = new SceneNode;
     pNode->pScene = pScene;
     pNode->pNext = m_pStack;
@@ -27,8 +24,9 @@ void SceneManager::PushScene( Scene* pScene )
 
 void SceneManager::PopScene()
 {
-    if ( !m_pStack )
+    if (m_pStack == NULL) {
         return;
+    }
     SceneNode* pNode = m_pStack;
     m_pStack = pNode->pNext;
     delete pNode->pScene;
@@ -42,12 +40,14 @@ bool SceneManager::HasScene() const
 
 void SceneManager::Render( LPDIRECT3DDEVICE8 pd3dDevice )
 {
-    if ( m_pStack && m_pStack->pScene )
-        m_pStack->pScene->Render( pd3dDevice );
+    if (m_pStack && m_pStack->pScene) {
+        m_pStack->pScene->Render(pd3dDevice);
+    }
 }
 
 void SceneManager::Update()
 {
-    if ( m_pStack && m_pStack->pScene )
+    if (m_pStack && m_pStack->pScene) {
         m_pStack->pScene->Update();
+    }
 }

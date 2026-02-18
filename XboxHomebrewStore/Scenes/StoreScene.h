@@ -1,9 +1,4 @@
-//=============================================================================
-// StoreScene.h - Store UI (main grid, sidebar, downloading, settings)
-//=============================================================================
-
-#ifndef STORESCENE_H
-#define STORESCENE_H
+#pragma once
 
 #include "..\Main.h"
 #include "..\Store.h"
@@ -22,7 +17,7 @@ private:
     void DetectResolution();
     void CalculateLayout();
     void HandleInput();
-    void RenderCategorySidebar( LPDIRECT3DDEVICE8 pd3dDevice );
+    void RenderCategorySidebar();
     void RenderMainGrid( LPDIRECT3DDEVICE8 pd3dDevice );
     void DrawAppCard( LPDIRECT3DDEVICE8 pd3dDevice, int itemIndex, float x, float y, float w, float h, BOOL selected );
     void RenderDownloading( LPDIRECT3DDEVICE8 pd3dDevice );
@@ -43,5 +38,3 @@ private:
     int m_nGridRows;
     BOOL m_bLayoutValid;
 };
-
-#endif // STORESCENE_H
