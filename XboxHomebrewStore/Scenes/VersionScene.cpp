@@ -7,7 +7,7 @@
 #include "..\Drawing.h"
 #include "..\Font.h"
 #include "..\String.h"
-#include "..\XBInput.h"
+#include "..\InputManager.h"
 
 VersionScene::VersionScene( const SelectedAppInfo& info )
     : m_info( info )
@@ -112,10 +112,7 @@ void VersionScene::RenderListView( LPDIRECT3DDEVICE8 pd3dDevice )
 
 void VersionScene::Update()
 {
-    XBInput_GetInput( NULL );
-    XBGAMEPAD* pGamepad = &g_Gamepads[0];
-
-    if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_B] )
+    if(InputManager::ControllerPressed(ControllerB, -1))
     {
         SceneManager* pMgr = Context::GetSceneManager();
         if( pMgr )
@@ -126,19 +123,19 @@ void VersionScene::Update()
     int n = (int)m_info.versions.size();
     if( n > 0 )
     {
-        if( pGamepad->wPressedButtons & XINPUT_GAMEPAD_DPAD_UP )
+        if(InputManager::ControllerPressed(ControllerDpadUp, -1))
         {
             m_selectedIndex--;
             if( m_selectedIndex < 0 )
                 m_selectedIndex = n - 1;
         }
-        if( pGamepad->wPressedButtons & XINPUT_GAMEPAD_DPAD_DOWN )
+        if(InputManager::ControllerPressed(ControllerDpadDown, -1))
         {
             m_selectedIndex++;
             if( m_selectedIndex >= n )
                 m_selectedIndex = 0;
         }
-        if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_A] )
+        if(InputManager::ControllerPressed(ControllerA, -1))
         {
             SceneManager* pMgr = Context::GetSceneManager();
             if( pMgr )

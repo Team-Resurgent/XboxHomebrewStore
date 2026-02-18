@@ -9,7 +9,7 @@
 #include "..\Drawing.h"
 #include "..\Font.h"
 #include "..\String.h"
-#include "..\XBInput.h"
+#include "..\InputManager.h"
 
 StoreScene::StoreScene( Store* pStore )
     : m_pStore( pStore )
@@ -207,12 +207,9 @@ void StoreScene::Render( LPDIRECT3DDEVICE8 pd3dDevice )
 
 void StoreScene::HandleInput()
 {
-    XBInput_GetInput( NULL );
-    XBGAMEPAD* pGamepad = &g_Gamepads[0];
-
     if( m_CurrentState == UI_DOWNLOADING )
     {
-        if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_B] )
+        if (InputManager::ControllerPressed(ControllerB, -1))
         {
             if( m_pStore->GetDownloadThread() != NULL && !m_pStore->GetDownloadDone() )
                 m_pStore->SetDownloadCancelRequested( true );
@@ -227,8 +224,10 @@ void StoreScene::HandleInput()
 
     if( m_CurrentState == UI_SETTINGS )
     {
-        if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_B] )
+        if(InputManager::ControllerPressed(ControllerB, -1))
+        {
             m_CurrentState = UI_MAIN_GRID;
+        }
         return;
     }
 
@@ -237,7 +236,7 @@ void StoreScene::HandleInput()
     int numCategories = (int)cats.size();
     if( numCategories > 0 )
     {
-        if( pGamepad->wPressedButtons & XINPUT_GAMEPAD_LEFT_TRIGGER )
+        if(InputManager::ControllerPressed(ControllerLTrigger, -1))
         {
             m_nSelectedCategory--;
             if( m_nSelectedCategory < 0 ) m_nSelectedCategory = numCategories - 1;
@@ -245,7 +244,7 @@ void StoreScene::HandleInput()
             m_pStore->LoadAppsPage( 1, filter, m_nSelectedCategory );
             m_nSelectedItem = 0;
         }
-        if( pGamepad->wPressedButtons & XINPUT_GAMEPAD_RIGHT_TRIGGER )
+        if(InputManager::ControllerPressed(ControllerRTrigger, -1))
         {
             m_nSelectedCategory++;
             if( m_nSelectedCategory >= numCategories ) m_nSelectedCategory = 0;
@@ -260,27 +259,27 @@ void StoreScene::HandleInput()
     int totalSlots = m_nGridCols * m_nGridRows;
     if( count > 0 && totalSlots > 0 )
     {
-        if( pGamepad->wPressedButtons & XINPUT_GAMEPAD_DPAD_LEFT )
+        if(InputManager::ControllerPressed(ControllerDpadLeft, -1))
         {
             m_nSelectedItem--;
             if( m_nSelectedItem < 0 ) m_nSelectedItem = count - 1;
         }
-        if( pGamepad->wPressedButtons & XINPUT_GAMEPAD_DPAD_RIGHT )
+        if(InputManager::ControllerPressed(ControllerDpadRight, -1))
         {
             m_nSelectedItem++;
             if( m_nSelectedItem >= count ) m_nSelectedItem = 0;
         }
-        if( pGamepad->wPressedButtons & XINPUT_GAMEPAD_DPAD_UP )
+        if(InputManager::ControllerPressed(ControllerDpadUp, -1))
         {
             m_nSelectedItem -= m_nGridCols;
             if( m_nSelectedItem < 0 ) m_nSelectedItem = count - 1;
         }
-        if( pGamepad->wPressedButtons & XINPUT_GAMEPAD_DPAD_DOWN )
+        if(InputManager::ControllerPressed(ControllerDpadDown, -1))
         {
             m_nSelectedItem += m_nGridCols;
             if( m_nSelectedItem >= count ) m_nSelectedItem = 0;
         }
-        if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_A] )
+        if(InputManager::ControllerPressed(ControllerA, -1))
         {
             int* pFiltered = m_pStore->GetFilteredIndices();
             StoreItem* pItems = m_pStore->GetItems();
@@ -316,7 +315,7 @@ void StoreScene::HandleInput()
         }
     }
 
-    if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_Y] )
+    if(InputManager::ControllerPressed(ControllerY, -1))
         m_CurrentState = UI_SETTINGS;
 }
 

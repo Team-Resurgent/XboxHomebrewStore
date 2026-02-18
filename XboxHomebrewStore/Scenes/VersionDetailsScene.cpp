@@ -6,7 +6,7 @@
 #include "..\Drawing.h"
 #include "..\Font.h"
 #include "..\String.h"
-#include "..\XBInput.h"
+#include "..\InputManager.h"
 
 VersionDetailsScene::VersionDetailsScene( const SelectedAppInfo& info, int versionIndex )
     : m_info( info )
@@ -103,10 +103,7 @@ void VersionDetailsScene::Render( LPDIRECT3DDEVICE8 pd3dDevice )
 
 void VersionDetailsScene::Update()
 {
-    XBInput_GetInput( NULL );
-    XBGAMEPAD* pGamepad = &g_Gamepads[0];
-
-    if( pGamepad->bPressedAnalogButtons[XINPUT_GAMEPAD_B] )
+    if(InputManager::ControllerPressed(ControllerB, -1))
     {
         SceneManager* pMgr = Context::GetSceneManager();
         if( pMgr )

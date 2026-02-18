@@ -1,7 +1,6 @@
 #pragma once
 
-#include "Integers.h"
-#include <xtl.h>
+#include "Main.h"
 
 #define FILE_SYNCHRONOUS_IO_NONALERT 0x00000020
 #define FILE_NON_DIRECTORY_FILE 0x00000040

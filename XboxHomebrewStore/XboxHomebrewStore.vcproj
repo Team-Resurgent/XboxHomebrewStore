@@ -22,7 +22,7 @@
 				Optimization="0"
 				OptimizeForProcessor="2"
 				AdditionalIncludeDirectories="&quot;$(SolutionDir)Libraries\libbearssl\include&quot;;&quot;$(SolutionDir)Libraries\libcurl\include&quot;;&quot;$(SolutionDir)Libraries\libutil\include&quot;"
-				PreprocessorDefinitions="_DEBUG;_XBOX;CURL_STATICLIB"
+				PreprocessorDefinitions="_DEBUG;_XBOX;CURL_STATICLIB;DEBUG_MOUSE;DEBUG_KEYBOARD"
 				MinimalRebuild="TRUE"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
@@ -36,7 +36,7 @@
 				Name="VCCustomBuildTool"/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="xapilibd.lib d3d8d.lib d3dx8d.lib xgraphicsd.lib dsoundd.lib dmusicd.lib xactengd.lib xsndtrkd.lib xvoiced.lib xonlined.lib xboxkrnl.lib xbdm.lib libbearssl.lib libcurl.lib"
+				AdditionalDependencies="xapilibd.lib d3d8d.lib d3dx8d.lib xgraphicsd.lib dsoundd.lib dmusicd.lib xactengd.lib xsndtrkd.lib xvoiced.lib xonlined.lib xboxkrnl.lib xbdm.lib libbearssl.lib libcurl.lib xkbdd.lib"
 				OutputFile="$(OutDir)/$(ProjectName).exe"
 				LinkIncremental="2"
 				AdditionalLibraryDirectories="&quot;$(SolutionDir)Libraries\libbearssl&quot;;&quot;$(SolutionDir)Libraries\libcurl&quot;"
@@ -76,7 +76,7 @@
 				OmitFramePointers="TRUE"
 				OptimizeForProcessor="2"
 				AdditionalIncludeDirectories="&quot;$(SolutionDir)Libraries\libbearssl\include&quot;;&quot;$(SolutionDir)Libraries\libcurl\include&quot;;&quot;$(SolutionDir)Libraries\libutil\include&quot;"
-				PreprocessorDefinitions="NDEBUG;_XBOX;PROFILE;CURL_STATICLIB"
+				PreprocessorDefinitions="NDEBUG;_XBOX;PROFILE;CURL_STATICLIB;DEBUG_MOUSE;DEBUG_KEYBOARD"
 				StringPooling="TRUE"
 				RuntimeLibrary="0"
 				BufferSecurityCheck="TRUE"
@@ -91,7 +91,7 @@
 				Name="VCCustomBuildTool"/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="xapilib.lib d3d8i.lib d3dx8.lib xgraphics.lib dsound.lib dmusici.lib xactengi.lib xsndtrk.lib xvoice.lib xonlines.lib xboxkrnl.lib xbdm.lib xperf.lib libbearssl.lib libcurl.lib"
+				AdditionalDependencies="xapilib.lib d3d8i.lib d3dx8.lib xgraphics.lib dsound.lib dmusici.lib xactengi.lib xsndtrk.lib xvoice.lib xonlines.lib xboxkrnl.lib xbdm.lib xperf.lib libbearssl.lib libcurl.lib xkbdd.lib"
 				OutputFile="$(OutDir)/$(ProjectName).exe"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="&quot;$(SolutionDir)Libraries\libbearssl&quot;;&quot;$(SolutionDir)Libraries\libcurl&quot;"
@@ -134,7 +134,7 @@
 				OmitFramePointers="TRUE"
 				OptimizeForProcessor="2"
 				AdditionalIncludeDirectories="&quot;$(SolutionDir)Libraries\libbearssl\include&quot;;&quot;$(SolutionDir)Libraries\libcurl\include&quot;;&quot;$(SolutionDir)Libraries\libutil\include&quot;"
-				PreprocessorDefinitions="NDEBUG;_XBOX;PROFILE;FASTCAP;CURL_STATICLIB"
+				PreprocessorDefinitions="NDEBUG;_XBOX;PROFILE;FASTCAP;CURL_STATICLIB;DEBUG_MOUSE;DEBUG_KEYBOARD"
 				StringPooling="TRUE"
 				RuntimeLibrary="0"
 				BufferSecurityCheck="TRUE"
@@ -150,7 +150,7 @@
 				Name="VCCustomBuildTool"/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="xapilib.lib d3d8i.lib d3dx8.lib xgraphics.lib dsound.lib dmusici.lib xactengi.lib xsndtrk.lib xvoice.lib xonlines.lib xboxkrnl.lib xbdm.lib xperf.lib libbearssl.lib libcurl.lib"
+				AdditionalDependencies="xapilib.lib d3d8i.lib d3dx8.lib xgraphics.lib dsound.lib dmusici.lib xactengi.lib xsndtrk.lib xvoice.lib xonlines.lib xboxkrnl.lib xbdm.lib xperf.lib libbearssl.lib libcurl.lib xkbdd.lib"
 				OutputFile="$(OutDir)/$(ProjectName).exe"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="&quot;$(SolutionDir)Libraries\libbearssl&quot;;&quot;$(SolutionDir)Libraries\libcurl&quot;"
@@ -193,7 +193,7 @@
 				OmitFramePointers="TRUE"
 				OptimizeForProcessor="2"
 				AdditionalIncludeDirectories="&quot;$(SolutionDir)Libraries\libbearssl\include&quot;;&quot;$(SolutionDir)Libraries\libcurl\include&quot;;&quot;$(SolutionDir)Libraries\libutil\include&quot;"
-				PreprocessorDefinitions="NDEBUG;_XBOX;CURL_STATICLIB"
+				PreprocessorDefinitions="NDEBUG;_XBOX;CURL_STATICLIB;DEBUG_MOUSE;DEBUG_KEYBOARD"
 				StringPooling="TRUE"
 				RuntimeLibrary="0"
 				BufferSecurityCheck="TRUE"
@@ -208,7 +208,7 @@
 				Name="VCCustomBuildTool"/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="xapilib.lib d3d8.lib d3dx8.lib xgraphics.lib dsound.lib dmusic.lib xacteng.lib xsndtrk.lib xvoice.lib xonlines.lib xboxkrnl.lib libbearssl.lib libcurl.lib"
+				AdditionalDependencies="xapilib.lib d3d8.lib d3dx8.lib xgraphics.lib dsound.lib dmusic.lib xacteng.lib xsndtrk.lib xvoice.lib xonlines.lib xboxkrnl.lib libbearssl.lib libcurl.lib xkbdd.lib"
 				OutputFile="$(OutDir)/$(ProjectName).exe"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="&quot;$(SolutionDir)Libraries\libbearssl&quot;;&quot;$(SolutionDir)Libraries\libcurl&quot;"
@@ -250,7 +250,7 @@
 				OmitFramePointers="TRUE"
 				OptimizeForProcessor="2"
 				AdditionalIncludeDirectories="&quot;$(SolutionDir)Libraries\libbearssl\include&quot;;&quot;$(SolutionDir)Libraries\libcurl\include&quot;;&quot;$(SolutionDir)Libraries\libutil\include&quot;"
-				PreprocessorDefinitions="NDEBUG;_XBOX;LTCG;CURL_STATICLIB"
+				PreprocessorDefinitions="NDEBUG;_XBOX;LTCG;CURL_STATICLIB;DEBUG_MOUSE;DEBUG_KEYBOARD"
 				StringPooling="TRUE"
 				RuntimeLibrary="0"
 				BufferSecurityCheck="TRUE"
@@ -265,7 +265,7 @@
 				Name="VCCustomBuildTool"/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="xapilib.lib d3d8ltcg.lib d3dx8.lib xgraphicsltcg.lib dsound.lib dmusicltcg.lib xactengltcg.lib xsndtrk.lib xvoice.lib xonlines.lib xboxkrnl.lib libbearssl.lib libcurl.lib"
+				AdditionalDependencies="xapilib.lib d3d8ltcg.lib d3dx8.lib xgraphicsltcg.lib dsound.lib dmusicltcg.lib xactengltcg.lib xsndtrk.lib xvoice.lib xonlines.lib xboxkrnl.lib libbearssl.lib libcurl.lib xkbdd.lib"
 				OutputFile="$(OutDir)/$(ProjectName).exe"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="&quot;$(SolutionDir)Libraries\libbearssl&quot;;&quot;$(SolutionDir)Libraries\libcurl&quot;"
@@ -349,15 +349,6 @@
 			</File>
 			<File
 				RelativePath=".\WebManager.cpp">
-			</File>
-			<File
-				RelativePath=".\xbinput.cpp">
-			</File>
-			<File
-				RelativePath=".\xbresource.cpp">
-			</File>
-			<File
-				RelativePath=".\xbutil.cpp">
 			</File>
 			<Filter
 				Name="Media"
@@ -462,15 +453,6 @@
 			</File>
 			<File
 				RelativePath=".\WebManager.h">
-			</File>
-			<File
-				RelativePath=".\xbinput.h">
-			</File>
-			<File
-				RelativePath=".\xbresource.h">
-			</File>
-			<File
-				RelativePath=".\xbutil.h">
 			</File>
 			<Filter
 				Name="Curl"

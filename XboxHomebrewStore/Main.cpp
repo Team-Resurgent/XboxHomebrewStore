@@ -268,6 +268,7 @@ VOID __cdecl main()
 
     while( TRUE )
     {
+        InputManager::PumpInput();
         g_pSceneManager->Update();
         Render();
     }
