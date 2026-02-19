@@ -197,3 +197,8 @@ D3DTexture* TextureHelper::GetCover()
 {
     return mCover != NULL ? CopyTexture(mCover) : NULL;
 }
+
+D3DTexture* TextureHelper::GetCoverRef()
+{
+    return mCover;
+}

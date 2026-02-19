@@ -619,16 +619,10 @@ void Store::EnsureIconsForVisibleRange()
             if( pTex )
                 pItem->pIcon = pTex;
             else
-            {
-                pItem->pIcon = (LPDIRECT3DTEXTURE8)TextureHelper::GetCover();
                 m_imageDownloader.Queue( &pItem->pIcon, appId, IMAGE_COVER );
-            }
         }
         else
-        {
-            pItem->pIcon = (LPDIRECT3DTEXTURE8)TextureHelper::GetCover();
             m_imageDownloader.Queue( &pItem->pIcon, appId, IMAGE_COVER );
-        }
     }
 }
 

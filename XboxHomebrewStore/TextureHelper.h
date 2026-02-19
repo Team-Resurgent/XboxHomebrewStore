@@ -19,6 +19,8 @@ public:
     static D3DTexture* GetControllerIcon(const std::string& name);
     static D3DTexture* GetScreenshot();
     static D3DTexture* GetCover();
+    // Shared ref for placeholder (do not Release); use when drawing an item with no icon yet.
+    static D3DTexture* GetCoverRef();
 private:
     static D3DTexture* CopyTexture(D3DTexture* source);
 };

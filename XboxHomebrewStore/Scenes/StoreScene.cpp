@@ -139,8 +139,9 @@ void StoreScene::DrawAppCard( LPDIRECT3DDEVICE8 pd3dDevice, int itemIndex, float
     if( iconW > 0 && iconH > 0 )
     {
         Drawing::DrawFilledRect( (uint32_t)COLOR_SECONDARY, (int)iconX, (int)iconY, (int)iconW, (int)iconH );
-        if( pItem->pIcon )
-            Drawing::DrawTexturedRect( (D3DTexture*)pItem->pIcon, 0xFFFFFFFF, (int)iconX, (int)iconY, (int)iconW, (int)iconH );
+        D3DTexture* pIconTex = pItem->pIcon ? (D3DTexture*)pItem->pIcon : TextureHelper::GetCoverRef();
+        if( pIconTex )
+            Drawing::DrawTexturedRect( pIconTex, 0xFFFFFFFF, (int)iconX, (int)iconY, (int)iconW, (int)iconH );
     }
     Font::DrawText(FONT_NORMAL, pItem->app.name.c_str(), COLOR_WHITE, (int)( x + 8.0f ), (int)( y + iconH + 14.0f ) );
     Font::DrawText(FONT_NORMAL, pItem->app.author.c_str(), (uint32_t)COLOR_TEXT_GRAY, (int)( x + 8.0f ), (int)( y + iconH + 32.0f ) );
@@ -360,35 +361,52 @@ void StoreScene::HandleInput()
             }
             if( InputManager::ControllerPressed( ControllerDpadUp, -1 ) )
             {
-                if( m_pStore->GetDisplayPage() > 0 )
+                if( m_nSelectedRow > 0 )
                 {
-                    m_pStore->SetDisplayPage( m_pStore->GetDisplayPage() - 1 );
-                    m_nSelectedCol = 0;
-                    m_nSelectedRow = 0;
+                    m_nSelectedRow--;
                 }
                 else
                 {
-                    const char* filter = ( m_nSelectedCategory == 0 || numCategories == 0 ) ? "" : cats[m_nSelectedCategory].category.c_str();
-                    if( m_pStore->GoToPrevChunk( filter ) )
+                    if( m_pStore->GetDisplayPage() > 0 )
                     {
+                        m_pStore->SetDisplayPage( m_pStore->GetDisplayPage() - 1 );
+                        m_nSelectedRow = m_nGridRows - 1;
                         m_nSelectedCol = 0;
-                        m_nSelectedRow = 0;
+                    }
+                    else
+                    {
+                        const char* filter = ( m_nSelectedCategory == 0 || numCategories == 0 ) ? "" : cats[m_nSelectedCategory].category.c_str();
+                        if( m_pStore->GoToPrevChunk( filter ) )
+                        {
+                            m_nSelectedRow = m_nGridRows - 1;
+                            m_nSelectedCol = 0;
+                        }
                     }
                 }
             }
             if( InputManager::ControllerPressed( ControllerDpadDown, -1 ) )
             {
-                int maxDisplayPage = ( count > totalSlots ) ? ( ( count - 1 ) / totalSlots ) : 0;
-                if( m_pStore->GetDisplayPage() < maxDisplayPage )
+                if( m_nSelectedRow < m_nGridRows - 1 )
                 {
-                    m_pStore->SetDisplayPage( m_pStore->GetDisplayPage() + 1 );
-                    m_nSelectedCol = 0;
-                    m_nSelectedRow = 0;
+                    int newSlot = ( m_nSelectedRow + 1 ) * m_nGridCols + m_nSelectedCol;
+                    int baseSlot = m_pStore->GetDisplayPage() * totalSlots;
+                    if( baseSlot + newSlot < count )
+                        m_nSelectedRow++;
                 }
-                else if( m_pStore->GoToNextChunk() )
+                else
                 {
-                    m_nSelectedCol = 0;
-                    m_nSelectedRow = 0;
+                    int maxDisplayPage = ( count > totalSlots ) ? ( ( count - 1 ) / totalSlots ) : 0;
+                    if( m_pStore->GetDisplayPage() < maxDisplayPage )
+                    {
+                        m_pStore->SetDisplayPage( m_pStore->GetDisplayPage() + 1 );
+                        m_nSelectedRow = 0;
+                        m_nSelectedCol = 0;
+                    }
+                    else if( m_pStore->GoToNextChunk() )
+                    {
+                        m_nSelectedRow = 0;
+                        m_nSelectedCol = 0;
+                    }
                 }
             }
             if( InputManager::ControllerPressed( ControllerA, -1 ) )

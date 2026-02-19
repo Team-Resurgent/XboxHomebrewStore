@@ -238,6 +238,11 @@ void ImageDownloader::WorkerLoop()
         bool haveFile = FileExists( path.c_str() );
         if( !haveFile )
         {
+            CreateDirectoryA( "T:\\Cache", NULL );
+            if( req.type == IMAGE_COVER )
+                CreateDirectoryA( "T:\\Cache\\Covers", NULL );
+            else
+                CreateDirectoryA( "T:\\Cache\\Screenshots", NULL );
             EnforceCacheLimit();
             bool ok = false;
             if( req.type == IMAGE_COVER )
