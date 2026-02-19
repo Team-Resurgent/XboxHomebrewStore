@@ -85,6 +85,9 @@ void StoreScene::RenderFooter()
 {
     int32_t footerY = Context::GetScreenHeight() - ASSET_FOOTER_HEIGHT;
     Drawing::DrawTexturedRect(TextureHelper::GetFooter(), 0xffffffff, 0, footerY, Context::GetScreenWidth(), ASSET_FOOTER_HEIGHT);
+
+    Drawing::DrawTexturedRect(TextureHelper::GetControllerIcon("StickLeft"), 0xffffffff, 16, footerY + 10, ASSET_CONTROLLER_ICON_WIDTH, ASSET_CONTROLLER_ICON_HEIGHT);
+    Font::DrawText(FONT_NORMAL, "Hide A: Details B: Exit LT/RT: Category D-pad: Move", COLOR_WHITE, 52, footerY + 12);
 }
 
 void StoreScene::RenderCategorySidebar()
