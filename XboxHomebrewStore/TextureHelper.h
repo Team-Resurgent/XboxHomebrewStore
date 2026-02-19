@@ -16,6 +16,7 @@ public:
     static D3DTexture* GetCategoryHighlight();
     static D3DTexture* GetStore();
     static D3DTexture* GetCategoryIcon(const std::string& name);
+    static D3DTexture* GetControllerIcon(const std::string& name);
     static D3DTexture* GetScreenshot();
     static D3DTexture* GetCover();
 private:

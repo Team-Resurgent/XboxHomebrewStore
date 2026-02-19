@@ -14,6 +14,7 @@ namespace {
     D3DTexture* mStore = NULL;
     D3DTexture* mCategoryHighlight = NULL;
     std::map<std::string, D3DTexture*> mCategoryIcons;
+    std::map<std::string, D3DTexture*> mControllerIcons;
     D3DTexture* mScreenshot = NULL;
     D3DTexture* mCover = NULL;
 }
@@ -54,6 +55,25 @@ bool TextureHelper::Init(D3DDevice* d3dDevice)
             }
         } while (FindNextFileA( h, &fd ));
         FindClose( h );
+    }
+
+    std::string controllerPath = String::Format( "%sController\\", MEDIA_PATH );
+    std::string controllerPattern = String::Format( "%s*.png", controllerPath.c_str() );
+    HANDLE hController = FindFirstFileA( controllerPattern.c_str(), &fd );
+    if (hController != INVALID_HANDLE_VALUE) {
+        do {
+            if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+                const char* dot = strrchr( fd.cFileName, '.' );
+                std::string name = dot ? std::string( fd.cFileName, dot - fd.cFileName ) : fd.cFileName;
+                for (size_t i = 0; i < name.size(); i++)
+                    name[i] = (char)tolower( (unsigned char)name[i] );
+                std::string path = String::Format( "%s%s", controllerPath.c_str(), fd.cFileName );
+                D3DTexture* tex = LoadFromFile( path );
+                if (tex != NULL)
+                    mControllerIcons[name] = tex;
+            }
+        } while (FindNextFileA( hController, &fd ));
+        FindClose( hController );
     }
 
     mScreenshot = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "Screenshot.jpg"));
@@ -157,6 +177,15 @@ D3DTexture* TextureHelper::GetCategoryIcon(const std::string& name)
         return it->second;
     }
     return mCategoryIcons.empty() ? NULL : mCategoryIcons.begin()->second;
+}
+
+D3DTexture* TextureHelper::GetControllerIcon(const std::string& name)
+{
+    std::string key = name;
+    for (size_t i = 0; i < key.size(); i++)
+        key[i] = (char)tolower( (unsigned char)key[i] );
+    std::map<std::string, D3DTexture*>::const_iterator it = mControllerIcons.find( key );
+    return (it != mControllerIcons.end()) ? it->second : NULL;
 }
 
 D3DTexture* TextureHelper::GetScreenshot()
