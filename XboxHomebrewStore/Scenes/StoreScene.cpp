@@ -74,6 +74,17 @@ void StoreScene::EnsureLayout( LPDIRECT3DDEVICE8 pd3dDevice )
     m_bLayoutValid = TRUE;
 }
 
+void StoreScene::RenderHeader()
+{
+    Drawing::DrawTexturedRect(TextureHelper::GetHeader(), 0xffffffff, 0, 0, Context::GetScreenWidth(), ASSET_HEADER_HEIGHT);
+}
+
+void StoreScene::RenderFooter()
+{
+    int32_t footerY = Context::GetScreenHeight() - ASSET_FOOTER_HEIGHT;
+    Drawing::DrawTexturedRect(TextureHelper::GetFooter(), 0xffffffff, 0, footerY, Context::GetScreenWidth(), ASSET_FOOTER_HEIGHT);
+}
+
 void StoreScene::RenderCategorySidebar()
 {
     int32_t sidebarHeight = (Context::GetScreenHeight() - ASSET_SIDEBAR_Y) - ASSET_FOOTER_HEIGHT;
@@ -81,20 +92,22 @@ void StoreScene::RenderCategorySidebar()
 
     const std::vector<CategoryItem>& categories = m_pStore->GetCategories();
 
-    int32_t y = ASSET_SIDEBAR_Y + 20;
+    int32_t y = ASSET_SIDEBAR_Y + 40;
     for (uint32_t i = 0; i < categories.size(); i++)
     {
-        bool selected = ( i == m_nSelectedCategory );
+        bool selected = i == m_nSelectedCategory;
         bool focused = m_bFocusOnSidebar && selected;
-        uint32_t background;
+
         if( focused )
-            background = (uint32_t)COLOR_PRIMARY;
+        {
+            Drawing::DrawTexturedRect(TextureHelper::GetCategoryHighlight(), 0xffdf4088, 0, y - 32, ASSET_SIDEBAR_HIGHLIGHT_WIDTH, ASSET_SIDEBAR_HIGHLIGHT_HEIGHT);
+        }
         else if( selected )
-            background = (uint32_t)COLOR_SECONDARY;
-        else
-            background = COLOR_CARD_BG;
-        Drawing::DrawFilledRect( background, 8, y, ASSET_SIDEBAR_WIDTH - 16, 36 );
-        Font::DrawText(categories[i].category.c_str(), COLOR_WHITE, 16, y + 8);
+        {
+            Drawing::DrawTexturedRect(TextureHelper::GetCategoryHighlight(), 0xff5d283f, 0, y - 32, ASSET_SIDEBAR_HIGHLIGHT_WIDTH, ASSET_SIDEBAR_HIGHLIGHT_HEIGHT);
+        }
+
+        Font::DrawText(categories[i].category.c_str(), COLOR_WHITE, 16, y);
         y += 44;
     }
 }
@@ -198,6 +211,8 @@ void StoreScene::Render( LPDIRECT3DDEVICE8 pd3dDevice )
     switch( m_CurrentState )
     {
         case UI_MAIN_GRID:
+            RenderHeader();
+            RenderFooter();
             RenderCategorySidebar();
             RenderMainGrid( pd3dDevice );
             break;
@@ -209,6 +224,8 @@ void StoreScene::Render( LPDIRECT3DDEVICE8 pd3dDevice )
             RenderSettings( pd3dDevice );
             break;
         default:
+            RenderHeader();
+            RenderFooter();
             RenderCategorySidebar();
             RenderMainGrid( pd3dDevice );
             break;

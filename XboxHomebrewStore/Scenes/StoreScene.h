@@ -17,6 +17,8 @@ private:
     void DetectResolution();
     void CalculateLayout();
     void HandleInput();
+    void RenderHeader();
+    void RenderFooter();
     void RenderCategorySidebar();
     void RenderMainGrid( LPDIRECT3DDEVICE8 pd3dDevice );
     void DrawAppCard( LPDIRECT3DDEVICE8 pd3dDevice, int itemIndex, float x, float y, float w, float h, BOOL selected );
