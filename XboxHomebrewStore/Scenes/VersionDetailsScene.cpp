@@ -36,8 +36,8 @@ void VersionDetailsScene::Render( LPDIRECT3DDEVICE8 pd3dDevice )
 
     Drawing::DrawFilledRect( COLOR_BG, 0, 0, (int)contentW, h );
     std::string szTitle = String::Format( "%s v%s", m_info.appName.c_str(), v.version.c_str() );
-    Font::DrawText( szTitle.c_str(), COLOR_WHITE, 20, 20 );
-    Font::DrawText( m_info.author.c_str(), (uint32_t)COLOR_TEXT_GRAY, 20, 40 );
+    Font::DrawText(FONT_NORMAL, szTitle.c_str(), COLOR_WHITE, 20, 20 );
+    Font::DrawText(FONT_NORMAL, m_info.author.c_str(), (uint32_t)COLOR_TEXT_GRAY, 20, 40 );
 
     float screenshotY = 70.0f;
     float screenshotH = fH * 0.45f;
@@ -46,34 +46,34 @@ void VersionDetailsScene::Render( LPDIRECT3DDEVICE8 pd3dDevice )
         Drawing::DrawTexturedRect( (D3DTexture*)m_info.pScreenshot, 0xFFFFFFFF, (int)20.0f, (int)screenshotY, (int)(contentW - 40.0f), (int)screenshotH );
 
     float descY = screenshotY + screenshotH + 20.0f;
-    Font::DrawText( "Description:", (uint32_t)COLOR_TEXT_GRAY, 20, (int)descY );
+    Font::DrawText(FONT_NORMAL, "Description:", (uint32_t)COLOR_TEXT_GRAY, 20, (int)descY );
     descY += 25.0f;
-    Font::DrawText( m_info.description.c_str(), COLOR_WHITE, 20, (int)descY );
+    Font::DrawText(FONT_NORMAL, m_info.description.c_str(), COLOR_WHITE, 20, (int)descY );
     descY += 50.0f;
     if( !v.changeLog.empty() && v.changeLog != "No changelog available" )
     {
-        Font::DrawText( "What's New:", (uint32_t)COLOR_TEXT_GRAY, 20, (int)descY );
+        Font::DrawText(FONT_NORMAL, "What's New:", (uint32_t)COLOR_TEXT_GRAY, 20, (int)descY );
         descY += 25.0f;
-        Font::DrawText( v.changeLog.c_str(), COLOR_WHITE, 20, (int)descY );
+        Font::DrawText(FONT_NORMAL, v.changeLog.c_str(), COLOR_WHITE, 20, (int)descY );
     }
 
     float sidebarX = contentW;
     Drawing::DrawFilledRect( (uint32_t)COLOR_PRIMARY, (int)sidebarX, 0, (int)sidebarW, (int)(fH - actionBarH) );
     float metaY = 20.0f;
-    Font::DrawText( "Version:", COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
+    Font::DrawText(FONT_NORMAL, "Version:", COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
     metaY += 20.0f;
-    Font::DrawText( v.version.c_str(), COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
+    Font::DrawText(FONT_NORMAL, v.version.c_str(), COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
     metaY += 40.0f;
     if( !v.releaseDate.empty() )
     {
-        Font::DrawText( "Released:", COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
+        Font::DrawText(FONT_NORMAL, "Released:", COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
         metaY += 20.0f;
-        Font::DrawText( v.releaseDate.c_str(), COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
+        Font::DrawText(FONT_NORMAL, v.releaseDate.c_str(), COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
         metaY += 40.0f;
     }
-    Font::DrawText( "Size:", COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
+    Font::DrawText(FONT_NORMAL, "Size:", COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
     metaY += 20.0f;
-    Font::DrawText( String::Format( "%.1f MB", v.size / (1024.0f * 1024.0f) ).c_str(), COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
+    Font::DrawText(FONT_NORMAL, String::Format( "%.1f MB", v.size / (1024.0f * 1024.0f) ).c_str(), COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
     metaY += 40.0f;
     const char* statusText;
     DWORD statusColor;
@@ -84,9 +84,9 @@ void VersionDetailsScene::Render( LPDIRECT3DDEVICE8 pd3dDevice )
         case 3: statusText = "UPDATE"; statusColor = 0xFFFF9800; break;
         default: statusText = "NOT DOWNLOADED"; statusColor = (DWORD)COLOR_TEXT_GRAY; break;
     }
-    Font::DrawText( "Status:", COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
+    Font::DrawText(FONT_NORMAL, "Status:", COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
     metaY += 20.0f;
-    Font::DrawText( statusText, statusColor, (int)(sidebarX + 15.0f), (int)metaY );
+    Font::DrawText(FONT_NORMAL, statusText, statusColor, (int)(sidebarX + 15.0f), (int)metaY );
 
     float actionBarY = fH - actionBarH;
     Drawing::DrawFilledRect( (uint32_t)COLOR_SECONDARY, 0, (int)actionBarY, w, (int)actionBarH );
@@ -96,9 +96,9 @@ void VersionDetailsScene::Render( LPDIRECT3DDEVICE8 pd3dDevice )
     float btnStartX = 40.0f;
     float btnW = (fW - btnStartX * 2 - btnSpacing) / 2.0f;
     Drawing::DrawFilledRect( (uint32_t)COLOR_DOWNLOAD, (int)btnStartX, (int)btnY, (int)btnW, (int)btnH );
-    Font::DrawText( "(A) Download", COLOR_WHITE, (int)(btnStartX + 20.0f), (int)(btnY + 12.0f) );
+    Font::DrawText(FONT_NORMAL, "(A) Download", COLOR_WHITE, (int)(btnStartX + 20.0f), (int)(btnY + 12.0f) );
     Drawing::DrawFilledRect( (uint32_t)COLOR_CARD_BG, (int)(btnStartX + btnW + btnSpacing), (int)btnY, (int)btnW, (int)btnH );
-    Font::DrawText( "(B) Back", COLOR_WHITE, (int)(btnStartX + btnW + btnSpacing + 40.0f), (int)(btnY + 12.0f) );
+    Font::DrawText(FONT_NORMAL, "(B) Back", COLOR_WHITE, (int)(btnStartX + btnW + btnSpacing + 40.0f), (int)(btnY + 12.0f) );
 }
 
 void VersionDetailsScene::Update()

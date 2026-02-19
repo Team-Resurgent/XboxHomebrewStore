@@ -42,8 +42,8 @@ void VersionScene::RenderListView( LPDIRECT3DDEVICE8 pd3dDevice )
     float actionBarH = 70.0f;
 
     Drawing::DrawFilledRect( COLOR_BG, 0, 0, (int)contentW, h );
-    Font::DrawText( m_info.appName.c_str(), COLOR_WHITE, 20, 20 );
-    Font::DrawText( m_info.author.c_str(), (uint32_t)COLOR_TEXT_GRAY, 20, 45 );
+    Font::DrawText(FONT_NORMAL, m_info.appName.c_str(), COLOR_WHITE, 20, 20 );
+    Font::DrawText(FONT_NORMAL, m_info.author.c_str(), (uint32_t)COLOR_TEXT_GRAY, 20, 45 );
 
     float screenshotY = 70.0f;
     float screenshotH = fH * 0.30f;
@@ -52,14 +52,14 @@ void VersionScene::RenderListView( LPDIRECT3DDEVICE8 pd3dDevice )
         Drawing::DrawTexturedRect( (D3DTexture*)m_info.pScreenshot, 0xFFFFFFFF, (int)20.0f, (int)screenshotY, (int)(contentW - 40.0f), (int)screenshotH );
 
     float contentY = screenshotY + screenshotH + 20.0f;
-    Font::DrawText( "Description:", (uint32_t)COLOR_TEXT_GRAY, (int)20.0f, (int)contentY );
+    Font::DrawText(FONT_NORMAL, "Description:", (uint32_t)COLOR_TEXT_GRAY, (int)20.0f, (int)contentY );
     contentY += 25.0f;
-    Font::DrawText( m_info.description.c_str(), (uint32_t)COLOR_WHITE, (int)20.0f, (int)contentY );
+    Font::DrawText(FONT_NORMAL, m_info.description.c_str(), (uint32_t)COLOR_WHITE, (int)20.0f, (int)contentY );
     contentY += 50.0f;
 
     if( m_info.versions.size() > 1 )
     {
-        Font::DrawText( "Available Versions (UP/DOWN to browse, A to view):", (uint32_t)COLOR_TEXT_GRAY, (int)20.0f, (int)contentY );
+        Font::DrawText(FONT_NORMAL, "Available Versions (UP/DOWN to browse, A to view):", (uint32_t)COLOR_TEXT_GRAY, (int)20.0f, (int)contentY );
         contentY += 30.0f;
         int maxVisible = 3;
         int scrollOffset = 0;
@@ -69,7 +69,7 @@ void VersionScene::RenderListView( LPDIRECT3DDEVICE8 pd3dDevice )
             scrollOffset = m_selectedIndex;
         if( scrollOffset > 0 )
         {
-            Font::DrawText( "^ More above", (uint32_t)COLOR_TEXT_GRAY, 30, (int)contentY );
+            Font::DrawText(FONT_NORMAL, "^ More above", (uint32_t)COLOR_TEXT_GRAY, 30, (int)contentY );
             contentY += 20.0f;
         }
         for( int i = 0; i < maxVisible && (i + scrollOffset) < (int)m_info.versions.size(); i++ )
@@ -81,33 +81,33 @@ void VersionScene::RenderListView( LPDIRECT3DDEVICE8 pd3dDevice )
             DWORD bgColor = bSelected ? COLOR_PRIMARY : COLOR_CARD_BG;
             Drawing::DrawFilledRect( (uint32_t)bgColor, (int)20.0f, (int)contentY, (int)(contentW - 40.0f), (int)itemH );
             std::string szVer = String::Format( "v%s", v.version.c_str() );
-            Font::DrawText( szVer.c_str(), COLOR_WHITE, 30, (int)(contentY + 8.0f) );
+            Font::DrawText(FONT_NORMAL, szVer.c_str(), COLOR_WHITE, 30, (int)(contentY + 8.0f) );
             if( !v.releaseDate.empty() )
-                Font::DrawText( v.releaseDate.c_str(), (uint32_t)COLOR_TEXT_GRAY, 30, (int)(contentY + 28.0f) );
+                Font::DrawText(FONT_NORMAL, v.releaseDate.c_str(), (uint32_t)COLOR_TEXT_GRAY, 30, (int)(contentY + 28.0f) );
             std::string szSize = String::Format( "%.1f MB", v.size / (1024.0f * 1024.0f) );
-            Font::DrawText( szSize.c_str(), COLOR_WHITE, (int)(contentW - 120.0f), (int)(contentY + 18.0f) );
+            Font::DrawText(FONT_NORMAL, szSize.c_str(), COLOR_WHITE, (int)(contentW - 120.0f), (int)(contentY + 18.0f) );
             contentY += itemH + 5.0f;
         }
         if( scrollOffset + maxVisible < (int)m_info.versions.size() )
-            Font::DrawText( "v More below", (uint32_t)COLOR_TEXT_GRAY, 30, (int)(contentY + 5.0f) );
+            Font::DrawText(FONT_NORMAL, "v More below", (uint32_t)COLOR_TEXT_GRAY, 30, (int)(contentY + 5.0f) );
     }
 
     float sidebarX = contentW;
     Drawing::DrawFilledRect( (uint32_t)COLOR_PRIMARY, (int)sidebarX, 0, (int)sidebarW, (int)(fH - actionBarH) );
     float metaY = 20.0f;
-    Font::DrawText( "Title:", COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
+    Font::DrawText(FONT_NORMAL, "Title:", COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
     metaY += 20.0f;
-    Font::DrawText( m_info.appName.c_str(), COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
+    Font::DrawText(FONT_NORMAL, m_info.appName.c_str(), COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
     metaY += 40.0f;
-    Font::DrawText( "Author:", COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
+    Font::DrawText(FONT_NORMAL, "Author:", COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
     metaY += 20.0f;
-    Font::DrawText( m_info.author.c_str(), COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
+    Font::DrawText(FONT_NORMAL, m_info.author.c_str(), COLOR_WHITE, (int)(sidebarX + 15.0f), (int)metaY );
     metaY += 40.0f;
-    Font::DrawText( String::Format( "%u version(s)", (unsigned)m_info.versions.size() ).c_str(), (uint32_t)COLOR_TEXT_GRAY, (int)(sidebarX + 15.0f), (int)metaY );
+    Font::DrawText(FONT_NORMAL, String::Format( "%u version(s)", (unsigned)m_info.versions.size() ).c_str(), (uint32_t)COLOR_TEXT_GRAY, (int)(sidebarX + 15.0f), (int)metaY );
 
     float actionBarY = fH - actionBarH;
     Drawing::DrawFilledRect( (uint32_t)COLOR_SECONDARY, 0, (int)actionBarY, w, (int)actionBarH );
-    Font::DrawText( "(A) View Version  (B) Back to Grid", COLOR_WHITE, 40, (int)(actionBarY + 25.0f) );
+    Font::DrawText(FONT_NORMAL, "(A) View Version  (B) Back to Grid", COLOR_WHITE, 40, (int)(actionBarY + 25.0f) );
 }
 
 void VersionScene::Update()

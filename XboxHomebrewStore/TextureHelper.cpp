@@ -2,6 +2,8 @@
 #include "Defines.h"
 #include "String.h"
 #include <d3dx8.h>
+#include <string.h>
+#include <cctype>
 
 namespace {
     D3DDevice* mD3dDevice = NULL;
@@ -9,7 +11,9 @@ namespace {
     D3DTexture* mHeader = NULL;
     D3DTexture* mFooter = NULL;
     D3DTexture* mSidebar = NULL;
+    D3DTexture* mStore = NULL;
     D3DTexture* mCategoryHighlight = NULL;
+    std::map<std::string, D3DTexture*> mCategoryIcons;
     D3DTexture* mScreenshot = NULL;
     D3DTexture* mCover = NULL;
 }
@@ -29,6 +33,29 @@ bool TextureHelper::Init(D3DDevice* d3dDevice)
     result &= mSidebar == NULL;
     mCategoryHighlight = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "CategoryHighlight.png"));
     result &= mCategoryHighlight == NULL;
+    mStore = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "Store.png"));
+    result &= mStore == NULL;
+
+    std::string categoriesPath = String::Format( "%sCategories\\", MEDIA_PATH );
+    std::string pattern = String::Format( "%s*.png", categoriesPath.c_str() );
+    WIN32_FIND_DATAA fd;
+    HANDLE h = FindFirstFileA( pattern.c_str(), &fd );
+    if (h != INVALID_HANDLE_VALUE) {
+        do {
+            if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+                const char* dot = strrchr( fd.cFileName, '.' );
+                std::string name = dot ? std::string( fd.cFileName, dot - fd.cFileName ) : fd.cFileName;
+                for (size_t i = 0; i < name.size(); i++)
+                    name[i] = (char)tolower( (unsigned char)name[i] );
+                std::string path = String::Format( "%s%s", categoriesPath.c_str(), fd.cFileName );
+                D3DTexture* tex = LoadFromFile( path );
+                if (tex != NULL)
+                    mCategoryIcons[name] = tex;
+            }
+        } while (FindNextFileA( h, &fd ));
+        FindClose( h );
+    }
+
     mScreenshot = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "Screenshot.jpg"));
     result &= mScreenshot == NULL;
     mCover = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "Cover.jpg"));
@@ -105,9 +132,31 @@ D3DTexture* TextureHelper::GetSidebar()
     return mSidebar;
 }
 
+D3DTexture* TextureHelper::GetStore()
+{
+    return mStore;
+}
+
 D3DTexture* TextureHelper::GetCategoryHighlight()
 {
     return mCategoryHighlight;
+}
+
+D3DTexture* TextureHelper::GetCategoryIcon(const std::string& name)
+{
+    std::string key = name;
+    for (size_t i = 0; i < key.size(); i++) {
+        key[i] = (char)tolower( (unsigned char)key[i] );
+    }
+    std::map<std::string, D3DTexture*>::const_iterator it = mCategoryIcons.find( key );
+    if (it != mCategoryIcons.end()) {
+        return it->second;
+    }
+    it = mCategoryIcons.find( "other" );
+    if (it != mCategoryIcons.end()) {
+        return it->second;
+    }
+    return mCategoryIcons.empty() ? NULL : mCategoryIcons.begin()->second;
 }
 
 D3DTexture* TextureHelper::GetScreenshot()

@@ -77,6 +77,8 @@ void StoreScene::EnsureLayout( LPDIRECT3DDEVICE8 pd3dDevice )
 void StoreScene::RenderHeader()
 {
     Drawing::DrawTexturedRect(TextureHelper::GetHeader(), 0xffffffff, 0, 0, Context::GetScreenWidth(), ASSET_HEADER_HEIGHT);
+    Font::DrawText(FONT_LARGE, "Xbox Homebrew Store", COLOR_WHITE, 60, 12);
+    Drawing::DrawTexturedRect(TextureHelper::GetStore(), 0x8fe386, 16, 12, ASSET_STORE_ICON_WIDTH, ASSET_STORE_ICON_HEIGHT);
 }
 
 void StoreScene::RenderFooter()
@@ -92,7 +94,7 @@ void StoreScene::RenderCategorySidebar()
 
     const std::vector<CategoryItem>& categories = m_pStore->GetCategories();
 
-    int32_t y = ASSET_SIDEBAR_Y + 40;
+    int32_t y = ASSET_SIDEBAR_Y + 30;
     for (uint32_t i = 0; i < categories.size(); i++)
     {
         bool selected = i == m_nSelectedCategory;
@@ -101,13 +103,19 @@ void StoreScene::RenderCategorySidebar()
         if( focused )
         {
             Drawing::DrawTexturedRect(TextureHelper::GetCategoryHighlight(), 0xffdf4088, 0, y - 32, ASSET_SIDEBAR_HIGHLIGHT_WIDTH, ASSET_SIDEBAR_HIGHLIGHT_HEIGHT);
+            Drawing::DrawTexturedRect(TextureHelper::GetCategoryIcon(categories[i].category), 0xffdf4088, 16, y - 2, ASSET_CATEGORY_ICON_WIDTH, ASSET_CATEGORY_ICON_HEIGHT);
         }
         else if( selected )
         {
             Drawing::DrawTexturedRect(TextureHelper::GetCategoryHighlight(), 0xff5d283f, 0, y - 32, ASSET_SIDEBAR_HIGHLIGHT_WIDTH, ASSET_SIDEBAR_HIGHLIGHT_HEIGHT);
+            Drawing::DrawTexturedRect(TextureHelper::GetCategoryIcon(categories[i].category), 0xff5d283f, 16, y - 2, ASSET_CATEGORY_ICON_WIDTH, ASSET_CATEGORY_ICON_HEIGHT);
+        }
+        else
+        {
+            Drawing::DrawTexturedRect(TextureHelper::GetCategoryIcon(categories[i].category), 0xffffffff, 16, y - 2, ASSET_CATEGORY_ICON_WIDTH, ASSET_CATEGORY_ICON_HEIGHT);
         }
 
-        Font::DrawText(categories[i].category.c_str(), COLOR_WHITE, 16, y);
+        Font::DrawText(FONT_NORMAL, categories[i].category.c_str(), COLOR_WHITE, 48, y);
         y += 44;
     }
 }
@@ -133,8 +141,8 @@ void StoreScene::DrawAppCard( LPDIRECT3DDEVICE8 pd3dDevice, int itemIndex, float
         if( pItem->pIcon )
             Drawing::DrawTexturedRect( (D3DTexture*)pItem->pIcon, 0xFFFFFFFF, (int)iconX, (int)iconY, (int)iconW, (int)iconH );
     }
-    Font::DrawText( pItem->app.name.c_str(), COLOR_WHITE, (int)( x + 8.0f ), (int)( y + iconH + 14.0f ) );
-    Font::DrawText( pItem->app.author.c_str(), (uint32_t)COLOR_TEXT_GRAY, (int)( x + 8.0f ), (int)( y + iconH + 32.0f ) );
+    Font::DrawText(FONT_NORMAL, pItem->app.name.c_str(), COLOR_WHITE, (int)( x + 8.0f ), (int)( y + iconH + 14.0f ) );
+    Font::DrawText(FONT_NORMAL, pItem->app.author.c_str(), (uint32_t)COLOR_TEXT_GRAY, (int)( x + 8.0f ), (int)( y + iconH + 32.0f ) );
 }
 
 void StoreScene::RenderMainGrid( LPDIRECT3DDEVICE8 pd3dDevice )
@@ -143,7 +151,7 @@ void StoreScene::RenderMainGrid( LPDIRECT3DDEVICE8 pd3dDevice )
     int count = m_pStore->GetFilteredCount();
     if( count <= 0 )
     {
-        Font::DrawText( "No apps in this category.", (uint32_t)COLOR_TEXT_GRAY, (int)m_fGridStartX, (int)m_fGridStartY );
+        Font::DrawText(FONT_NORMAL, "No apps in this category.", (uint32_t)COLOR_TEXT_GRAY, (int)m_fGridStartX, (int)m_fGridStartY );
         return;
     }
     int selectedSlot = m_nSelectedRow * m_nGridCols + m_nSelectedCol;
@@ -164,7 +172,7 @@ void StoreScene::RenderMainGrid( LPDIRECT3DDEVICE8 pd3dDevice )
     }
     float pageY = m_fScreenHeight - 50.0f;
     std::string pageStr = String::Format( "Page %d / %d  (%d items)", m_pStore->GetCurrentPage(), m_pStore->GetTotalPages(), m_pStore->GetTotalCount() );
-    Font::DrawText( pageStr.c_str(), (uint32_t)COLOR_TEXT_GRAY, (int)m_fGridStartX, (int)pageY );
+    Font::DrawText(FONT_NORMAL, pageStr.c_str(), (uint32_t)COLOR_TEXT_GRAY, (int)m_fGridStartX, (int)pageY );
 }
 
 void StoreScene::RenderDownloading( LPDIRECT3DDEVICE8 pd3dDevice )
@@ -175,14 +183,14 @@ void StoreScene::RenderDownloading( LPDIRECT3DDEVICE8 pd3dDevice )
     Drawing::DrawFilledRect( 0xE0000000, 0, 0, w, h );
     float cx = m_fScreenWidth * 0.5f;
     float cy = m_fScreenHeight * 0.5f;
-    Font::DrawText( m_pStore->GetDownloadAppName().c_str(), COLOR_WHITE, (int)( cx - 100.0f ), (int)( cy - 60.0f ) );
-    Font::DrawText( "Downloading...", (uint32_t)COLOR_TEXT_GRAY, (int)( cx - 60.0f ), (int)( cy - 30.0f ) );
+    Font::DrawText(FONT_NORMAL, m_pStore->GetDownloadAppName().c_str(), COLOR_WHITE, (int)( cx - 100.0f ), (int)( cy - 60.0f ) );
+    Font::DrawText(FONT_NORMAL, "Downloading...", (uint32_t)COLOR_TEXT_GRAY, (int)( cx - 60.0f ), (int)( cy - 30.0f ) );
     uint32_t now = m_pStore->GetDownloadNow();
     uint32_t total = m_pStore->GetDownloadTotal();
     if( total > 0 )
     {
         std::string prog = String::Format( "%u / %u KB", now / 1024, total / 1024 );
-        Font::DrawText( prog.c_str(), COLOR_WHITE, (int)( cx - 40.0f ), (int)( cy + 10.0f ) );
+        Font::DrawText(FONT_NORMAL, prog.c_str(), COLOR_WHITE, (int)( cx - 40.0f ), (int)( cy + 10.0f ) );
         float barW = 400.0f;
         float barX = cx - barW * 0.5f;
         Drawing::DrawFilledRect( (uint32_t)COLOR_SECONDARY, (int)barX, (int)( cy + 40.0f ), (int)barW, 24 );
@@ -190,15 +198,15 @@ void StoreScene::RenderDownloading( LPDIRECT3DDEVICE8 pd3dDevice )
         if( filled > 0 )
             Drawing::DrawFilledRect( (uint32_t)COLOR_PRIMARY, (int)barX, (int)( cy + 40.0f ), filled, 24 );
     }
-    Font::DrawText( "(B) Cancel", (uint32_t)COLOR_TEXT_GRAY, (int)( cx - 40.0f ), (int)( cy + 80.0f ) );
+    Font::DrawText(FONT_NORMAL, "(B) Cancel", (uint32_t)COLOR_TEXT_GRAY, (int)( cx - 40.0f ), (int)( cy + 80.0f ) );
 }
 
 void StoreScene::RenderSettings( LPDIRECT3DDEVICE8 pd3dDevice )
 {
     (void)pd3dDevice;
     Drawing::DrawFilledRect( (uint32_t)COLOR_BG, 0, 0, (int)m_fScreenWidth, (int)m_fScreenHeight );
-    Font::DrawText( "Settings", COLOR_WHITE, 40, 40 );
-    Font::DrawText( "(B) Back to Store", (uint32_t)COLOR_TEXT_GRAY, 40, 100 );
+    Font::DrawText(FONT_NORMAL, "Settings", COLOR_WHITE, 40, 40 );
+    Font::DrawText(FONT_NORMAL, "(B) Back to Store", (uint32_t)COLOR_TEXT_GRAY, 40, 100 );
 }
 
 void StoreScene::Render( LPDIRECT3DDEVICE8 pd3dDevice )
