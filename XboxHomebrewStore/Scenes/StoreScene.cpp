@@ -122,7 +122,7 @@ void StoreScene::DrawAppCard( LPDIRECT3DDEVICE8 pd3dDevice, int itemIndex, float
     {
         Drawing::DrawFilledRect( (uint32_t)COLOR_SECONDARY, (int)iconX, (int)iconY, (int)iconW, (int)iconH );
         if( pItem->pIcon )
-            Drawing::DrawTexturedRect( (D3DTexture*)pItem->pIcon, (int)iconX, (int)iconY, (int)iconW, (int)iconH );
+            Drawing::DrawTexturedRect( (D3DTexture*)pItem->pIcon, 0xFFFFFFFF, (int)iconX, (int)iconY, (int)iconW, (int)iconH );
     }
     Font::DrawText( pItem->app.name.c_str(), COLOR_WHITE, (int)( x + 8.0f ), (int)( y + iconH + 14.0f ) );
     Font::DrawText( pItem->app.author.c_str(), (uint32_t)COLOR_TEXT_GRAY, (int)( x + 8.0f ), (int)( y + iconH + 32.0f ) );
@@ -198,7 +198,7 @@ void StoreScene::Render( LPDIRECT3DDEVICE8 pd3dDevice )
         return;
     EnsureLayout( pd3dDevice );
 
-    Drawing::DrawTexturedRect(TextureHelper::GetBackground(), 0, 0, (int)m_fScreenWidth, (int)m_fScreenHeight );
+    Drawing::DrawTexturedRect( TextureHelper::GetBackground(), 0xFFFFFFFF, 0, 0, (int)m_fScreenWidth, (int)m_fScreenHeight );
     switch( m_CurrentState )
     {
         case UI_MAIN_GRID:
@@ -315,7 +315,7 @@ void StoreScene::HandleInput()
                 else
                     m_bFocusOnSidebar = TRUE;
             }
-            else if( InputManager::ControllerPressed( ControllerDpadRight, -1 ) )
+            if( InputManager::ControllerPressed( ControllerDpadRight, -1 ) )
             {
                 int newCol = m_nSelectedCol + 1;
                 if( newCol < m_nGridCols )
@@ -325,7 +325,7 @@ void StoreScene::HandleInput()
                         m_nSelectedCol = newCol;
                 }
             }
-            else if( InputManager::ControllerPressed( ControllerDpadUp, -1 ) )
+            if( InputManager::ControllerPressed( ControllerDpadUp, -1 ) )
             {
                 int page = m_pStore->GetCurrentPage();
                 if( page > 1 )
@@ -336,7 +336,7 @@ void StoreScene::HandleInput()
                     m_nSelectedRow = 0;
                 }
             }
-            else if( InputManager::ControllerPressed( ControllerDpadDown, -1 ) )
+            if( InputManager::ControllerPressed( ControllerDpadDown, -1 ) )
             {
                 int page = m_pStore->GetCurrentPage();
                 int totalPages = m_pStore->GetTotalPages();
@@ -348,7 +348,7 @@ void StoreScene::HandleInput()
                     m_nSelectedRow = 0;
                 }
             }
-            else if( InputManager::ControllerPressed( ControllerA, -1 ) )
+            if( InputManager::ControllerPressed( ControllerA, -1 ) )
             {
                 m_nSelectedItem = m_nSelectedRow * m_nGridCols + m_nSelectedCol;
                 if( m_nSelectedItem >= count ) m_nSelectedItem = count - 1;

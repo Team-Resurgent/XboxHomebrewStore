@@ -49,7 +49,7 @@ void VersionScene::RenderListView( LPDIRECT3DDEVICE8 pd3dDevice )
     float screenshotH = fH * 0.30f;
     Drawing::DrawFilledRect( (uint32_t)COLOR_CARD_BG, (int)20.0f, (int)screenshotY, (int)(contentW - 40.0f), (int)screenshotH );
     if( m_info.pScreenshot )
-        Drawing::DrawTexturedRect( (D3DTexture*)m_info.pScreenshot, (int)20.0f, (int)screenshotY, (int)(contentW - 40.0f), (int)screenshotH );
+        Drawing::DrawTexturedRect( (D3DTexture*)m_info.pScreenshot, 0xFFFFFFFF, (int)20.0f, (int)screenshotY, (int)(contentW - 40.0f), (int)screenshotH );
 
     float contentY = screenshotY + screenshotH + 20.0f;
     Font::DrawText( "Description:", (uint32_t)COLOR_TEXT_GRAY, (int)20.0f, (int)contentY );
