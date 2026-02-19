@@ -3,6 +3,7 @@
 //=============================================================================
 
 #include "ImageDownloader.h"
+#include "Defines.h"
 #include "WebManager.h"
 #include "TextureHelper.h"
 #include "String.h"
@@ -49,7 +50,17 @@ static bool FileExists( const char* path )
     return true;  /* exists and is a file (not a directory) */
 }
 
-static const int CACHE_FILE_LIMIT = 100;
+std::string ImageDownloader::GetCoverCachePath( const std::string& appId )
+{
+    return CachePathFor( appId, IMAGE_COVER );
+}
+
+bool ImageDownloader::IsCoverCached( const std::string& appId )
+{
+    return FileExists( GetCoverCachePath( appId ).c_str() );
+}
+
+#define CACHE_FILE_LIMIT STORE_CACHE_FILE_LIMIT
 
 static void CollectFileWithTime( const char* dir, std::vector<std::pair<std::string, ULONGLONG> >* out )
 {
@@ -100,7 +111,9 @@ static void EnforceCacheLimit()
 }
 
 ImageDownloader::ImageDownloader()
-    : m_wakeEvent( NULL )
+    : m_completionCallback( NULL )
+    , m_completionCtx( NULL )
+    , m_wakeEvent( NULL )
     , m_thread( NULL )
     , m_quit( false )
     , m_cancelRequested( false )
@@ -172,9 +185,19 @@ void ImageDownloader::ProcessCompleted( LPDIRECT3DDEVICE8 pd3dDevice )
             (*c.pOutTexture)->Release();
             *c.pOutTexture = NULL;
         }
-        LPDIRECT3DTEXTURE8 pTex = TextureHelper::LoadFromFile(c.filePath);
+        LPDIRECT3DTEXTURE8 pTex = TextureHelper::LoadFromFile( c.filePath );
         if( pTex )
-            *c.pOutTexture = pTex;
+        {
+            if( m_completionCallback )
+            {
+                if( !m_completionCallback( m_completionCtx, c.pOutTexture, c.filePath, c.appId, pTex ) )
+                    pTex->Release();
+                else
+                    *c.pOutTexture = pTex;
+            }
+            else
+                *c.pOutTexture = pTex;
+        }
     }
 }
 
@@ -230,6 +253,7 @@ void ImageDownloader::WorkerLoop()
         Completed c;
         c.pOutTexture = req.pOutTexture;
         c.filePath = path;
+        c.appId = req.appId;
         EnterCriticalSection( &m_completedLock );
         m_completed.push_back( c );
         LeaveCriticalSection( &m_completedLock );

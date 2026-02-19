@@ -7,6 +7,7 @@
 
 #include <xtl.h>
 #include <xgraphics.h>
+#include "Defines.h"
 #include "WebManager.h"
 #include "Models.h"
 #include "TextureHelper.h"
@@ -59,8 +60,8 @@ public:
     int* GetFilteredIndices() { return m_pFilteredIndices; }
     int GetFilteredCount() const { return m_nFilteredCount; }
     const std::vector<CategoryItem>& GetCategories() const { return m_aCategories; }
-    int GetCurrentPage() const { return m_nCurrentPage; }
-    int GetTotalPages() const { return m_nTotalPages; }
+    int GetCurrentPage() const { return m_nChunkApiPage * 3 + m_nDisplayPage + 1; }
+    int GetTotalPages() const;
     int GetTotalCount() const { return m_nTotalCount; }
     uint32_t GetDisplayState( StoreItem* pItem, int versionIndex ) const;
     BOOL LoadAppsPage( int page, const char* categoryFilter, int selectedCategoryForCount = 0 );
@@ -68,6 +69,13 @@ public:
     void EnsureScreenshotForItem( StoreItem* pItem );
     void MarkAppAsViewed( const char* appId );
     void ProcessImageDownloader();
+    void SetVisibleRange( int start, int count );
+    void SetDisplayPage( int page ) { m_nDisplayPage = page; }
+    int GetDisplayPage() const { return m_nDisplayPage; }
+    void PreloadNextChunk();
+    bool GoToNextChunk();
+    bool GoToPrevChunk( const char* categoryFilter );
+
     void StartDownloadThread();
     void BeginDownload( const std::string& versionId, const std::string& appName, const std::string& path );
     void CloseDownloadThread();
@@ -90,18 +98,29 @@ private:
     BOOL LoadCategoriesFromWeb();
     int FindCategoryIndex( const char* catID ) const;
     void BuildCategoryList();
+    void ReleaseAllIconsExceptVisible();
+    void EnsureIconsForVisibleRange();
+    bool IsAppIdInVisibleRange( const std::string& appId ) const;
+    static bool OnIconLoadCompletion( void* ctx, LPDIRECT3DTEXTURE8* pOut, const std::string& filePath, const std::string& appId, LPDIRECT3DTEXTURE8 loadedTex );
+    void FreeNextChunk();
 
     UserState m_userState;
     ImageDownloader m_imageDownloader;
     LPDIRECT3DDEVICE8 m_pd3dDevice;
     StoreItem* m_pItems;
     int m_nItemCount;
+    StoreItem* m_pNextItems;
+    int m_nNextItemCount;
     int* m_pFilteredIndices;
     int m_nFilteredCount;
     std::vector<CategoryItem> m_aCategories;
-    int m_nCurrentPage;
+    int m_nChunkApiPage;
+    int m_nDisplayPage;
     int m_nTotalPages;
     int m_nTotalCount;
+    std::string m_currentCategoryFilter;
+    int m_visibleStart;
+    int m_visibleCount;
 
     std::string m_downloadVersionId;
     std::string m_downloadAppName;

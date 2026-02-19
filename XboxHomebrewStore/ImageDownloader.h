@@ -31,8 +31,16 @@ public:
     // Cancel all pending downloads; in-flight download is aborted. Safe to queue a new batch after.
     void CancelAll();
 
-    // Call from main thread (e.g. each frame). Applies completed downloads: loads file to texture and assigns *pOutTexture; releases old texture at pOut first.
+    // Optional: set callback to decide whether to assign loaded texture. If set, ProcessCompleted calls it; if it returns true the texture is assigned to *pOut, else the texture is released.
+    typedef bool (*CompletionCallback)( void* ctx, LPDIRECT3DTEXTURE8* pOut, const std::string& filePath, const std::string& appId, LPDIRECT3DTEXTURE8 loadedTex );
+    void SetCompletionCallback( CompletionCallback fn, void* ctx ) { m_completionCallback = fn; m_completionCtx = ctx; }
+
+    // Call from main thread (e.g. each frame). Applies completed downloads: loads file to texture and assigns *pOutTexture (or invokes callback); releases old texture at pOut first.
     void ProcessCompleted( LPDIRECT3DDEVICE8 pd3dDevice );
+
+    // Cache lookup: path and existence for cover images (same path used when downloading).
+    static std::string GetCoverCachePath( const std::string& appId );
+    static bool IsCoverCached( const std::string& appId );
 
 private:
     struct Request
@@ -45,7 +53,11 @@ private:
     {
         LPDIRECT3DTEXTURE8* pOutTexture;
         std::string filePath;
+        std::string appId;
     };
+
+    CompletionCallback m_completionCallback;
+    void*              m_completionCtx;
 
     static DWORD WINAPI ThreadProc( LPVOID param );
     void WorkerLoop();

@@ -4,6 +4,7 @@
 
 #include "Main.h"
 #include "Store.h"
+#include "Defines.h"
 #include "WebManager.h"
 #include "String.h"
 #include <stdlib.h>
@@ -19,6 +20,12 @@ Store::Store()
     m_nFilteredCount = 0;
     m_pd3dDevice = NULL;
     m_pFilteredIndices = NULL;
+    m_visibleStart = 0;
+    m_visibleCount = 0;
+    m_pNextItems = NULL;
+    m_nNextItemCount = 0;
+    m_nChunkApiPage = 1;
+    m_nDisplayPage = 0;
     m_downloadNow = 0;
     m_downloadTotal = 0;
     m_downloadDone = false;
@@ -31,7 +38,6 @@ Store::Store()
     allApps.count = 0;
     m_aCategories.push_back( allApps );
 
-    m_nCurrentPage = 1;
     m_nTotalPages = 1;
     m_nTotalCount = 0;
 }
@@ -46,20 +52,16 @@ Store::~Store()
         delete[] m_pFilteredIndices;
         m_pFilteredIndices = NULL;
     }
-
+    FreeNextChunk();
     if( m_pItems )
     {
-        // Release item textures
         for( int i = 0; i < m_nItemCount; i++ )
         {
-            if( m_pItems[i].pIcon ) {
-                m_pItems[i].pIcon->Release();
-            }
-            if( m_pItems[i].pScreenshot ) {
-                m_pItems[i].pScreenshot->Release();
-            }
+            if( m_pItems[i].pIcon ) m_pItems[i].pIcon->Release();
+            if( m_pItems[i].pScreenshot ) m_pItems[i].pScreenshot->Release();
         }
         delete[] m_pItems;
+        m_pItems = NULL;
     }
 }
 
@@ -133,16 +135,15 @@ BOOL Store::LoadCategoriesFromWeb()
     return TRUE;
 }
 
-#define APPS_PAGE_SIZE 8
-
 //-----------------------------------------------------------------------------
-// LoadAppsPage - Fetch one page of apps (and optionally filter by category)
+// LoadAppsPage - Fetch one chunk (cols*rows*3) of apps
 //-----------------------------------------------------------------------------
 BOOL Store::LoadAppsPage( int page, const char* categoryFilter, int selectedCategoryForCount )
 {
+    m_currentCategoryFilter = categoryFilter ? categoryFilter : "";
+    FreeNextChunk();
     AppsResponse resp;
-    std::string catStr = categoryFilter ? categoryFilter : "";
-    if( !WebManager::TryGetApps( resp, (uint32_t)page, (uint32_t)APPS_PAGE_SIZE, catStr, "" ) )
+    if( !WebManager::TryGetApps( resp, (uint32_t)page, (uint32_t)STORE_CHUNK_SIZE, m_currentCategoryFilter, "" ) )
     {
         OutputDebugString( "Failed to load apps page from web\n" );
         return FALSE;
@@ -151,7 +152,8 @@ BOOL Store::LoadAppsPage( int page, const char* categoryFilter, int selectedCate
     {
         m_nItemCount = 0;
         m_nFilteredCount = 0;
-        m_nCurrentPage = 1;
+        m_nChunkApiPage = 1;
+        m_nDisplayPage = 0;
         m_nTotalPages = 1;
         m_nTotalCount = 0;
         if( selectedCategoryForCount >= 0 && selectedCategoryForCount < (int)m_aCategories.size() ) {
@@ -212,20 +214,107 @@ BOOL Store::LoadAppsPage( int page, const char* categoryFilter, int selectedCate
         m_pFilteredIndices[i] = i;
     }
     m_nFilteredCount = m_nItemCount;
-    m_nCurrentPage = (int)resp.page;
-    m_nTotalPages = (int)resp.totalPages;
+    m_nChunkApiPage = (int)resp.page;
+    m_nDisplayPage = 0;
     m_nTotalCount = (int)resp.totalCount;
+    m_nTotalPages = ( m_nTotalCount > 0 && STORE_ITEMS_PER_SCREEN > 0 ) ? ( ( m_nTotalCount + STORE_ITEMS_PER_SCREEN - 1 ) / STORE_ITEMS_PER_SCREEN ) : 1;
     if( selectedCategoryForCount >= 0 && selectedCategoryForCount < (int)m_aCategories.size() ) {
         m_aCategories[selectedCategoryForCount].count = (uint32_t)m_nTotalCount;
     }
     m_userState.Load( STORE_USER_STATE_PATH );
     m_userState.ApplyToStore( m_pItems, m_nItemCount );
-    for( int i = 0; i < m_nItemCount; i++ ) {
-        m_pItems[i].pIcon = TextureHelper::GetCover();
-        m_imageDownloader.Queue( &m_pItems[i].pIcon, m_pItems[i].app.id, IMAGE_COVER );
-    }
-    OutputDebugString( String::Format( "Loaded page %d: %d apps (total %d)\n", m_nCurrentPage, m_nItemCount, m_nTotalCount ).c_str() );
+    int visibleCount = ( m_nFilteredCount < STORE_MAX_ICONS_IN_RAM ) ? m_nFilteredCount : STORE_MAX_ICONS_IN_RAM;
+    SetVisibleRange( 0, visibleCount );
+    OutputDebugString( String::Format( "Loaded chunk page %d: %d apps (total %d)\n", m_nChunkApiPage, m_nItemCount, m_nTotalCount ).c_str() );
     return TRUE;
+}
+
+//-----------------------------------------------------------------------------
+// Rolling window: next-chunk buffer and navigation
+//-----------------------------------------------------------------------------
+void Store::FreeNextChunk()
+{
+    if( !m_pNextItems ) return;
+    for( int i = 0; i < m_nNextItemCount; i++ )
+    {
+        if( m_pNextItems[i].pIcon ) m_pNextItems[i].pIcon->Release();
+        if( m_pNextItems[i].pScreenshot ) m_pNextItems[i].pScreenshot->Release();
+    }
+    delete[] m_pNextItems;
+    m_pNextItems = NULL;
+    m_nNextItemCount = 0;
+}
+
+int Store::GetTotalPages() const
+{
+    if( m_nTotalCount <= 0 || STORE_ITEMS_PER_SCREEN <= 0 ) return 1;
+    return ( m_nTotalCount + STORE_ITEMS_PER_SCREEN - 1 ) / STORE_ITEMS_PER_SCREEN;
+}
+
+void Store::PreloadNextChunk()
+{
+    if( m_pNextItems ) return;
+    AppsResponse resp;
+    if( !WebManager::TryGetApps( resp, (uint32_t)( m_nChunkApiPage + 1 ), (uint32_t)STORE_CHUNK_SIZE, m_currentCategoryFilter, "" ) )
+        return;
+    if( resp.items.empty() ) return;
+    int n = (int)resp.items.size();
+    m_pNextItems = new StoreItem[n];
+    if( !m_pNextItems ) return;
+    m_nNextItemCount = n;
+    for( int i = 0; i < n; i++ )
+    {
+        StoreItem* item = &m_pNextItems[i];
+        item->app = resp.items[i];
+        item->nCategoryIndex = FindCategoryIndex( item->app.category.c_str() );
+        item->pIcon = NULL;
+        item->pScreenshot = NULL;
+        item->nSelectedVersion = 0;
+        item->nVersionScrollOffset = 0;
+        item->bViewingVersionDetail = FALSE;
+        item->versions.clear();
+    }
+    m_userState.Load( STORE_USER_STATE_PATH );
+    m_userState.ApplyToStore( m_pNextItems, m_nNextItemCount );
+    OutputDebugString( String::Format( "Preloaded next chunk: %d apps\n", n ).c_str() );
+}
+
+bool Store::GoToNextChunk()
+{
+    if( !m_pNextItems || m_nNextItemCount <= 0 ) return false;
+    m_imageDownloader.CancelAll();
+    for( int i = 0; i < m_nItemCount; i++ )
+    {
+        if( m_pItems[i].pIcon ) { m_pItems[i].pIcon->Release(); m_pItems[i].pIcon = NULL; }
+        if( m_pItems[i].pScreenshot ) { m_pItems[i].pScreenshot->Release(); m_pItems[i].pScreenshot = NULL; }
+    }
+    delete[] m_pItems;
+    if( m_pFilteredIndices ) { delete[] m_pFilteredIndices; m_pFilteredIndices = NULL; }
+    m_pItems = m_pNextItems;
+    m_nItemCount = m_nNextItemCount;
+    m_pNextItems = NULL;
+    m_nNextItemCount = 0;
+    m_nChunkApiPage++;
+    m_nDisplayPage = 0;
+    m_pFilteredIndices = new int[m_nItemCount];
+    if( m_pFilteredIndices )
+    {
+        for( int i = 0; i < m_nItemCount; i++ ) m_pFilteredIndices[i] = i;
+        m_nFilteredCount = m_nItemCount;
+    }
+    int visibleCount = ( m_nFilteredCount < STORE_MAX_ICONS_IN_RAM ) ? m_nFilteredCount : STORE_MAX_ICONS_IN_RAM;
+    SetVisibleRange( 0, visibleCount );
+    PreloadNextChunk();
+    return true;
+}
+
+bool Store::GoToPrevChunk( const char* categoryFilter )
+{
+    if( m_nChunkApiPage <= 1 ) return false;
+    const char* filter = categoryFilter ? categoryFilter : m_currentCategoryFilter.c_str();
+    if( !LoadAppsPage( m_nChunkApiPage - 1, filter, -1 ) ) return false;
+    m_nDisplayPage = 2;
+    return true;
 }
 
 //-----------------------------------------------------------------------------
@@ -482,6 +571,90 @@ void Store::BuildFilteredIndices( int selectedCategory )
 }
 
 //-----------------------------------------------------------------------------
+// Visible range: limit icons in RAM; only assign textures for items in range
+//-----------------------------------------------------------------------------
+void Store::SetVisibleRange( int start, int count )
+{
+    if( start == m_visibleStart && count == m_visibleCount )
+        return;
+    m_visibleStart = start;
+    m_visibleCount = count;
+    ReleaseAllIconsExceptVisible();
+    EnsureIconsForVisibleRange();
+}
+
+void Store::ReleaseAllIconsExceptVisible()
+{
+    if( !m_pItems || !m_pFilteredIndices ) return;
+    for( int i = 0; i < m_nItemCount; i++ )
+    {
+        if( !m_pItems[i].pIcon ) continue;
+        bool inVisible = false;
+        for( int s = m_visibleStart; s < m_visibleStart + m_visibleCount && s < m_nFilteredCount; s++ )
+        {
+            if( m_pFilteredIndices[s] == i ) { inVisible = true; break; }
+        }
+        if( !inVisible )
+        {
+            m_pItems[i].pIcon->Release();
+            m_pItems[i].pIcon = NULL;
+        }
+    }
+}
+
+void Store::EnsureIconsForVisibleRange()
+{
+    if( !m_pItems || !m_pFilteredIndices ) return;
+    for( int s = m_visibleStart; s < m_visibleStart + m_visibleCount && s < m_nFilteredCount; s++ )
+    {
+        int itemIndex = m_pFilteredIndices[s];
+        StoreItem* pItem = &m_pItems[itemIndex];
+        if( pItem->pIcon != NULL )
+            continue;
+        const std::string& appId = pItem->app.id;
+        if( ImageDownloader::IsCoverCached( appId ) )
+        {
+            std::string path = ImageDownloader::GetCoverCachePath( appId );
+            LPDIRECT3DTEXTURE8 pTex = (LPDIRECT3DTEXTURE8)TextureHelper::LoadFromFile( path );
+            if( pTex )
+                pItem->pIcon = pTex;
+            else
+            {
+                pItem->pIcon = (LPDIRECT3DTEXTURE8)TextureHelper::GetCover();
+                m_imageDownloader.Queue( &pItem->pIcon, appId, IMAGE_COVER );
+            }
+        }
+        else
+        {
+            pItem->pIcon = (LPDIRECT3DTEXTURE8)TextureHelper::GetCover();
+            m_imageDownloader.Queue( &pItem->pIcon, appId, IMAGE_COVER );
+        }
+    }
+}
+
+bool Store::IsAppIdInVisibleRange( const std::string& appId ) const
+{
+    if( !m_pItems || !m_pFilteredIndices ) return false;
+    for( int s = m_visibleStart; s < m_visibleStart + m_visibleCount && s < m_nFilteredCount; s++ )
+    {
+        int itemIndex = m_pFilteredIndices[s];
+        if( m_pItems[itemIndex].app.id == appId )
+            return true;
+    }
+    return false;
+}
+
+bool Store::OnIconLoadCompletion( void* ctx, LPDIRECT3DTEXTURE8* pOut, const std::string& filePath, const std::string& appId, LPDIRECT3DTEXTURE8 loadedTex )
+{
+    Store* pStore = (Store*)ctx;
+    (void)pOut;
+    (void)filePath;
+    if( !pStore->IsAppIdInVisibleRange( appId ) )
+        return false;
+    return true;
+}
+
+//-----------------------------------------------------------------------------
 // Initialize
 //-----------------------------------------------------------------------------
 HRESULT Store::Initialize( LPDIRECT3DDEVICE8 pd3dDevice )
@@ -491,6 +664,7 @@ HRESULT Store::Initialize( LPDIRECT3DDEVICE8 pd3dDevice )
     {
         OutputDebugString( "Warning: TextureHelper Init failed (Cover/Screenshot).\n" );
     }
+    m_imageDownloader.SetCompletionCallback( &Store::OnIconLoadCompletion, this );
 
     if( !LoadCatalogFromWeb() )
     {
