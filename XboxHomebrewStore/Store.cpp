@@ -40,6 +40,10 @@ Store::Store()
 
     m_nTotalPages = 1;
     m_nTotalCount = 0;
+    m_hasNextPage = false;
+    m_hasPreviousPage = false;
+    m_nextChunkHasNextPage = false;
+    m_nextChunkHasPreviousPage = false;
 }
 
 //-----------------------------------------------------------------------------
@@ -143,7 +147,7 @@ BOOL Store::LoadAppsPage( int page, const char* categoryFilter, int selectedCate
     m_currentCategoryFilter = categoryFilter ? categoryFilter : "";
     FreeNextChunk();
     AppsResponse resp;
-    if( !WebManager::TryGetApps( resp, (uint32_t)page, (uint32_t)STORE_CHUNK_SIZE, m_currentCategoryFilter, "" ) )
+    if( !WebManager::TryGetApps( resp, (uint32_t)page, (uint32_t)STORE_API_PAGE_SIZE, m_currentCategoryFilter, "" ) )
     {
         OutputDebugString( "Failed to load apps page from web\n" );
         return FALSE;
@@ -156,6 +160,8 @@ BOOL Store::LoadAppsPage( int page, const char* categoryFilter, int selectedCate
         m_nDisplayPage = 0;
         m_nTotalPages = 1;
         m_nTotalCount = 0;
+        m_hasNextPage = false;
+        m_hasPreviousPage = false;
         if( selectedCategoryForCount >= 0 && selectedCategoryForCount < (int)m_aCategories.size() ) {
             m_aCategories[selectedCategoryForCount].count = 0;
         }
@@ -214,10 +220,12 @@ BOOL Store::LoadAppsPage( int page, const char* categoryFilter, int selectedCate
         m_pFilteredIndices[i] = i;
     }
     m_nFilteredCount = m_nItemCount;
-    m_nChunkApiPage = (int)resp.page;
+    m_nChunkApiPage = page;
     m_nDisplayPage = 0;
     m_nTotalCount = (int)resp.totalCount;
-    m_nTotalPages = ( m_nTotalCount > 0 && STORE_ITEMS_PER_SCREEN > 0 ) ? ( ( m_nTotalCount + STORE_ITEMS_PER_SCREEN - 1 ) / STORE_ITEMS_PER_SCREEN ) : 1;
+    m_nTotalPages = ( resp.totalPages > 0 ) ? (int)resp.totalPages : ( ( m_nTotalCount > 0 && STORE_ITEMS_PER_SCREEN > 0 ) ? ( ( m_nTotalCount + STORE_ITEMS_PER_SCREEN - 1 ) / STORE_ITEMS_PER_SCREEN ) : 1 );
+    m_hasNextPage = resp.hasNextPage;
+    m_hasPreviousPage = resp.hasPreviousPage;
     if( selectedCategoryForCount >= 0 && selectedCategoryForCount < (int)m_aCategories.size() ) {
         m_aCategories[selectedCategoryForCount].count = (uint32_t)m_nTotalCount;
     }
@@ -225,7 +233,7 @@ BOOL Store::LoadAppsPage( int page, const char* categoryFilter, int selectedCate
     m_userState.ApplyToStore( m_pItems, m_nItemCount );
     int visibleCount = ( m_nFilteredCount < STORE_MAX_ICONS_IN_RAM ) ? m_nFilteredCount : STORE_MAX_ICONS_IN_RAM;
     SetVisibleRange( 0, visibleCount );
-    OutputDebugString( String::Format( "Loaded chunk page %d: %d apps (total %d)\n", m_nChunkApiPage, m_nItemCount, m_nTotalCount ).c_str() );
+    OutputDebugString( String::Format( "Loaded chunk page %d: %d apps (total %d, hasNext=%d)\n", m_nChunkApiPage, m_nItemCount, m_nTotalCount, m_hasNextPage ? 1 : 0 ).c_str() );
     return TRUE;
 }
 
@@ -247,13 +255,62 @@ void Store::FreeNextChunk()
 
 int Store::GetTotalPages() const
 {
+    if( m_nTotalPages > 0 ) return m_nTotalPages;
     if( m_nTotalCount <= 0 || STORE_ITEMS_PER_SCREEN <= 0 ) return 1;
     return ( m_nTotalCount + STORE_ITEMS_PER_SCREEN - 1 ) / STORE_ITEMS_PER_SCREEN;
+}
+
+//-----------------------------------------------------------------------------
+// AppendNextPage - Fetch next API page and append to current list (sliding window)
+//-----------------------------------------------------------------------------
+bool Store::AppendNextPage()
+{
+    if( !m_hasNextPage ) return false;
+    AppsResponse resp;
+    if( !WebManager::TryGetApps( resp, (uint32_t)( m_nChunkApiPage + 1 ), (uint32_t)STORE_API_PAGE_SIZE, m_currentCategoryFilter, "" ) ) return false;
+    if( resp.items.empty() ) return false;
+    m_imageDownloader.CancelAll();
+    int addCount = (int)resp.items.size();
+    int newCount = m_nItemCount + addCount;
+    StoreItem* pNew = new StoreItem[newCount];
+    if( !pNew ) return false;
+    for( int i = 0; i < m_nItemCount; i++ )
+        pNew[i] = m_pItems[i];
+    for( int i = 0; i < addCount; i++ )
+    {
+        StoreItem* item = &pNew[m_nItemCount + i];
+        item->app = resp.items[i];
+        item->nCategoryIndex = FindCategoryIndex( item->app.category.c_str() );
+        item->pIcon = NULL;
+        item->pScreenshot = NULL;
+        item->nSelectedVersion = 0;
+        item->nVersionScrollOffset = 0;
+        item->bViewingVersionDetail = FALSE;
+        item->versions.clear();
+    }
+    delete[] m_pItems;
+    m_pItems = pNew;
+    m_nItemCount = newCount;
+    m_nChunkApiPage++;
+    m_hasNextPage = resp.hasNextPage;
+    m_hasPreviousPage = resp.hasPreviousPage;
+    if( m_pFilteredIndices ) { delete[] m_pFilteredIndices; m_pFilteredIndices = NULL; }
+    m_pFilteredIndices = new int[m_nItemCount];
+    if( m_pFilteredIndices )
+    {
+        for( int i = 0; i < m_nItemCount; i++ ) m_pFilteredIndices[i] = i;
+        m_nFilteredCount = m_nItemCount;
+    }
+    m_userState.Load( STORE_USER_STATE_PATH );
+    m_userState.ApplyToStore( m_pItems, m_nItemCount );
+    OutputDebugString( String::Format( "Appended page: %d items (total %d, hasNext=%d)\n", addCount, m_nItemCount, m_hasNextPage ? 1 : 0 ).c_str() );
+    return true;
 }
 
 void Store::PreloadNextChunk()
 {
     if( m_pNextItems ) return;
+    if( !m_hasNextPage ) return;
     AppsResponse resp;
     if( !WebManager::TryGetApps( resp, (uint32_t)( m_nChunkApiPage + 1 ), (uint32_t)STORE_CHUNK_SIZE, m_currentCategoryFilter, "" ) )
         return;
@@ -262,6 +319,8 @@ void Store::PreloadNextChunk()
     m_pNextItems = new StoreItem[n];
     if( !m_pNextItems ) return;
     m_nNextItemCount = n;
+    m_nextChunkHasNextPage = resp.hasNextPage;
+    m_nextChunkHasPreviousPage = resp.hasPreviousPage;
     for( int i = 0; i < n; i++ )
     {
         StoreItem* item = &m_pNextItems[i];
@@ -276,7 +335,7 @@ void Store::PreloadNextChunk()
     }
     m_userState.Load( STORE_USER_STATE_PATH );
     m_userState.ApplyToStore( m_pNextItems, m_nNextItemCount );
-    OutputDebugString( String::Format( "Preloaded next chunk: %d apps\n", n ).c_str() );
+    OutputDebugString( String::Format( "Preloaded next chunk: %d apps (hasNext=%d)\n", n, m_nextChunkHasNextPage ? 1 : 0 ).c_str() );
 }
 
 bool Store::GoToNextChunk()
@@ -296,6 +355,8 @@ bool Store::GoToNextChunk()
     m_nNextItemCount = 0;
     m_nChunkApiPage++;
     m_nDisplayPage = 0;
+    m_hasNextPage = m_nextChunkHasNextPage;
+    m_hasPreviousPage = m_nextChunkHasPreviousPage;
     m_pFilteredIndices = new int[m_nItemCount];
     if( m_pFilteredIndices )
     {
@@ -310,7 +371,7 @@ bool Store::GoToNextChunk()
 
 bool Store::GoToPrevChunk( const char* categoryFilter )
 {
-    if( m_nChunkApiPage <= 1 ) return false;
+    if( !m_hasPreviousPage ) return false;
     const char* filter = categoryFilter ? categoryFilter : m_currentCategoryFilter.c_str();
     if( !LoadAppsPage( m_nChunkApiPage - 1, filter, -1 ) ) return false;
     m_nDisplayPage = 2;
@@ -348,7 +409,7 @@ void Store::EnsureScreenshotForItem( StoreItem* pItem )
     }
     pItem->pScreenshot = TextureHelper::GetScreenshot();
     if( !pItem->app.id.empty() )
-        m_imageDownloader.Queue( &pItem->pScreenshot, pItem->app.id, IMAGE_SCREENSHOT );
+        m_imageDownloader.Queue( &pItem->pScreenshot, pItem->app.id, IMAGE_SCREENSHOT, true );
 }
 
 //-----------------------------------------------------------------------------
@@ -619,10 +680,10 @@ void Store::EnsureIconsForVisibleRange()
             if( pTex )
                 pItem->pIcon = pTex;
             else
-                m_imageDownloader.Queue( &pItem->pIcon, appId, IMAGE_COVER );
+                m_imageDownloader.Queue( &pItem->pIcon, appId, IMAGE_COVER, true );
         }
         else
-            m_imageDownloader.Queue( &pItem->pIcon, appId, IMAGE_COVER );
+            m_imageDownloader.Queue( &pItem->pIcon, appId, IMAGE_COVER, true );
     }
 }
 

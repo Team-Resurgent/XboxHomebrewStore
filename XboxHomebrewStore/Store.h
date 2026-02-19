@@ -73,6 +73,10 @@ public:
     void SetDisplayPage( int page ) { m_nDisplayPage = page; }
     int GetDisplayPage() const { return m_nDisplayPage; }
     void PreloadNextChunk();
+    bool HasNextChunk() const { return m_pNextItems != NULL && m_nNextItemCount > 0; }
+    bool HasNextPage() const { return m_hasNextPage; }
+    bool HasPreviousPage() const { return m_hasPreviousPage; }
+    bool AppendNextPage();
     bool GoToNextChunk();
     bool GoToPrevChunk( const char* categoryFilter );
 
@@ -118,6 +122,10 @@ private:
     int m_nDisplayPage;
     int m_nTotalPages;
     int m_nTotalCount;
+    bool m_hasNextPage;
+    bool m_hasPreviousPage;
+    bool m_nextChunkHasNextPage;
+    bool m_nextChunkHasPreviousPage;
     std::string m_currentCategoryFilter;
     int m_visibleStart;
     int m_visibleCount;

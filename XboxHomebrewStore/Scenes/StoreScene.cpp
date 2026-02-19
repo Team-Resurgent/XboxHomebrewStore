@@ -18,6 +18,7 @@ StoreScene::StoreScene( Store* pStore )
     , m_nSelectedCol( 0 )
     , m_nSelectedRow( 0 )
     , m_nSelectedItem( 0 )
+    , m_nScrollOffset( 0 )
     , m_nSelectedCategory( 0 )
     , m_fScreenWidth( 1280.0f )
     , m_fScreenHeight( 720.0f )
@@ -157,8 +158,7 @@ void StoreScene::RenderMainGrid( LPDIRECT3DDEVICE8 pd3dDevice )
         return;
     }
     int totalSlots = m_nGridCols * m_nGridRows;
-    int displayPage = m_pStore->GetDisplayPage();
-    int baseIndex = displayPage * totalSlots;
+    int baseIndex = m_nScrollOffset;
     int selectedSlot = m_nSelectedRow * m_nGridCols + m_nSelectedCol;
     if( selectedSlot >= totalSlots ) selectedSlot = totalSlots - 1;
     if( selectedSlot < 0 ) selectedSlot = 0;
@@ -176,7 +176,11 @@ void StoreScene::RenderMainGrid( LPDIRECT3DDEVICE8 pd3dDevice )
         DrawAppCard( pd3dDevice, itemIndex, x, y, m_fCardWidth, m_fCardHeight, selected );
     }
     float pageY = m_fScreenHeight - 50.0f;
-    std::string pageStr = String::Format( "Page %d / %d  (%d items)", m_pStore->GetCurrentPage(), m_pStore->GetTotalPages(), m_pStore->GetTotalCount() );
+    int totalInCategory = m_pStore->GetTotalCount();
+    if( totalInCategory <= 0 ) totalInCategory = count;
+    int displayItem = ( m_nSelectedItem >= 0 && m_nSelectedItem < count ) ? ( m_nSelectedItem + 1 ) : 1;
+    if( displayItem > totalInCategory ) displayItem = totalInCategory;
+    std::string pageStr = String::Format( "Item %d of %d", displayItem, totalInCategory );
     Font::DrawText(FONT_NORMAL, pageStr.c_str(), (uint32_t)COLOR_TEXT_GRAY, (int)m_fGridStartX, (int)pageY );
 }
 
@@ -277,14 +281,11 @@ void StoreScene::HandleInput()
     m_pStore->BuildFilteredIndices( m_nSelectedCategory );
     int count = m_pStore->GetFilteredCount();
     int totalSlots = m_nGridCols * m_nGridRows;
-    int displayPage = m_pStore->GetDisplayPage();
-    int baseIndex = displayPage * totalSlots;
+    int baseIndex = m_nScrollOffset;
     int visibleCount = ( totalSlots < STORE_MAX_ICONS_IN_RAM ) ? totalSlots : STORE_MAX_ICONS_IN_RAM;
     if( baseIndex + visibleCount > count ) visibleCount = count - baseIndex;
     if( visibleCount < 0 ) visibleCount = 0;
     m_pStore->SetVisibleRange( baseIndex, visibleCount );
-    if( count > totalSlots )
-        m_pStore->PreloadNextChunk();
 
     if( m_bFocusOnSidebar )
     {
@@ -296,21 +297,27 @@ void StoreScene::HandleInput()
         }
         else if( numCategories > 0 )
         {
+            bool categoryChanged = false;
             if( InputManager::ControllerPressed( ControllerDpadUp, -1 ) )
             {
                 m_nSelectedCategory--;
                 if( m_nSelectedCategory < 0 ) m_nSelectedCategory = numCategories - 1;
-                const char* filter = ( m_nSelectedCategory == 0 ) ? "" : cats[m_nSelectedCategory].category.c_str();
-                m_pStore->LoadAppsPage( 1, filter, m_nSelectedCategory );
-                m_nSelectedCol = 0;
-                m_nSelectedRow = 0;
+                categoryChanged = true;
             }
             if( InputManager::ControllerPressed( ControllerDpadDown, -1 ) )
             {
                 m_nSelectedCategory++;
                 if( m_nSelectedCategory >= numCategories ) m_nSelectedCategory = 0;
+                categoryChanged = true;
+            }
+            if( InputManager::ControllerPressed( ControllerA, -1 ) )
+                categoryChanged = true;
+            if( categoryChanged )
+            {
                 const char* filter = ( m_nSelectedCategory == 0 ) ? "" : cats[m_nSelectedCategory].category.c_str();
-                m_pStore->LoadAppsPage( 1, filter, m_nSelectedCategory );
+                if( m_pStore->LoadAppsPage( 1, filter, m_nSelectedCategory ) )
+                    m_pStore->BuildFilteredIndices( m_nSelectedCategory );
+                m_nScrollOffset = 0;
                 m_nSelectedCol = 0;
                 m_nSelectedRow = 0;
             }
@@ -325,7 +332,9 @@ void StoreScene::HandleInput()
                 m_nSelectedCategory--;
                 if( m_nSelectedCategory < 0 ) m_nSelectedCategory = numCategories - 1;
                 const char* filter = ( m_nSelectedCategory == 0 ) ? "" : cats[m_nSelectedCategory].category.c_str();
-                m_pStore->LoadAppsPage( 1, filter, m_nSelectedCategory );
+                if( m_pStore->LoadAppsPage( 1, filter, m_nSelectedCategory ) )
+                    m_pStore->BuildFilteredIndices( m_nSelectedCategory );
+                m_nScrollOffset = 0;
                 m_nSelectedCol = 0;
                 m_nSelectedRow = 0;
             }
@@ -334,7 +343,9 @@ void StoreScene::HandleInput()
                 m_nSelectedCategory++;
                 if( m_nSelectedCategory >= numCategories ) m_nSelectedCategory = 0;
                 const char* filter = ( m_nSelectedCategory == 0 ) ? "" : cats[m_nSelectedCategory].category.c_str();
-                m_pStore->LoadAppsPage( 1, filter, m_nSelectedCategory );
+                if( m_pStore->LoadAppsPage( 1, filter, m_nSelectedCategory ) )
+                    m_pStore->BuildFilteredIndices( m_nSelectedCategory );
+                m_nScrollOffset = 0;
                 m_nSelectedCol = 0;
                 m_nSelectedRow = 0;
             }
@@ -367,17 +378,21 @@ void StoreScene::HandleInput()
                 }
                 else
                 {
-                    if( m_pStore->GetDisplayPage() > 0 )
+                    if( m_nScrollOffset > 0 )
                     {
-                        m_pStore->SetDisplayPage( m_pStore->GetDisplayPage() - 1 );
+                        m_nScrollOffset -= m_nGridCols;
+                        if( m_nScrollOffset < 0 ) m_nScrollOffset = 0;
                         m_nSelectedRow = m_nGridRows - 1;
                         m_nSelectedCol = 0;
                     }
                     else
                     {
                         const char* filter = ( m_nSelectedCategory == 0 || numCategories == 0 ) ? "" : cats[m_nSelectedCategory].category.c_str();
-                        if( m_pStore->GoToPrevChunk( filter ) )
+                        if( m_pStore->HasPreviousPage() && m_pStore->GoToPrevChunk( filter ) )
                         {
+                            m_pStore->BuildFilteredIndices( m_nSelectedCategory );
+                            int newCount = m_pStore->GetFilteredCount();
+                            m_nScrollOffset = ( newCount > totalSlots ) ? ( newCount - totalSlots ) : 0;
                             m_nSelectedRow = m_nGridRows - 1;
                             m_nSelectedCol = 0;
                         }
@@ -388,31 +403,42 @@ void StoreScene::HandleInput()
             {
                 if( m_nSelectedRow < m_nGridRows - 1 )
                 {
-                    int newSlot = ( m_nSelectedRow + 1 ) * m_nGridCols + m_nSelectedCol;
-                    int baseSlot = m_pStore->GetDisplayPage() * totalSlots;
-                    if( baseSlot + newSlot < count )
+                    int itemIndex = m_nScrollOffset + ( m_nSelectedRow + 1 ) * m_nGridCols + m_nSelectedCol;
+                    if( itemIndex < count )
                         m_nSelectedRow++;
                 }
                 else
                 {
-                    int maxDisplayPage = ( count > totalSlots ) ? ( ( count - 1 ) / totalSlots ) : 0;
-                    if( m_pStore->GetDisplayPage() < maxDisplayPage )
+                    int nextRowStart = m_nScrollOffset + totalSlots;
+                    if( nextRowStart < count )
                     {
-                        m_pStore->SetDisplayPage( m_pStore->GetDisplayPage() + 1 );
+                        m_nScrollOffset += m_nGridCols;
                         m_nSelectedRow = 0;
-                        m_nSelectedCol = 0;
+                        int firstRowItems = count - m_nScrollOffset;
+                        if( firstRowItems > m_nGridCols ) firstRowItems = m_nGridCols;
+                        if( firstRowItems > 0 && m_nSelectedCol >= firstRowItems ) m_nSelectedCol = firstRowItems - 1;
                     }
-                    else if( m_pStore->GoToNextChunk() )
+                    else if( m_pStore->HasNextPage() && m_pStore->AppendNextPage() )
                     {
+                        m_nScrollOffset += m_nGridCols;
                         m_nSelectedRow = 0;
-                        m_nSelectedCol = 0;
+                        count = m_pStore->GetFilteredCount();
+                        int firstRowItems = count - m_nScrollOffset;
+                        if( firstRowItems > m_nGridCols ) firstRowItems = m_nGridCols;
+                        if( firstRowItems > 0 && m_nSelectedCol >= firstRowItems ) m_nSelectedCol = firstRowItems - 1;
                     }
                 }
+            }
+            count = m_pStore->GetFilteredCount();
+            {
+                int maxScroll = ( count > totalSlots ) ? ( count - totalSlots ) : 0;
+                if( m_nScrollOffset > maxScroll ) m_nScrollOffset = maxScroll;
+                if( m_nScrollOffset < 0 ) m_nScrollOffset = 0;
             }
             if( InputManager::ControllerPressed( ControllerA, -1 ) )
             {
                 int totalSlotsA = m_nGridCols * m_nGridRows;
-                int baseIdx = m_pStore->GetDisplayPage() * totalSlotsA;
+                int baseIdx = m_nScrollOffset;
                 m_nSelectedItem = baseIdx + m_nSelectedRow * m_nGridCols + m_nSelectedCol;
                 if( m_nSelectedItem >= count ) m_nSelectedItem = count - 1;
                 if( m_nSelectedItem < 0 ) m_nSelectedItem = 0;

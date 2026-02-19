@@ -26,7 +26,8 @@ public:
     ~ImageDownloader();
 
     // Queue a cover or screenshot download. pOutTexture must stay valid until ProcessCompleted runs for this request (or CancelAll clears it).
-    void Queue( LPDIRECT3DTEXTURE8* pOutTexture, const std::string& appId, ImageDownloadType type );
+    // highPriority: if true, request is processed before non-priority (e.g. for items currently in view).
+    void Queue( LPDIRECT3DTEXTURE8* pOutTexture, const std::string& appId, ImageDownloadType type, bool highPriority = false );
 
     // Cancel all pending downloads; in-flight download is aborted. Safe to queue a new batch after.
     void CancelAll();
@@ -63,6 +64,7 @@ private:
     void WorkerLoop();
 
     std::deque<Request>   m_queue;
+    std::deque<Request>   m_queuePriority;
     CRITICAL_SECTION       m_queueLock;
     std::deque<Completed> m_completed;
     CRITICAL_SECTION       m_completedLock;

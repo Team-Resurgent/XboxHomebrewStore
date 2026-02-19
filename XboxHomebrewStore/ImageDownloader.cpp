@@ -144,7 +144,7 @@ ImageDownloader::~ImageDownloader()
     DeleteCriticalSection( &m_queueLock );
 }
 
-void ImageDownloader::Queue( LPDIRECT3DTEXTURE8* pOutTexture, const std::string& appId, ImageDownloadType type )
+void ImageDownloader::Queue( LPDIRECT3DTEXTURE8* pOutTexture, const std::string& appId, ImageDownloadType type, bool highPriority )
 {
     if( !pOutTexture || appId.empty() || !m_wakeEvent ) return;
     Request r;
@@ -152,7 +152,20 @@ void ImageDownloader::Queue( LPDIRECT3DTEXTURE8* pOutTexture, const std::string&
     r.appId = appId;
     r.type = type;
     EnterCriticalSection( &m_queueLock );
-    m_queue.push_back( r );
+    if( highPriority )
+    {
+        for( std::deque<Request>::iterator it = m_queue.begin(); it != m_queue.end(); ++it )
+        {
+            if( it->appId == appId && it->type == type )
+            {
+                m_queue.erase( it );
+                break;
+            }
+        }
+        m_queuePriority.push_back( r );
+    }
+    else
+        m_queue.push_back( r );
     LeaveCriticalSection( &m_queueLock );
     SetEvent( m_wakeEvent );
 }
@@ -162,6 +175,7 @@ void ImageDownloader::CancelAll()
     m_cancelRequested = true;
     EnterCriticalSection( &m_queueLock );
     m_queue.clear();
+    m_queuePriority.clear();
     LeaveCriticalSection( &m_queueLock );
     EnterCriticalSection( &m_completedLock );
     m_completed.clear();
@@ -218,14 +232,23 @@ void ImageDownloader::WorkerLoop()
         Request req;
         bool moreInQueue = false;
         EnterCriticalSection( &m_queueLock );
-        bool haveRequest = !m_queue.empty();
+        bool haveRequest = !m_queuePriority.empty() || !m_queue.empty();
         if( haveRequest )
         {
-            req = m_queue.front();
-            m_queue.pop_front();
-            moreInQueue = !m_queue.empty();
+            if( !m_queuePriority.empty() )
+            {
+                req = m_queuePriority.front();
+                m_queuePriority.pop_front();
+                moreInQueue = !m_queuePriority.empty() || !m_queue.empty();
+            }
+            else
+            {
+                req = m_queue.front();
+                m_queue.pop_front();
+                moreInQueue = !m_queuePriority.empty() || !m_queue.empty();
+            }
         }
-        if( m_queue.empty() )
+        if( m_queuePriority.empty() && m_queue.empty() )
             m_cancelRequested = false;
         LeaveCriticalSection( &m_queueLock );
         if( moreInQueue && m_wakeEvent )

@@ -31,6 +31,7 @@ private:
     int m_nSelectedCol;
     int m_nSelectedRow;
     int m_nSelectedItem;
+    int m_nScrollOffset;
     int m_nSelectedCategory;
     float m_fScreenWidth;
     float m_fScreenHeight;
