@@ -232,6 +232,8 @@ BOOL Store::LoadAppsPage( int page, const char* categoryFilter, int selectedCate
     m_userState.Load( STORE_USER_STATE_PATH );
     m_userState.ApplyToStore( m_pItems, m_nItemCount );
     int visibleCount = ( m_nFilteredCount < STORE_MAX_ICONS_IN_RAM ) ? m_nFilteredCount : STORE_MAX_ICONS_IN_RAM;
+    m_visibleStart = -1;
+    m_visibleCount = 0;
     SetVisibleRange( 0, visibleCount );
     OutputDebugString( String::Format( "Loaded chunk page %d: %d apps (total %d, hasNext=%d)\n", m_nChunkApiPage, m_nItemCount, m_nTotalCount, m_hasNextPage ? 1 : 0 ).c_str() );
     return TRUE;
