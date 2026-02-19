@@ -15,3 +15,8 @@
 #define COLOR_DOWNLOAD      0xFF2196F3
 
 #define CARD_GAP            16.0f
+
+#define ASSET_HEADER_HEIGHT 56
+#define ASSET_SIDEBAR_Y 76
+#define ASSET_SIDEBAR_WIDTH 172
+#define ASSET_FOOTER_HEIGHT 46

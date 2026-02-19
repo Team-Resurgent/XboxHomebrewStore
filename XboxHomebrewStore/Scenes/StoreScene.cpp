@@ -76,16 +76,12 @@ void StoreScene::EnsureLayout( LPDIRECT3DDEVICE8 pd3dDevice )
 
 void StoreScene::RenderCategorySidebar()
 {
-    int32_t sidebarX = 0;
-    int32_t sisebarY = 40;
-    int32_t sidebarWidth = (int32_t)(Context::GetScreenWidth() * 0.22f);
-    sidebarWidth = Math::ClampInt32(sidebarWidth, 180, 260);
-    int32_t sidebarHeight = (Context::GetScreenHeight() - sisebarY) - 40;
-    Drawing::DrawFilledRect((uint32_t)COLOR_SIDE_PANEL, sidebarX, sisebarY, sidebarWidth, sidebarHeight);
+    int32_t sidebarHeight = (Context::GetScreenHeight() - ASSET_SIDEBAR_Y) - ASSET_FOOTER_HEIGHT;
+    Drawing::DrawTexturedRect(TextureHelper::GetSidebar(), 0xffffffff, 0, ASSET_SIDEBAR_Y, ASSET_SIDEBAR_WIDTH, sidebarHeight);
 
     const std::vector<CategoryItem>& categories = m_pStore->GetCategories();
 
-    int32_t y = sisebarY + 20;
+    int32_t y = ASSET_SIDEBAR_Y + 20;
     for (uint32_t i = 0; i < categories.size(); i++)
     {
         bool selected = ( i == m_nSelectedCategory );
@@ -97,7 +93,7 @@ void StoreScene::RenderCategorySidebar()
             background = (uint32_t)COLOR_SECONDARY;
         else
             background = COLOR_CARD_BG;
-        Drawing::DrawFilledRect( background, 8, y, sidebarWidth - 16, 36 );
+        Drawing::DrawFilledRect( background, 8, y, ASSET_SIDEBAR_WIDTH - 16, 36 );
         Font::DrawText(categories[i].category.c_str(), COLOR_WHITE, 16, y + 8);
         y += 44;
     }

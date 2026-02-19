@@ -13,7 +13,7 @@
 namespace 
 {
     D3DDevice* mD3dDevice;
-    LPDIRECT3DSTATEBLOCK8 mSavedStateBlock = NULL;
+    uint32_t mSavedState[16];
 }
 
 void Drawing::Init(D3DDevice* d3dDevice)
@@ -23,23 +23,44 @@ void Drawing::Init(D3DDevice* d3dDevice)
 
 void Drawing::SaveRenderState()
 {
-    if (mSavedStateBlock != NULL)
-    {
-        mSavedStateBlock->Release();
-        mSavedStateBlock = NULL;
-    }
-    if (mD3dDevice != NULL)
-        mD3dDevice->CreateStateBlock(D3DSBT_ALL, &mSavedStateBlock);
+    mD3dDevice->GetRenderState(D3DRS_ALPHABLENDENABLE, &mSavedState[0]);
+    mD3dDevice->GetRenderState(D3DRS_SRCBLEND, &mSavedState[1]);
+    mD3dDevice->GetRenderState(D3DRS_DESTBLEND, &mSavedState[2]);
+    mD3dDevice->GetRenderState(D3DRS_ALPHATESTENABLE, &mSavedState[3]);
+    mD3dDevice->GetRenderState(D3DRS_ALPHAREF, &mSavedState[4]);
+    mD3dDevice->GetRenderState(D3DRS_ALPHAFUNC, &mSavedState[5]);
+    mD3dDevice->GetRenderState(D3DRS_FILLMODE, &mSavedState[6]);
+    mD3dDevice->GetRenderState(D3DRS_CULLMODE, &mSavedState[7]);
+    mD3dDevice->GetRenderState(D3DRS_ZENABLE, &mSavedState[8]);
+    mD3dDevice->GetRenderState(D3DRS_STENCILENABLE, &mSavedState[9]);
+    mD3dDevice->GetRenderState(D3DRS_EDGEANTIALIAS, &mSavedState[10]);
+    mD3dDevice->GetTextureStageState(0, D3DTSS_MINFILTER, &mSavedState[11]);
+    mD3dDevice->GetTextureStageState(0, D3DTSS_MAGFILTER, &mSavedState[12]);
+    mD3dDevice->GetTextureStageState(0, D3DTSS_COLOROP, &mSavedState[13]);
+    mD3dDevice->GetTextureStageState(0, D3DTSS_COLORARG1, &mSavedState[14]);
+    mD3dDevice->GetTextureStageState(0, D3DTSS_COLORARG2, &mSavedState[15]);
 }
 
 void Drawing::RestoreRenderState()
 {
-    if (mSavedStateBlock != NULL)
-    {
-        mSavedStateBlock->Apply();
-        mSavedStateBlock->Release();
-        mSavedStateBlock = NULL;
-    }
+    mD3dDevice->SetTexture(0, NULL);
+
+    mD3dDevice->SetRenderState(D3DRS_ALPHABLENDENABLE, mSavedState[0]);
+    mD3dDevice->SetRenderState(D3DRS_SRCBLEND, mSavedState[1]);
+    mD3dDevice->SetRenderState(D3DRS_DESTBLEND, mSavedState[2]);
+    mD3dDevice->SetRenderState(D3DRS_ALPHATESTENABLE, mSavedState[3]);
+    mD3dDevice->SetRenderState(D3DRS_ALPHAREF, mSavedState[4]);
+    mD3dDevice->SetRenderState(D3DRS_ALPHAFUNC, mSavedState[5]);
+    mD3dDevice->SetRenderState(D3DRS_FILLMODE, mSavedState[6]);
+    mD3dDevice->SetRenderState(D3DRS_CULLMODE, mSavedState[7]);
+    mD3dDevice->SetRenderState(D3DRS_ZENABLE, mSavedState[8]);
+    mD3dDevice->SetRenderState(D3DRS_STENCILENABLE, mSavedState[9]);
+    mD3dDevice->SetRenderState(D3DRS_EDGEANTIALIAS, mSavedState[10]);
+    mD3dDevice->SetTextureStageState(0, D3DTSS_MINFILTER, mSavedState[11]);
+    mD3dDevice->SetTextureStageState(0, D3DTSS_MAGFILTER, mSavedState[12]);
+    mD3dDevice->SetTextureStageState(0, D3DTSS_COLOROP, mSavedState[13]);
+    mD3dDevice->SetTextureStageState(0, D3DTSS_COLORARG1, mSavedState[14]);
+    mD3dDevice->SetTextureStageState(0, D3DTSS_COLORARG2, mSavedState[15]);
 }
 
 void Drawing::Swizzle(const void* src, const uint32_t& depth, const uint32_t& width, const uint32_t& height, void* dest) 

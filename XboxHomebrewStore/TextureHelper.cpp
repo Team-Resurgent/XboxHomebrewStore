@@ -6,6 +6,10 @@
 namespace {
     D3DDevice* mD3dDevice = NULL;
     D3DTexture* mBackground = NULL;
+    D3DTexture* mHeader = NULL;
+    D3DTexture* mFooter = NULL;
+    D3DTexture* mSidebar = NULL;
+    D3DTexture* mCategoryHighlight = NULL;
     D3DTexture* mScreenshot = NULL;
     D3DTexture* mCover = NULL;
 }
@@ -17,6 +21,14 @@ bool TextureHelper::Init(D3DDevice* d3dDevice)
     bool result = true;
     mBackground = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "Background.jpg"));
     result &= mBackground == NULL;
+    mHeader = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "Header.png"));
+    result &= mHeader == NULL;
+    mFooter = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "Footer.png"));
+    result &= mFooter == NULL;
+    mSidebar = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "Sidebar.png"));
+    result &= mSidebar == NULL;
+    mCategoryHighlight = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "CategoryHighlight.png"));
+    result &= mCategoryHighlight == NULL;
     mScreenshot = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "Screenshot.jpg"));
     result &= mScreenshot == NULL;
     mCover = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "Cover.jpg"));
@@ -76,6 +88,26 @@ D3DTexture* TextureHelper::CopyTexture(D3DTexture* source)
 D3DTexture* TextureHelper::GetBackground()
 {
     return mBackground;
+}
+
+D3DTexture* TextureHelper::GetHeader()
+{
+    return mHeader;
+}
+
+D3DTexture* TextureHelper::GetFooter()
+{
+    return mFooter;
+}
+
+D3DTexture* TextureHelper::GetSidebar()
+{
+    return mSidebar;
+}
+
+D3DTexture* TextureHelper::GetCategoryHighlight()
+{
+    return mCategoryHighlight;
 }
 
 D3DTexture* TextureHelper::GetScreenshot()
