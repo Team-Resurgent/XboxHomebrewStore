@@ -272,7 +272,6 @@ void Drawing::DrawFont(BitmapFont* font, const char* message, uint32_t color, in
         mD3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLELIST, vertexCount / 3, batchBuf, sizeof(TEXVERTEX));
     }
 
-    mD3dDevice->SetTexture(0, NULL);
     RestoreRenderState();
 }
 
@@ -318,7 +317,6 @@ void Drawing::DrawTexturedRect(D3DTexture* texture, uint32_t diffuse, int x, int
     mD3dDevice->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
     mD3dDevice->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
     mD3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, vertices, sizeof(TEXVERTEX));
-    mD3dDevice->SetTexture(0, NULL);
     RestoreRenderState();
 }
 
