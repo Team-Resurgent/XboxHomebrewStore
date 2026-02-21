@@ -1,10 +1,4 @@
-//=============================================================================
-// Xbox Homebrew Store
-// Main Application Entry Point
-//=============================================================================
-
 #include "Main.h"
-#include "Store.h"
 #include "Network.h"
 #include "WebManager.h"
 #include "TextureHelper.h"

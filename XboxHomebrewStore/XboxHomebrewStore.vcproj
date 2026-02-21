@@ -336,9 +336,6 @@
 				RelativePath=".\parson.c">
 			</File>
 			<File
-				RelativePath=".\Store.cpp">
-			</File>
-			<File
 				RelativePath=".\StoreManager.cpp">
 			</File>
 			<File
@@ -560,9 +557,6 @@
 			</File>
 			<File
 				RelativePath=".\stb_image.h">
-			</File>
-			<File
-				RelativePath=".\Store.h">
 			</File>
 			<File
 				RelativePath=".\StoreManager.h">
