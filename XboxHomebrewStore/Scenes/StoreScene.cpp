@@ -28,6 +28,7 @@ StoreScene::StoreScene()
     , m_nGridCols( 4 )
     , m_nGridRows( 2 )
 {
+    mImageDownloader = new ImageDownloader();
     mSideBarFocused = true;
     mHighlightedCategoryIndex = 0;
     mStoreIndex = 0;
@@ -126,8 +127,18 @@ void StoreScene::DrawStoreItem(StoreItem* storeItem, int x, int y, bool selected
     {
         Drawing::DrawFilledRect(COLOR_SECONDARY, iconX, iconY, iconW, iconH);
         D3DTexture* cover = storeItem->cover;
-        if (cover == NULL) {
-            cover = TextureHelper::GetCoverRef();
+        if (cover == NULL) 
+        {
+            if (ImageDownloader::IsCoverCached(storeItem->id) == true)
+            {
+                storeItem->cover = TextureHelper::LoadFromFile(ImageDownloader::GetCoverCachePath(storeItem->id));
+                cover = storeItem->cover;
+            }
+            else
+            {
+                cover = TextureHelper::GetCoverRef();
+                mImageDownloader->Queue(&storeItem->cover, storeItem->id, IMAGE_COVER);
+            }
         }
         Drawing::DrawTexturedRect(cover, 0xFFFFFFFF, iconX, iconY, iconW, iconH);
     }
@@ -542,6 +553,7 @@ void StoreScene::Update()
             }
             else if (StoreManager::HasNext())
             {
+                mImageDownloader->CancelAll();
                 StoreManager::LoadNext();
                 mStoreIndex = Math::MinUint32(mStoreIndex + STORE_GRID_COLS, StoreManager::GetSelectedCategoryTotal() - 1);
             }

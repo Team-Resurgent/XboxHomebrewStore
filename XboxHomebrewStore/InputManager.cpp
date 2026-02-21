@@ -178,7 +178,7 @@ void InputManager::ProcessController()
         memcpy(&mControllerStatesPrevious[i], &mControllerStatesCurrent[i], sizeof(ControllerState));
         if (mControllerLastPacketNumber[i] != controllerInputState.dwPacketNumber)
         {
-            mControllerStatesCurrent[i].Buttons[ControllerA] = UPDATE_ANALOG_HYSTERESIS(controllerInputState.Gamepad.bAnalogButtons[XINPUT_GAMEPAD_A], mControllerStatesPrevious[i].Buttons[ControllerB]);
+            mControllerStatesCurrent[i].Buttons[ControllerA] = UPDATE_ANALOG_HYSTERESIS(controllerInputState.Gamepad.bAnalogButtons[XINPUT_GAMEPAD_A], mControllerStatesPrevious[i].Buttons[ControllerA]);
             mControllerStatesCurrent[i].Buttons[ControllerB] = UPDATE_ANALOG_HYSTERESIS(controllerInputState.Gamepad.bAnalogButtons[XINPUT_GAMEPAD_B], mControllerStatesPrevious[i].Buttons[ControllerB]);
             mControllerStatesCurrent[i].Buttons[ControllerX] = UPDATE_ANALOG_HYSTERESIS(controllerInputState.Gamepad.bAnalogButtons[XINPUT_GAMEPAD_X], mControllerStatesPrevious[i].Buttons[ControllerX]);
             mControllerStatesCurrent[i].Buttons[ControllerY] = UPDATE_ANALOG_HYSTERESIS(controllerInputState.Gamepad.bAnalogButtons[XINPUT_GAMEPAD_Y], mControllerStatesPrevious[i].Buttons[ControllerY]);

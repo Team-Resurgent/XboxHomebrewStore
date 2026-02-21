@@ -1,8 +1,10 @@
 #pragma once
 
+#include "Scene.h"
+
 #include "..\Main.h"
 #include "..\Store.h"
-#include "Scene.h"
+#include "..\ImageDownloader.h"
 
 class StoreScene : public Scene
 {
@@ -41,6 +43,7 @@ private:
     int m_nGridRows;
     BOOL m_bLayoutValid;
 
+    ImageDownloader* mImageDownloader;
     bool mSideBarFocused;
     uint32_t mHighlightedCategoryIndex;
     uint32_t mStoreIndex;

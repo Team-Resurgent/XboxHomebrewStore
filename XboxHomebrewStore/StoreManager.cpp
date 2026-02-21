@@ -259,10 +259,6 @@ bool StoreManager::LoadApplications(void* dest, uint32_t offset, uint32_t count,
     for (uint32_t i = 0; i < response.items.size(); i++ )
     {
         AppItem* appItem = &response.items[i];
-        bool isCached = ImageDownloader::IsCoverCached(appItem->id);
-            //ImageDownloader::GetCoverCachePath(appItem->id)
-
-
         storeItems[i].id = appItem->id;
         storeItems[i].name = appItem->name;
         storeItems[i].author = appItem->author;
