@@ -283,13 +283,15 @@ bool StoreManager::RefreshApplications()
         }
     }
 
+    mWindowStoreItemOffset = 0;
+    mWindowStoreItemCount = 0;
+
     uint32_t loadedCount = 0;
     if (LoadApplications(mWindowStoreItems, 0, STORE_GRID_CELLS, &loadedCount) == false)
     {
         return false;
     }
     
-    mWindowStoreItemOffset = 0;
     mWindowStoreItemCount = loadedCount;
     return true;
 }
