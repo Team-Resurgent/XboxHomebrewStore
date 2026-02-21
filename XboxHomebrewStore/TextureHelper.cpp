@@ -1,4 +1,5 @@
 #include "TextureHelper.h"
+#include "Context.h"
 #include "Defines.h"
 #include "String.h"
 #include <d3dx8.h>
@@ -6,23 +7,22 @@
 #include <cctype>
 
 namespace {
-    D3DDevice* mD3dDevice = NULL;
     D3DTexture* mBackground = NULL;
     D3DTexture* mHeader = NULL;
     D3DTexture* mFooter = NULL;
     D3DTexture* mSidebar = NULL;
     D3DTexture* mStore = NULL;
     D3DTexture* mCategoryHighlight = NULL;
+    D3DTexture* mCard = NULL;
+    D3DTexture* mCardHighlight = NULL;
     std::map<std::string, D3DTexture*> mCategoryIcons;
     std::map<std::string, D3DTexture*> mControllerIcons;
     D3DTexture* mScreenshot = NULL;
     D3DTexture* mCover = NULL;
 }
 
-bool TextureHelper::Init(D3DDevice* d3dDevice)
+bool TextureHelper::Init()
 {
-    mD3dDevice = d3dDevice;
-
     bool result = true;
     mBackground = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "Background.jpg"));
     result &= mBackground == NULL;
@@ -34,6 +34,10 @@ bool TextureHelper::Init(D3DDevice* d3dDevice)
     result &= mSidebar == NULL;
     mCategoryHighlight = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "CategoryHighlight.png"));
     result &= mCategoryHighlight == NULL;
+    mCard = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "Card.png"));
+    result &= mCard == NULL;
+    mCardHighlight = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "CardHighlight.png"));
+    result &= mCardHighlight == NULL;
     mStore = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "Store.png"));
     result &= mStore == NULL;
 
@@ -86,7 +90,7 @@ bool TextureHelper::Init(D3DDevice* d3dDevice)
 D3DTexture* TextureHelper::LoadFromFile(const std::string filePath)
 {
     D3DTexture* tex = NULL;
-    if (FAILED(D3DXCreateTextureFromFileEx(mD3dDevice, filePath.c_str(),
+    if (FAILED(D3DXCreateTextureFromFileEx(Context::GetD3dDevice(), filePath.c_str(),
         D3DX_DEFAULT, D3DX_DEFAULT, D3DX_DEFAULT, 0, D3DFMT_UNKNOWN, D3DPOOL_DEFAULT,
         D3DX_DEFAULT, D3DX_DEFAULT, 0, NULL, NULL, &tex))) {
         return NULL;
@@ -107,7 +111,7 @@ D3DTexture* TextureHelper::CopyTexture(D3DTexture* source)
     pSrcSurf = NULL;
 
     LPDIRECT3DTEXTURE8 pDest = NULL;
-    if( FAILED(mD3dDevice->CreateTexture( desc.Width, desc.Height, 1, 0, desc.Format, D3DPOOL_DEFAULT, &pDest ) ) ) {
+    if( FAILED(Context::GetD3dDevice()->CreateTexture( desc.Width, desc.Height, 1, 0, desc.Format, D3DPOOL_DEFAULT, &pDest ) ) ) {
         return NULL;
     }
     LPDIRECT3DSURFACE8 pDstSurf = NULL;
@@ -122,7 +126,7 @@ D3DTexture* TextureHelper::CopyTexture(D3DTexture* source)
     }
     RECT rect = { 0, 0, (LONG)desc.Width, (LONG)desc.Height };
     POINT point = { 0, 0 };
-    HRESULT hr = mD3dDevice->CopyRects( pSrcSurf, &rect, 1, pDstSurf, &point );
+    HRESULT hr = Context::GetD3dDevice()->CopyRects( pSrcSurf, &rect, 1, pDstSurf, &point );
     pSrcSurf->Release();
     pDstSurf->Release();
     if( FAILED( hr ) ) {
@@ -162,6 +166,16 @@ D3DTexture* TextureHelper::GetCategoryHighlight()
     return mCategoryHighlight;
 }
 
+D3DTexture* TextureHelper::GetCard()
+{
+    return mCard;
+}
+
+D3DTexture* TextureHelper::GetCardHighlight()
+{
+    return mCardHighlight;
+}
+
 D3DTexture* TextureHelper::GetCategoryIcon(const std::string& name)
 {
     std::string key = name;
@@ -196,9 +210,4 @@ D3DTexture* TextureHelper::GetScreenshot()
 D3DTexture* TextureHelper::GetCover()
 {
     return mCover != NULL ? CopyTexture(mCover) : NULL;
-}
-
-D3DTexture* TextureHelper::GetCoverRef()
-{
-    return mCover;
 }

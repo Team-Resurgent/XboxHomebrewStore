@@ -7,25 +7,22 @@
 class StoreScene : public Scene
 {
 public:
-    explicit StoreScene( Store* pStore );
+    explicit StoreScene();
     virtual ~StoreScene();
     virtual void Render( LPDIRECT3DDEVICE8 pd3dDevice );
     virtual void Update();
 
 private:
-    void EnsureLayout( LPDIRECT3DDEVICE8 pd3dDevice );
-    void DetectResolution();
     void CalculateLayout();
     void HandleInput();
     void RenderHeader();
     void RenderFooter();
     void RenderCategorySidebar();
-    void RenderMainGrid( LPDIRECT3DDEVICE8 pd3dDevice );
-    void DrawAppCard( LPDIRECT3DDEVICE8 pd3dDevice, int itemIndex, float x, float y, float w, float h, BOOL selected );
+    void RenderMainGrid();
+    void DrawStoreItem(StoreItem* storeItem, int x, int y, bool selected);
     void RenderDownloading( LPDIRECT3DDEVICE8 pd3dDevice );
     void RenderSettings( LPDIRECT3DDEVICE8 pd3dDevice );
 
-    Store* m_pStore;
     UIState m_CurrentState;
     BOOL m_bFocusOnSidebar;
     int m_nSelectedCol;
@@ -43,4 +40,8 @@ private:
     int m_nGridCols;
     int m_nGridRows;
     BOOL m_bLayoutValid;
+
+    bool mSideBarFocused;
+    uint32_t mHighlightedCategoryIndex;
+    uint32_t mStoreIndex;
 };

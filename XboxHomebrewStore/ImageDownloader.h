@@ -37,7 +37,7 @@ public:
     void SetCompletionCallback( CompletionCallback fn, void* ctx ) { m_completionCallback = fn; m_completionCtx = ctx; }
 
     // Call from main thread (e.g. each frame). Applies completed downloads: loads file to texture and assigns *pOutTexture (or invokes callback); releases old texture at pOut first.
-    void ProcessCompleted( LPDIRECT3DDEVICE8 pd3dDevice );
+    void ProcessCompleted();
 
     // Cache lookup: path and existence for cover images (same path used when downloading).
     static std::string GetCoverCachePath( const std::string& appId );

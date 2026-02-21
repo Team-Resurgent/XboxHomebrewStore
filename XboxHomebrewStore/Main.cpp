@@ -9,6 +9,7 @@
 #include "WebManager.h"
 #include "TextureHelper.h"
 #include "InputManager.h"
+#include "StoreManager.h"
 #include "Drawing.h"
 #include "Font.h"
 #include "Debug.h"
@@ -30,7 +31,6 @@ static void CoverDownloadProgress(uint32_t dlNow, uint32_t dlTotal, void* userDa
 //-----------------------------------------------------------------------------
 LPDIRECT3D8             g_pD3D          = NULL;
 LPDIRECT3DDEVICE8       g_pd3dDevice    = NULL;
-Store*                  g_pStore        = NULL;
 SceneManager*           g_pSceneManager = NULL;
 
 //-----------------------------------------------------------------------------
@@ -126,42 +126,10 @@ d3dpp.FullScreen_PresentationInterval = D3DPRESENT_INTERVAL_ONE;
     g_pd3dDevice->SetRenderState( D3DRS_SRCBLEND, D3DBLEND_SRCALPHA );
     g_pd3dDevice->SetRenderState( D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA );
 
+    Context::SetScreenSize(1280, 720);
+    Context::SetD3dDevice(g_pd3dDevice);
+
     return S_OK;
-}
-
-//-----------------------------------------------------------------------------
-// Name: Cleanup()
-// Desc: Releases all previously initialized objects
-//-----------------------------------------------------------------------------
-VOID Cleanup()
-{
-    if( g_pSceneManager != NULL )
-    {
-        while( g_pSceneManager->HasScene() ) {
-            g_pSceneManager->PopScene();
-        }
-        delete g_pSceneManager;
-        g_pSceneManager = NULL;
-    }
-    if( g_pStore != NULL )
-    {
-        delete g_pStore;
-        g_pStore = NULL;
-    }
-    Context::SetDevice( NULL );
-    Context::SetSceneManager( NULL );
-
-    if( g_pd3dDevice != NULL )
-    {
-        g_pd3dDevice->Release();
-        g_pd3dDevice = NULL;
-    }
-
-    if( g_pD3D != NULL )
-    {
-        g_pD3D->Release();
-        g_pD3D = NULL;
-    }
 }
 
 //-----------------------------------------------------------------------------
@@ -219,9 +187,11 @@ VOID __cdecl main()
     WebManager::Init();
     WebManager::TrySyncTime();
 
-    TextureHelper::Init(g_pd3dDevice);
-    Drawing::Init(g_pd3dDevice);
-    Font::Init(g_pd3dDevice);
+    TextureHelper::Init();
+    Drawing::Init();
+    Font::Init();
+
+    StoreManager::Init();
     
 
     /*AppsResponse appsResp;
@@ -244,22 +214,18 @@ VOID __cdecl main()
 
  
 
-    Context::SetDevice( g_pd3dDevice );
-    Context::SetScreenSize( 1280, 720 );
-
     g_pSceneManager = new SceneManager();
     Context::SetSceneManager( g_pSceneManager );
 
     // Initialize the store
-    g_pStore = new Store();
-    if( FAILED( g_pStore->Initialize( g_pd3dDevice ) ) )
-    {
-        OutputDebugString( "Failed to initialize Store!\n" );
-        Cleanup();
-        return;
-    }
+    //g_pStore = new Store();
+    //if( FAILED( g_pStore->Initialize() ) )
+    //{
+    //    OutputDebugString( "Failed to initialize Store!\n" );
+    //    return;
+    //}
 
-    g_pSceneManager->PushScene( new StoreScene( g_pStore ) );
+    g_pSceneManager->PushScene( new StoreScene( ) );
 
     OutputDebugString( "Xbox Homebrew Store initialized successfully!\n" );
 
@@ -269,7 +235,4 @@ VOID __cdecl main()
         g_pSceneManager->Update();
         Render();
     }
-
-    // Clean up everything
-    Cleanup();
 }

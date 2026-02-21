@@ -5,14 +5,21 @@
 #include "Context.h"
 #include "Scenes/SceneManager.h"
 
-static void* s_pDevice = NULL;
-static SceneManager* s_pSceneManager = NULL;
-static int s_nScreenWidth = 640;
-static int s_nScreenHeight = 480;
+namespace {
+    D3DDevice* mD3dDevice = NULL;
+    static SceneManager* s_pSceneManager = NULL;
+    static int s_nScreenWidth = 640;
+    static int s_nScreenHeight = 480;
+}
 
-void Context::SetDevice( void* pDevice )
+void Context::SetD3dDevice(D3DDevice* d3dDevice)
 {
-    s_pDevice = pDevice;
+    mD3dDevice = d3dDevice;
+}
+
+D3DDevice* Context::GetD3dDevice()
+{
+    return mD3dDevice;
 }
 
 void Context::SetSceneManager( SceneManager* pMgr )

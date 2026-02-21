@@ -1,4 +1,5 @@
 #include "Drawing.h"
+#include "Context.h"
 
 #define SSFN_IMPLEMENTATION
 #define SFFN_MAXLINES 8192
@@ -12,55 +13,53 @@
 
 namespace 
 {
-    D3DDevice* mD3dDevice;
     uint32_t mSavedState[16];
 }
 
-void Drawing::Init(D3DDevice* d3dDevice)
+void Drawing::Init()
 {
-    mD3dDevice = d3dDevice;
 }
 
 void Drawing::SaveRenderState()
 {
-    mD3dDevice->GetRenderState(D3DRS_ALPHABLENDENABLE, &mSavedState[0]);
-    mD3dDevice->GetRenderState(D3DRS_SRCBLEND, &mSavedState[1]);
-    mD3dDevice->GetRenderState(D3DRS_DESTBLEND, &mSavedState[2]);
-    mD3dDevice->GetRenderState(D3DRS_ALPHATESTENABLE, &mSavedState[3]);
-    mD3dDevice->GetRenderState(D3DRS_ALPHAREF, &mSavedState[4]);
-    mD3dDevice->GetRenderState(D3DRS_ALPHAFUNC, &mSavedState[5]);
-    mD3dDevice->GetRenderState(D3DRS_FILLMODE, &mSavedState[6]);
-    mD3dDevice->GetRenderState(D3DRS_CULLMODE, &mSavedState[7]);
-    mD3dDevice->GetRenderState(D3DRS_ZENABLE, &mSavedState[8]);
-    mD3dDevice->GetRenderState(D3DRS_STENCILENABLE, &mSavedState[9]);
-    mD3dDevice->GetRenderState(D3DRS_EDGEANTIALIAS, &mSavedState[10]);
-    mD3dDevice->GetTextureStageState(0, D3DTSS_MINFILTER, &mSavedState[11]);
-    mD3dDevice->GetTextureStageState(0, D3DTSS_MAGFILTER, &mSavedState[12]);
-    mD3dDevice->GetTextureStageState(0, D3DTSS_COLOROP, &mSavedState[13]);
-    mD3dDevice->GetTextureStageState(0, D3DTSS_COLORARG1, &mSavedState[14]);
-    mD3dDevice->GetTextureStageState(0, D3DTSS_COLORARG2, &mSavedState[15]);
+    Context::GetD3dDevice()->GetRenderState(D3DRS_ALPHABLENDENABLE, &mSavedState[0]);
+    Context::GetD3dDevice()->GetRenderState(D3DRS_SRCBLEND, &mSavedState[1]);
+    Context::GetD3dDevice()->GetRenderState(D3DRS_DESTBLEND, &mSavedState[2]);
+    Context::GetD3dDevice()->GetRenderState(D3DRS_ALPHATESTENABLE, &mSavedState[3]);
+    Context::GetD3dDevice()->GetRenderState(D3DRS_ALPHAREF, &mSavedState[4]);
+    Context::GetD3dDevice()->GetRenderState(D3DRS_ALPHAFUNC, &mSavedState[5]);
+    Context::GetD3dDevice()->GetRenderState(D3DRS_FILLMODE, &mSavedState[6]);
+    Context::GetD3dDevice()->GetRenderState(D3DRS_CULLMODE, &mSavedState[7]);
+    Context::GetD3dDevice()->GetRenderState(D3DRS_ZENABLE, &mSavedState[8]);
+    Context::GetD3dDevice()->GetRenderState(D3DRS_STENCILENABLE, &mSavedState[9]);
+    Context::GetD3dDevice()->GetRenderState(D3DRS_EDGEANTIALIAS, &mSavedState[10]);
+    Context::GetD3dDevice()->GetTextureStageState(0, D3DTSS_MINFILTER, &mSavedState[11]);
+    Context::GetD3dDevice()->GetTextureStageState(0, D3DTSS_MAGFILTER, &mSavedState[12]);
+    Context::GetD3dDevice()->GetTextureStageState(0, D3DTSS_COLOROP, &mSavedState[13]);
+    Context::GetD3dDevice()->GetTextureStageState(0, D3DTSS_COLORARG1, &mSavedState[14]);
+    Context::GetD3dDevice()->GetTextureStageState(0, D3DTSS_COLORARG2, &mSavedState[15]);
 }
 
 void Drawing::RestoreRenderState()
 {
-    mD3dDevice->SetTexture(0, NULL);
+    Context::GetD3dDevice()->SetTexture(0, NULL);
 
-    mD3dDevice->SetRenderState(D3DRS_ALPHABLENDENABLE, mSavedState[0]);
-    mD3dDevice->SetRenderState(D3DRS_SRCBLEND, mSavedState[1]);
-    mD3dDevice->SetRenderState(D3DRS_DESTBLEND, mSavedState[2]);
-    mD3dDevice->SetRenderState(D3DRS_ALPHATESTENABLE, mSavedState[3]);
-    mD3dDevice->SetRenderState(D3DRS_ALPHAREF, mSavedState[4]);
-    mD3dDevice->SetRenderState(D3DRS_ALPHAFUNC, mSavedState[5]);
-    mD3dDevice->SetRenderState(D3DRS_FILLMODE, mSavedState[6]);
-    mD3dDevice->SetRenderState(D3DRS_CULLMODE, mSavedState[7]);
-    mD3dDevice->SetRenderState(D3DRS_ZENABLE, mSavedState[8]);
-    mD3dDevice->SetRenderState(D3DRS_STENCILENABLE, mSavedState[9]);
-    mD3dDevice->SetRenderState(D3DRS_EDGEANTIALIAS, mSavedState[10]);
-    mD3dDevice->SetTextureStageState(0, D3DTSS_MINFILTER, mSavedState[11]);
-    mD3dDevice->SetTextureStageState(0, D3DTSS_MAGFILTER, mSavedState[12]);
-    mD3dDevice->SetTextureStageState(0, D3DTSS_COLOROP, mSavedState[13]);
-    mD3dDevice->SetTextureStageState(0, D3DTSS_COLORARG1, mSavedState[14]);
-    mD3dDevice->SetTextureStageState(0, D3DTSS_COLORARG2, mSavedState[15]);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_ALPHABLENDENABLE, mSavedState[0]);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_SRCBLEND, mSavedState[1]);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_DESTBLEND, mSavedState[2]);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_ALPHATESTENABLE, mSavedState[3]);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_ALPHAREF, mSavedState[4]);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_ALPHAFUNC, mSavedState[5]);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_FILLMODE, mSavedState[6]);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_CULLMODE, mSavedState[7]);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_ZENABLE, mSavedState[8]);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_STENCILENABLE, mSavedState[9]);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_EDGEANTIALIAS, mSavedState[10]);
+    Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_MINFILTER, mSavedState[11]);
+    Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_MAGFILTER, mSavedState[12]);
+    Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_COLOROP, mSavedState[13]);
+    Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_COLORARG1, mSavedState[14]);
+    Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_COLORARG2, mSavedState[15]);
 }
 
 void Drawing::Swizzle(const void* src, const uint32_t& depth, const uint32_t& width, const uint32_t& height, void* dest) 
@@ -102,7 +101,7 @@ bool Drawing::TryCreateImage(uint8_t* imageData, D3DFORMAT format, int width, in
     image->width = width;
     image->height = height;
 
-    if (FAILED(D3DXCreateTexture(mD3dDevice, image->width, image->height, 1, 0, format, D3DPOOL_DEFAULT, &image->texture))) {
+    if (FAILED(D3DXCreateTexture(Context::GetD3dDevice(), image->width, image->height, 1, 0, format, D3DPOOL_DEFAULT, &image->texture))) {
         return false;
     }
 
@@ -232,7 +231,7 @@ bool Drawing::TryGenerateBitmapFont(void* context, const std::string fontName, i
     return result;
 }
 
-void Drawing::DrawFont(BitmapFont* font, const char* message, uint32_t color, int x, int y)
+void Drawing::DrawFont(BitmapFont* font, const std::string message, uint32_t color, int x, int y)
 {
     static TEXVERTEX batchBuf[DRAW_BATCH_MAX_VERTS];
     UINT vertexCount = 0;
@@ -243,10 +242,10 @@ void Drawing::DrawFont(BitmapFont* font, const char* message, uint32_t color, in
     const float invH = 1.0f / (float)font->image.height;
 
     SaveRenderState();
-    mD3dDevice->SetVertexShader(D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1);
-    mD3dDevice->SetTexture(0, font->image.texture);
+    Context::GetD3dDevice()->SetVertexShader(D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1);
+    Context::GetD3dDevice()->SetTexture(0, font->image.texture);
 
-    const char* p = message;
+    const char* p = message.c_str();
     while (*p)
     {
         char* cursor = (char*)p;
@@ -262,7 +261,7 @@ void Drawing::DrawFont(BitmapFont* font, const char* message, uint32_t color, in
 
         if (vertexCount + 6 > (UINT)DRAW_BATCH_MAX_VERTS)
         {
-            mD3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLELIST, vertexCount / 3, batchBuf, sizeof(TEXVERTEX));
+            Context::GetD3dDevice()->DrawPrimitiveUP(D3DPT_TRIANGLELIST, vertexCount / 3, batchBuf, sizeof(TEXVERTEX));
             vertexCount = 0;
         }
 
@@ -290,7 +289,7 @@ void Drawing::DrawFont(BitmapFont* font, const char* message, uint32_t color, in
     }
 
     if (vertexCount > 0) {
-        mD3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLELIST, vertexCount / 3, batchBuf, sizeof(TEXVERTEX));
+        Context::GetD3dDevice()->DrawPrimitiveUP(D3DPT_TRIANGLELIST, vertexCount / 3, batchBuf, sizeof(TEXVERTEX));
     }
 
     RestoreRenderState();
@@ -311,9 +310,9 @@ void Drawing::DrawFilledRect(uint32_t color, int x, int y, int width, int height
     vertices[3].x = px + fw; vertices[3].y = py + fh; vertices[3].z = 0.5f; vertices[3].rhw = 1.0f; vertices[3].diffuse = color;
 
     SaveRenderState();
-    mD3dDevice->SetVertexShader(D3DFVF_XYZRHW | D3DFVF_DIFFUSE);
-    mD3dDevice->SetTexture(0, NULL);
-    mD3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, vertices, sizeof(VERTEX));
+    Context::GetD3dDevice()->SetVertexShader(D3DFVF_XYZRHW | D3DFVF_DIFFUSE);
+    Context::GetD3dDevice()->SetTexture(0, NULL);
+    Context::GetD3dDevice()->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, vertices, sizeof(VERTEX));
     RestoreRenderState();
 }
 
@@ -332,12 +331,12 @@ void Drawing::DrawTexturedRect(D3DTexture* texture, uint32_t diffuse, int x, int
     vertices[3].x = px + fw; vertices[3].y = py + fh; vertices[3].z = 0.5f; vertices[3].rhw = 1.0f; vertices[3].diffuse = diffuse; vertices[3].u = 1.0f; vertices[3].v = 1.0f;
 
     SaveRenderState();
-    mD3dDevice->SetVertexShader(D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1);
-    mD3dDevice->SetTexture(0, texture);
-    mD3dDevice->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
-    mD3dDevice->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-    mD3dDevice->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
-    mD3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, vertices, sizeof(TEXVERTEX));
+    Context::GetD3dDevice()->SetVertexShader(D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1);
+    Context::GetD3dDevice()->SetTexture(0, texture);
+    Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+    Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+    Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+    Context::GetD3dDevice()->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, vertices, sizeof(TEXVERTEX));
     RestoreRenderState();
 }
 
@@ -443,11 +442,11 @@ void Drawing::DrawNinePatch(D3DTexture* texture, uint32_t diffuse, int x, int y,
     batchBuf[v].x = x2; batchBuf[v].y = y3; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u2; batchBuf[v].v = v3; v++;
 
     SaveRenderState();
-    mD3dDevice->SetVertexShader(D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1);
-    mD3dDevice->SetTexture(0, texture);
-    mD3dDevice->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
-    mD3dDevice->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-    mD3dDevice->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
-    mD3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLELIST, 18, batchBuf, sizeof(TEXVERTEX));
+    Context::GetD3dDevice()->SetVertexShader(D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1);
+    Context::GetD3dDevice()->SetTexture(0, texture);
+    Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+    Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+    Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+    Context::GetD3dDevice()->DrawPrimitiveUP(D3DPT_TRIANGLELIST, 18, batchBuf, sizeof(TEXVERTEX));
     RestoreRenderState();
 }

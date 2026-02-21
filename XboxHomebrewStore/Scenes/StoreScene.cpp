@@ -10,18 +10,16 @@
 #include "..\Font.h"
 #include "..\String.h"
 #include "..\InputManager.h"
+#include "..\StoreManager.h"
 
-StoreScene::StoreScene( Store* pStore )
-    : m_pStore( pStore )
-    , m_CurrentState( UI_MAIN_GRID )
-    , m_bFocusOnSidebar( FALSE )
+StoreScene::StoreScene()
+: m_CurrentState( UI_MAIN_GRID )
+    , m_bFocusOnSidebar( TRUE )
     , m_nSelectedCol( 0 )
     , m_nSelectedRow( 0 )
     , m_nSelectedItem( 0 )
     , m_nScrollOffset( 0 )
     , m_nSelectedCategory( 0 )
-    , m_fScreenWidth( 1280.0f )
-    , m_fScreenHeight( 720.0f )
     , m_fSidebarWidth( 220.0f )
     , m_fGridStartX( 0.0f )
     , m_fGridStartY( 60.0f )
@@ -29,20 +27,14 @@ StoreScene::StoreScene( Store* pStore )
     , m_fCardHeight( 220.0f )
     , m_nGridCols( 4 )
     , m_nGridRows( 2 )
-    , m_bLayoutValid( FALSE )
 {
+    mSideBarFocused = true;
+    mHighlightedCategoryIndex = 0;
+    mStoreIndex = 0;
 }
 
 StoreScene::~StoreScene()
 {
-}
-
-void StoreScene::DetectResolution()
-{
-    int w = Context::GetScreenWidth();
-    int h = Context::GetScreenHeight();
-    m_fScreenWidth = (float)w;
-    m_fScreenHeight = (float)h;
 }
 
 void StoreScene::CalculateLayout()
@@ -61,16 +53,6 @@ void StoreScene::CalculateLayout()
     float contentH = m_fScreenHeight - m_fGridStartY - 80.0f;
     m_nGridCols = STORE_GRID_COLS;
     m_nGridRows = STORE_GRID_ROWS;
-}
-
-void StoreScene::EnsureLayout( LPDIRECT3DDEVICE8 pd3dDevice )
-{
-    (void)pd3dDevice;
-    if( m_bLayoutValid )
-        return;
-    DetectResolution();
-    CalculateLayout();
-    m_bLayoutValid = TRUE;
 }
 
 void StoreScene::RenderHeader()
@@ -94,120 +76,127 @@ void StoreScene::RenderCategorySidebar()
     int32_t sidebarHeight = (Context::GetScreenHeight() - ASSET_SIDEBAR_Y) - ASSET_FOOTER_HEIGHT;
     Drawing::DrawTexturedRect(TextureHelper::GetSidebar(), 0xffffffff, 0, ASSET_SIDEBAR_Y, ASSET_SIDEBAR_WIDTH, sidebarHeight);
 
-    const std::vector<CategoryItem>& categories = m_pStore->GetCategories();
-
     int32_t y = ASSET_SIDEBAR_Y + 30;
-    for (uint32_t i = 0; i < categories.size(); i++)
-    {
-        bool selected = i == m_nSelectedCategory;
-        bool focused = m_bFocusOnSidebar && selected;
 
-        if( focused )
+    uint32_t categoryCount = StoreManager::GetCategoryCount();
+    for (uint32_t i = 0; i < categoryCount; i++)
+    {
+        CategoryItem* categoryItem = StoreManager::GetCategory(i);
+
+        bool highlighted = i == mHighlightedCategoryIndex;
+        bool focused = mSideBarFocused && highlighted;
+        if (highlighted || focused)
         {
-            Drawing::DrawTexturedRect(TextureHelper::GetCategoryHighlight(), 0xffdf4088, 0, y - 32, ASSET_SIDEBAR_HIGHLIGHT_WIDTH, ASSET_SIDEBAR_HIGHLIGHT_HEIGHT);
-            Drawing::DrawTexturedRect(TextureHelper::GetCategoryIcon(categories[i].category), 0xffdf4088, 16, y - 2, ASSET_CATEGORY_ICON_WIDTH, ASSET_CATEGORY_ICON_HEIGHT);
+            Drawing::DrawTexturedRect(TextureHelper::GetCategoryHighlight(), focused ? COLOR_FOCUS_HIGHLIGHT : COLOR_HIGHLIGHT, 0, y - 32, ASSET_SIDEBAR_HIGHLIGHT_WIDTH, ASSET_SIDEBAR_HIGHLIGHT_HEIGHT);
         }
-        else if( selected )
+
+        bool activated = i == StoreManager::GetCategoryIndex();
+        if (mSideBarFocused == true)
         {
-            Drawing::DrawTexturedRect(TextureHelper::GetCategoryHighlight(), 0xff5d283f, 0, y - 32, ASSET_SIDEBAR_HIGHLIGHT_WIDTH, ASSET_SIDEBAR_HIGHLIGHT_HEIGHT);
-            Drawing::DrawTexturedRect(TextureHelper::GetCategoryIcon(categories[i].category), 0xff5d283f, 16, y - 2, ASSET_CATEGORY_ICON_WIDTH, ASSET_CATEGORY_ICON_HEIGHT);
+            Drawing::DrawTexturedRect(TextureHelper::GetCategoryIcon(categoryItem->category), activated ? COLOR_FOCUS_HIGHLIGHT : 0xffffffff, 16, y - 2, ASSET_CATEGORY_ICON_WIDTH, ASSET_CATEGORY_ICON_HEIGHT);
         }
         else
         {
-            Drawing::DrawTexturedRect(TextureHelper::GetCategoryIcon(categories[i].category), 0xffffffff, 16, y - 2, ASSET_CATEGORY_ICON_WIDTH, ASSET_CATEGORY_ICON_HEIGHT);
+            Drawing::DrawTexturedRect(TextureHelper::GetCategoryIcon(categoryItem->category), activated ? COLOR_HIGHLIGHT : 0xffffffff, 16, y - 2, ASSET_CATEGORY_ICON_WIDTH, ASSET_CATEGORY_ICON_HEIGHT);
         }
 
-        Font::DrawText(FONT_NORMAL, categories[i].category.c_str(), COLOR_WHITE, 48, y);
+        Font::DrawText(FONT_NORMAL, categoryItem->category.c_str(), COLOR_WHITE, 48, y);
         y += 44;
     }
 }
 
-void StoreScene::DrawAppCard( LPDIRECT3DDEVICE8 pd3dDevice, int itemIndex, float x, float y, float w, float h, BOOL selected )
+void StoreScene::DrawStoreItem(StoreItem* storeItem, int x, int y, bool selected)
 {
-    (void)pd3dDevice;
-    StoreItem* pItems = m_pStore->GetItems();
-    int* pFiltered = m_pStore->GetFilteredIndices();
-    int count = m_pStore->GetFilteredCount();
-    if( itemIndex < 0 || itemIndex >= count || !pItems || !pFiltered )
-        return;
-    StoreItem* pItem = &pItems[pFiltered[itemIndex]];
-    DWORD bgColor = selected ? (uint32_t)COLOR_CARD_SEL : (uint32_t)COLOR_CARD_BG;
-    Drawing::DrawFilledRect( bgColor, (int)x, (int)y, (int)w, (int)h );
-    float iconW = w - 16.0f;
-    float iconH = 140.0f;
-    float iconX = x + 8.0f;
-    float iconY = y + 8.0f;
+    uint32_t bgColor = selected ? (uint32_t)COLOR_CARD_SEL : (uint32_t)COLOR_CARD_BG;
+    //Drawing::DrawFilledRect(bgColor, (int)x, (int)y, (int)w, (int)h );
+
+    Drawing::DrawTexturedRect(TextureHelper::GetCard(), 0xFFFFFFFF, x, y, ASSET_CARD_WIDTH, ASSET_CARD_HEIGHT);
+    
+    if (selected == true) {
+        Drawing::DrawTexturedRect(TextureHelper::GetCardHighlight(), mSideBarFocused ? COLOR_HIGHLIGHT : COLOR_FOCUS_HIGHLIGHT, x - 3, y - 3, ASSET_CARD_HIGHLIGHT_WIDTH, ASSET_CARD_HIGHLIGHT_HEIGHT);
+    }
+
+    int iconW = ASSET_CARD_WIDTH - 18;
+    int iconH = ASSET_CARD_HEIGHT - 60;
+    int iconX = x + 9;
+    int iconY = y + 9;
     if( iconW > 0 && iconH > 0 )
     {
-        Drawing::DrawFilledRect( (uint32_t)COLOR_SECONDARY, (int)iconX, (int)iconY, (int)iconW, (int)iconH );
-        D3DTexture* pIconTex = pItem->pIcon ? (D3DTexture*)pItem->pIcon : TextureHelper::GetCoverRef();
-        if( pIconTex )
-            Drawing::DrawTexturedRect( pIconTex, 0xFFFFFFFF, (int)iconX, (int)iconY, (int)iconW, (int)iconH );
+        Drawing::DrawFilledRect(COLOR_SECONDARY, iconX, iconY, iconW, iconH);
+        if (storeItem->cover != NULL) {
+            Drawing::DrawTexturedRect(storeItem->cover, 0xFFFFFFFF, iconX, iconY, iconW, iconH);
+        }
     }
-    Font::DrawText(FONT_NORMAL, pItem->app.name.c_str(), COLOR_WHITE, (int)( x + 8.0f ), (int)( y + iconH + 14.0f ) );
-    Font::DrawText(FONT_NORMAL, pItem->app.author.c_str(), (uint32_t)COLOR_TEXT_GRAY, (int)( x + 8.0f ), (int)( y + iconH + 32.0f ) );
+
+    Font::DrawText(FONT_NORMAL, storeItem->name.c_str(), COLOR_WHITE, x + 8, y + iconH + 14);
+    Font::DrawText(FONT_NORMAL, storeItem->author.c_str(), COLOR_TEXT_GRAY, x + 8, y + iconH + 32);
 }
 
-void StoreScene::RenderMainGrid( LPDIRECT3DDEVICE8 pd3dDevice )
+void StoreScene::RenderMainGrid()
 {
-    m_pStore->BuildFilteredIndices( m_nSelectedCategory );
-    int count = m_pStore->GetFilteredCount();
-    if( count <= 0 )
+    int count = StoreManager::GetWindowStoreItemCount();
+    if( count == 0 )
     {
         Font::DrawText(FONT_NORMAL, "No apps in this category.", (uint32_t)COLOR_TEXT_GRAY, (int)m_fGridStartX, (int)m_fGridStartY );
         return;
     }
-    int totalSlots = m_nGridCols * m_nGridRows;
-    int baseIndex = m_nScrollOffset;
-    int selectedSlot = m_nSelectedRow * m_nGridCols + m_nSelectedCol;
-    if( selectedSlot >= totalSlots ) selectedSlot = totalSlots - 1;
-    if( selectedSlot < 0 ) selectedSlot = 0;
-    m_nSelectedItem = baseIndex + selectedSlot;
-    for( int slot = 0; slot < totalSlots; slot++ )
+
+    int gridX = ASSET_SIDEBAR_WIDTH;
+    int gridY = ASSET_HEADER_HEIGHT;
+    int gridWidth = Context::GetScreenWidth() - ASSET_SIDEBAR_WIDTH; 
+    int gridHeight = Context::GetScreenHeight() - (ASSET_HEADER_HEIGHT + ASSET_FOOTER_HEIGHT);
+
+    int cardWidth = ASSET_CARD_WIDTH;
+    int cardHeight = ASSET_CARD_HEIGHT;
+    int storeItemsWidth = (STORE_GRID_COLS * (cardWidth + CARD_GAP)) - CARD_GAP;
+    int storeItemsHeight = (STORE_GRID_ROWS * (cardHeight + CARD_GAP)) - CARD_GAP;
+
+    int cardX = gridX + ((gridWidth - storeItemsWidth) / 2);
+    int cardY = gridY + ((gridHeight - storeItemsHeight) / 2);;
+
+
+    uint32_t totalSlots = STORE_GRID_COLS * STORE_GRID_ROWS;
+    uint32_t windowCount = StoreManager::GetWindowStoreItemCount();
+    uint32_t slotsInView = Math::MinInt32(totalSlots, windowCount);
+    for (uint32_t currentSlot = 0; currentSlot < slotsInView; currentSlot++ )
     {
-        int itemIndex = baseIndex + slot;
-        if( itemIndex >= count )
-            break;
-        int row = slot / m_nGridCols;
-        int col = slot % m_nGridCols;
-        float x = m_fGridStartX + col * ( m_fCardWidth + CARD_GAP );
-        float y = m_fGridStartY + row * ( m_fCardHeight + CARD_GAP );
-        BOOL selected = ( !m_bFocusOnSidebar && slot == selectedSlot );
-        DrawAppCard( pd3dDevice, itemIndex, x, y, m_fCardWidth, m_fCardHeight, selected );
+        int row = currentSlot / STORE_GRID_COLS;
+        int col = currentSlot % STORE_GRID_COLS;
+        int x = cardX + col * ( cardWidth + CARD_GAP);
+        int y = cardY + row * ( cardHeight + CARD_GAP);
+        StoreItem* storeItem = StoreManager::GetWindowStoreItem(currentSlot);
+        DrawStoreItem(storeItem, x, y, currentSlot == (mStoreIndex - StoreManager::GetWindowStoreItemOffset()));
     }
-    float pageY = m_fScreenHeight - 50.0f;
-    int totalInCategory = m_pStore->GetTotalCount();
-    if( totalInCategory <= 0 ) totalInCategory = count;
-    int displayItem = ( m_nSelectedItem >= 0 && m_nSelectedItem < count ) ? ( m_nSelectedItem + 1 ) : 1;
-    if( displayItem > totalInCategory ) displayItem = totalInCategory;
-    std::string pageStr = String::Format( "Item %d of %d", displayItem, totalInCategory );
-    Font::DrawText(FONT_NORMAL, pageStr.c_str(), (uint32_t)COLOR_TEXT_GRAY, (int)m_fGridStartX, (int)pageY );
+
+    uint32_t subindex = 0;
+    std::string pageStr = String::Format("Item %d of %d", mStoreIndex + 1, StoreManager::GetSelectedCategoryTotal());
+    Font::DrawText(FONT_NORMAL, pageStr.c_str(), (uint32_t)COLOR_TEXT_GRAY, 600, Context::GetScreenHeight() - 30);
 }
 
 void StoreScene::RenderDownloading( LPDIRECT3DDEVICE8 pd3dDevice )
 {
-    (void)pd3dDevice;
-    int w = (int)m_fScreenWidth;
-    int h = (int)m_fScreenHeight;
-    Drawing::DrawFilledRect( 0xE0000000, 0, 0, w, h );
-    float cx = m_fScreenWidth * 0.5f;
-    float cy = m_fScreenHeight * 0.5f;
-    Font::DrawText(FONT_NORMAL, m_pStore->GetDownloadAppName().c_str(), COLOR_WHITE, (int)( cx - 100.0f ), (int)( cy - 60.0f ) );
-    Font::DrawText(FONT_NORMAL, "Downloading...", (uint32_t)COLOR_TEXT_GRAY, (int)( cx - 60.0f ), (int)( cy - 30.0f ) );
-    uint32_t now = m_pStore->GetDownloadNow();
-    uint32_t total = m_pStore->GetDownloadTotal();
-    if( total > 0 )
-    {
-        std::string prog = String::Format( "%u / %u KB", now / 1024, total / 1024 );
-        Font::DrawText(FONT_NORMAL, prog.c_str(), COLOR_WHITE, (int)( cx - 40.0f ), (int)( cy + 10.0f ) );
-        float barW = 400.0f;
-        float barX = cx - barW * 0.5f;
-        Drawing::DrawFilledRect( (uint32_t)COLOR_SECONDARY, (int)barX, (int)( cy + 40.0f ), (int)barW, 24 );
-        int filled = (int)( barW * (float)now / (float)total );
-        if( filled > 0 )
-            Drawing::DrawFilledRect( (uint32_t)COLOR_PRIMARY, (int)barX, (int)( cy + 40.0f ), filled, 24 );
-    }
-    Font::DrawText(FONT_NORMAL, "(B) Cancel", (uint32_t)COLOR_TEXT_GRAY, (int)( cx - 40.0f ), (int)( cy + 80.0f ) );
+    ///*(void)pd3dDevice;
+    //int w = (int)m_fScreenWidth;
+    //int h = (int)m_fScreenHeight;
+    //Drawing::DrawFilledRect( 0xE0000000, 0, 0, w, h );
+    //float cx = m_fScreenWidth * 0.5f;
+    //float cy = m_fScreenHeight * 0.5f;
+    //Font::DrawText(FONT_NORMAL, m_pStore->GetDownloadAppName().c_str(), COLOR_WHITE, (int)( cx - 100.0f ), (int)( cy - 60.0f ) );
+    //Font::DrawText(FONT_NORMAL, "Downloading...", (uint32_t)COLOR_TEXT_GRAY, (int)( cx - 60.0f ), (int)( cy - 30.0f ) );
+    //uint32_t now = m_pStore->GetDownloadNow();
+    //uint32_t total = m_pStore->GetDownloadTotal();
+    //if( total > 0 )
+    //{
+    //    std::string prog = String::Format( "%u / %u KB", now / 1024, total / 1024 );
+    //    Font::DrawText(FONT_NORMAL, prog.c_str(), COLOR_WHITE, (int)( cx - 40.0f ), (int)( cy + 10.0f ) );
+    //    float barW = 400.0f;
+    //    float barX = cx - barW * 0.5f;
+    //    Drawing::DrawFilledRect( (uint32_t)COLOR_SECONDARY, (int)barX, (int)( cy + 40.0f ), (int)barW, 24 );
+    //    int filled = (int)( barW * (float)now / (float)total );
+    //    if( filled > 0 )
+    //        Drawing::DrawFilledRect( (uint32_t)COLOR_PRIMARY, (int)barX, (int)( cy + 40.0f ), filled, 24 );
+    //}
+    //Font::DrawText(FONT_NORMAL, "(B) Cancel", (uint32_t)COLOR_TEXT_GRAY, (int)( cx - 40.0f ), (int)( cy + 80.0f )*/ );
 }
 
 void StoreScene::RenderSettings( LPDIRECT3DDEVICE8 pd3dDevice )
@@ -220,9 +209,7 @@ void StoreScene::RenderSettings( LPDIRECT3DDEVICE8 pd3dDevice )
 
 void StoreScene::Render( LPDIRECT3DDEVICE8 pd3dDevice )
 {
-    if( !m_pStore || !pd3dDevice )
-        return;
-    EnsureLayout( pd3dDevice );
+    CalculateLayout();
 
     Drawing::DrawTexturedRect( TextureHelper::GetBackground(), 0xFFFFFFFF, 0, 0, (int)m_fScreenWidth, (int)m_fScreenHeight );
     switch( m_CurrentState )
@@ -231,10 +218,10 @@ void StoreScene::Render( LPDIRECT3DDEVICE8 pd3dDevice )
             RenderHeader();
             RenderFooter();
             RenderCategorySidebar();
-            RenderMainGrid( pd3dDevice );
+            RenderMainGrid();
             break;
         case UI_DOWNLOADING:
-            RenderMainGrid( pd3dDevice );
+            RenderMainGrid();
             RenderDownloading( pd3dDevice );
             break;
         case UI_SETTINGS:
@@ -244,7 +231,7 @@ void StoreScene::Render( LPDIRECT3DDEVICE8 pd3dDevice )
             RenderHeader();
             RenderFooter();
             RenderCategorySidebar();
-            RenderMainGrid( pd3dDevice );
+            RenderMainGrid();
             break;
     }
 }
@@ -255,13 +242,13 @@ void StoreScene::HandleInput()
     {
         if (InputManager::ControllerPressed(ControllerB, -1))
         {
-            if( m_pStore->GetDownloadThread() != NULL && !m_pStore->GetDownloadDone() )
-                m_pStore->SetDownloadCancelRequested( true );
-            else
-            {
-                m_pStore->CloseDownloadThread();
-                m_CurrentState = UI_MAIN_GRID;
-            }
+            //if( m_pStore->GetDownloadThread() != NULL && !m_pStore->GetDownloadDone() )
+            //    m_pStore->SetDownloadCancelRequested( true );
+            //else
+            //{
+            //    m_pStore->CloseDownloadThread();
+            //    m_CurrentState = UI_MAIN_GRID;
+            //}
         }
         return;
     }
@@ -276,16 +263,27 @@ void StoreScene::HandleInput()
     }
 
     // UI_MAIN_GRID
-    const std::vector<CategoryItem>& cats = m_pStore->GetCategories();
-    int numCategories = (int)cats.size();
-    m_pStore->BuildFilteredIndices( m_nSelectedCategory );
-    int count = m_pStore->GetFilteredCount();
+    int numCategories = StoreManager::GetCategoryCount();
+    int count = StoreManager::GetCategory(0)->count;
     int totalSlots = m_nGridCols * m_nGridRows;
     int baseIndex = m_nScrollOffset;
-    int visibleCount = ( totalSlots < STORE_MAX_ICONS_IN_RAM ) ? totalSlots : STORE_MAX_ICONS_IN_RAM;
+    int visibleCount = totalSlots;
     if( baseIndex + visibleCount > count ) visibleCount = count - baseIndex;
     if( visibleCount < 0 ) visibleCount = 0;
-    m_pStore->SetVisibleRange( baseIndex, visibleCount );
+    //m_pStore->SetVisibleRange( baseIndex, visibleCount );
+
+
+    if (mSideBarFocused)
+    {
+        if (InputManager::ControllerPressed( ControllerDpadUp, -1 ) )
+        {
+            mHighlightedCategoryIndex = mHighlightedCategoryIndex > 0 ? mHighlightedCategoryIndex - 1 : StoreManager::GetCategoryCount() - 1;
+        }
+        if(InputManager::ControllerPressed( ControllerDpadDown, -1 ) )
+        {
+            mHighlightedCategoryIndex = mHighlightedCategoryIndex < StoreManager::GetCategoryCount() - 1 ? mHighlightedCategoryIndex + 1 : 0;
+        }
+    }
 
     if( m_bFocusOnSidebar )
     {
@@ -295,28 +293,16 @@ void StoreScene::HandleInput()
             m_nSelectedCol = 0;
             m_nSelectedRow = 0;
         }
-        else if( numCategories > 0 )
+        else if ( numCategories > 0 )
         {
             bool categoryChanged = false;
-            if( InputManager::ControllerPressed( ControllerDpadUp, -1 ) )
-            {
-                m_nSelectedCategory--;
-                if( m_nSelectedCategory < 0 ) m_nSelectedCategory = numCategories - 1;
-                categoryChanged = true;
-            }
-            if( InputManager::ControllerPressed( ControllerDpadDown, -1 ) )
-            {
-                m_nSelectedCategory++;
-                if( m_nSelectedCategory >= numCategories ) m_nSelectedCategory = 0;
-                categoryChanged = true;
-            }
+     
             if( InputManager::ControllerPressed( ControllerA, -1 ) )
                 categoryChanged = true;
             if( categoryChanged )
             {
-                const char* filter = ( m_nSelectedCategory == 0 ) ? "" : cats[m_nSelectedCategory].category.c_str();
-                if( m_pStore->LoadAppsPage( 1, filter, m_nSelectedCategory ) )
-                    m_pStore->BuildFilteredIndices( m_nSelectedCategory );
+                //std::string filter = StoreManager::GetCategoryFilter(m_nSelectedCategory);
+                //m_pStore->LoadAppsPage( 1, filter.c_str(), m_nSelectedCategory );
                 m_nScrollOffset = 0;
                 m_nSelectedCol = 0;
                 m_nSelectedRow = 0;
@@ -331,9 +317,8 @@ void StoreScene::HandleInput()
             {
                 m_nSelectedCategory--;
                 if( m_nSelectedCategory < 0 ) m_nSelectedCategory = numCategories - 1;
-                const char* filter = ( m_nSelectedCategory == 0 ) ? "" : cats[m_nSelectedCategory].category.c_str();
-                if( m_pStore->LoadAppsPage( 1, filter, m_nSelectedCategory ) )
-                    m_pStore->BuildFilteredIndices( m_nSelectedCategory );
+                //std::string filter = StoreManager::GetCategoryFilter(m_nSelectedCategory);
+                //m_pStore->LoadAppsPage( 1, filter.c_str(), m_nSelectedCategory );
                 m_nScrollOffset = 0;
                 m_nSelectedCol = 0;
                 m_nSelectedRow = 0;
@@ -342,9 +327,8 @@ void StoreScene::HandleInput()
             {
                 m_nSelectedCategory++;
                 if( m_nSelectedCategory >= numCategories ) m_nSelectedCategory = 0;
-                const char* filter = ( m_nSelectedCategory == 0 ) ? "" : cats[m_nSelectedCategory].category.c_str();
-                if( m_pStore->LoadAppsPage( 1, filter, m_nSelectedCategory ) )
-                    m_pStore->BuildFilteredIndices( m_nSelectedCategory );
+                //std::string filter = StoreManager::GetCategoryFilter(m_nSelectedCategory);
+                //m_pStore->LoadAppsPage( 1, filter.c_str(), m_nSelectedCategory );
                 m_nScrollOffset = 0;
                 m_nSelectedCol = 0;
                 m_nSelectedRow = 0;
@@ -387,15 +371,14 @@ void StoreScene::HandleInput()
                     }
                     else
                     {
-                        const char* filter = ( m_nSelectedCategory == 0 || numCategories == 0 ) ? "" : cats[m_nSelectedCategory].category.c_str();
-                        if( m_pStore->HasPreviousPage() && m_pStore->GoToPrevChunk( filter ) )
-                        {
-                            m_pStore->BuildFilteredIndices( m_nSelectedCategory );
-                            int newCount = m_pStore->GetFilteredCount();
-                            m_nScrollOffset = ( newCount > totalSlots ) ? ( newCount - totalSlots ) : 0;
-                            m_nSelectedRow = m_nGridRows - 1;
-                            m_nSelectedCol = 0;
-                        }
+                        //std::string filter = ( m_nSelectedCategory == 0 || numCategories == 0 ) ? "" : StoreManager::GetCategory(m_nSelectedCategory)->category;
+                        //if( m_pStore->HasPreviousPage() && m_pStore->GoToPrevPage( filter.c_str() ) )
+                        //{
+                        //    int newCount = m_pStore->GetFilteredCount();
+                        //    m_nScrollOffset = ( newCount > totalSlots ) ? ( newCount - totalSlots ) : 0;
+                        //    m_nSelectedRow = m_nGridRows - 1;
+                        //    m_nSelectedCol = 0;
+                        //}
                     }
                 }
             }
@@ -418,7 +401,7 @@ void StoreScene::HandleInput()
                         if( firstRowItems > m_nGridCols ) firstRowItems = m_nGridCols;
                         if( firstRowItems > 0 && m_nSelectedCol >= firstRowItems ) m_nSelectedCol = firstRowItems - 1;
                     }
-                    else if( m_pStore->HasNextPage() && m_pStore->AppendNextPage() )
+      /*              else if( m_pStore->HasNextPage() && m_pStore->AppendNextPage() )
                     {
                         m_nScrollOffset += m_nGridCols;
                         m_nSelectedRow = 0;
@@ -426,18 +409,18 @@ void StoreScene::HandleInput()
                         int firstRowItems = count - m_nScrollOffset;
                         if( firstRowItems > m_nGridCols ) firstRowItems = m_nGridCols;
                         if( firstRowItems > 0 && m_nSelectedCol >= firstRowItems ) m_nSelectedCol = firstRowItems - 1;
-                    }
+                    }*/
                 }
             }
-            count = m_pStore->GetFilteredCount();
+    /*        count = m_pStore->GetFilteredCount();
             {
                 int maxScroll = ( count > totalSlots ) ? ( count - totalSlots ) : 0;
                 if( m_nScrollOffset > maxScroll ) m_nScrollOffset = maxScroll;
                 if( m_nScrollOffset < 0 ) m_nScrollOffset = 0;
-            }
+            }*/
             if( InputManager::ControllerPressed( ControllerA, -1 ) )
             {
-                int totalSlotsA = m_nGridCols * m_nGridRows;
+     /*           int totalSlotsA = m_nGridCols * m_nGridRows;
                 int baseIdx = m_nScrollOffset;
                 m_nSelectedItem = baseIdx + m_nSelectedRow * m_nGridCols + m_nSelectedCol;
                 if( m_nSelectedItem >= count ) m_nSelectedItem = count - 1;
@@ -451,10 +434,10 @@ void StoreScene::HandleInput()
                     m_pStore->EnsureScreenshotForItem( pItem );
                     m_pStore->MarkAppAsViewed( pItem->app.id.c_str() );
                     SelectedAppInfo info;
-                    info.appId = pItem->app.id;
-                    info.appName = pItem->app.name;
-                    info.author = pItem->app.author;
-                    info.description = pItem->app.description;
+                    info.appId = pItem->id;
+                    info.appName = pItem->name;
+                    info.author = pItem->author;
+                    info.description = pItem->description;
                     info.pScreenshot = pItem->pScreenshot;
                     for( size_t v = 0; v < pItem->versions.size(); v++ )
                     {
@@ -472,7 +455,7 @@ void StoreScene::HandleInput()
                     SceneManager* pMgr = Context::GetSceneManager();
                     if( pMgr )
                         pMgr->PushScene( new VersionScene( info ) );
-                }
+                }*/
             }
         }
     }
@@ -483,12 +466,78 @@ void StoreScene::HandleInput()
 
 void StoreScene::Update()
 {
-    if( !m_pStore )
-        return;
-    m_pStore->ProcessImageDownloader();
-    if( !m_pStore->GetDownloadDone() && ( !m_pStore->GetDownloadAppName().empty() || m_pStore->GetDownloadThread() != NULL ) )
-        m_CurrentState = UI_DOWNLOADING;
-    if( m_CurrentState == UI_DOWNLOADING && m_pStore->GetDownloadThread() == NULL && !m_pStore->GetDownloadDone() )
-        m_pStore->StartDownloadThread();
-    HandleInput();
+    //if( !m_pStore )
+    //    return;
+    //m_pStore->ProcessImageDownloader();
+    //if( !m_pStore->GetDownloadDone() && ( !m_pStore->GetDownloadAppName().empty() || m_pStore->GetDownloadThread() != NULL ) )
+    //    m_CurrentState = UI_DOWNLOADING;
+    //if( m_CurrentState == UI_DOWNLOADING && m_pStore->GetDownloadThread() == NULL && !m_pStore->GetDownloadDone() )
+    //    m_pStore->StartDownloadThread();
+    //HandleInput();
+
+    if (mSideBarFocused)
+    {
+        if (InputManager::ControllerPressed(ControllerDpadUp, -1))
+        {
+            mHighlightedCategoryIndex = mHighlightedCategoryIndex > 0 ? mHighlightedCategoryIndex - 1 : StoreManager::GetCategoryCount() - 1;
+        }
+        else if (InputManager::ControllerPressed(ControllerDpadDown, -1))
+        {
+            mHighlightedCategoryIndex = mHighlightedCategoryIndex < StoreManager::GetCategoryCount() - 1 ? mHighlightedCategoryIndex + 1 : 0;
+        }
+        else if (InputManager::ControllerPressed(ControllerA, -1))
+        {
+            StoreManager::SetCategoryIndex(mHighlightedCategoryIndex);
+        }
+        else if (InputManager::ControllerPressed(ControllerDpadRight, -1))
+        {
+            mSideBarFocused = false;
+        }
+    }
+    else
+    {
+        // need to check item count
+
+        int col = mStoreIndex % STORE_GRID_COLS;
+        int row = mStoreIndex / STORE_GRID_COLS;
+        if (InputManager::ControllerPressed(ControllerDpadLeft, -1))
+        {
+            if (col == 0) {
+                mSideBarFocused = true;
+            } else {
+                mStoreIndex--;
+            }
+        }
+        else if (InputManager::ControllerPressed(ControllerDpadRight, -1))
+        {
+            if (col < (STORE_GRID_COLS - 1) && mStoreIndex < (StoreManager::GetSelectedCategoryTotal() - 1)) {
+                mStoreIndex++;
+            }
+        }
+        else if (InputManager::ControllerPressed(ControllerDpadUp, -1))
+        {
+            if ((mStoreIndex - StoreManager::GetWindowStoreItemOffset()) >= STORE_GRID_COLS)
+            {
+                mStoreIndex -= STORE_GRID_COLS;
+            }
+            else if (StoreManager::HasPrevious())
+            {
+                StoreManager::LoadPrevious();
+                mStoreIndex = mStoreIndex >= STORE_GRID_COLS ? mStoreIndex - STORE_GRID_COLS : 0;
+            }
+        }
+        else if (InputManager::ControllerPressed(ControllerDpadDown, -1))
+        {
+            if (mStoreIndex < (StoreManager::GetWindowStoreItemOffset() + StoreManager::GetWindowStoreItemCount() - STORE_GRID_COLS))
+            {
+                mStoreIndex += STORE_GRID_COLS;
+            }
+            else if (StoreManager::HasNext())
+            {
+                StoreManager::LoadNext();
+                mStoreIndex = Math::MinUint32(mStoreIndex + STORE_GRID_COLS, StoreManager::GetSelectedCategoryTotal() - 1);
+            }
+        }
+    }
+
 }

@@ -339,6 +339,9 @@
 				RelativePath=".\Store.cpp">
 			</File>
 			<File
+				RelativePath=".\StoreManager.cpp">
+			</File>
+			<File
 				RelativePath=".\String.cpp">
 			</File>
 			<File
@@ -354,10 +357,40 @@
 				Name="Media"
 				Filter="">
 				<File
+					RelativePath=".\Media\Background.jpg">
+				</File>
+				<File
+					RelativePath=".\Media\Card.png">
+				</File>
+				<File
+					RelativePath=".\Media\CardHighlight.png">
+				</File>
+				<File
+					RelativePath=".\Media\CategoryHighlight.png">
+				</File>
+				<File
+					RelativePath=".\Media\concept.png">
+				</File>
+				<File
 					RelativePath=".\Media\Cover.jpg">
 				</File>
 				<File
+					RelativePath=".\Media\Footer.png">
+				</File>
+				<File
+					RelativePath=".\Media\Header.png">
+				</File>
+				<File
+					RelativePath=".\Media\scale_controller_icons.py">
+				</File>
+				<File
 					RelativePath=".\Media\Screenshot.jpg">
+				</File>
+				<File
+					RelativePath=".\Media\Sidebar.png">
+				</File>
+				<File
+					RelativePath=".\Media\Store.png">
 				</File>
 				<Filter
 					Name="Fonts"
@@ -527,6 +560,9 @@
 			</File>
 			<File
 				RelativePath=".\Store.h">
+			</File>
+			<File
+				RelativePath=".\StoreManager.h">
 			</File>
 			<File
 				RelativePath=".\String.h">

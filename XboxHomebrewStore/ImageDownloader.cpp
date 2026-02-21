@@ -183,9 +183,8 @@ void ImageDownloader::CancelAll()
     SetEvent( m_wakeEvent );
 }
 
-void ImageDownloader::ProcessCompleted( LPDIRECT3DDEVICE8 pd3dDevice )
+void ImageDownloader::ProcessCompleted()
 {
-    if( !pd3dDevice ) return;
     std::deque<Completed> done;
     EnterCriticalSection( &m_completedLock );
     done.swap( m_completed );
