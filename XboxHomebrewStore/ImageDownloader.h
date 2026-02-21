@@ -8,10 +8,10 @@
 #include <string>
 #include <deque>
 
-struct IDirect3DTexture8;
-typedef struct IDirect3DTexture8* LPDIRECT3DTEXTURE8;
-struct IDirect3DDevice8;
-typedef struct IDirect3DDevice8* LPDIRECT3DDEVICE8;
+//struct IDirect3DTexture8;
+//typedef struct IDirect3DTexture8* D3DTexture*;
+//struct IDirect3DDevice8;
+//typedef struct IDirect3DDevice8* D3DTexture*;
 
 enum ImageDownloadType
 {
@@ -27,13 +27,13 @@ public:
 
     // Queue a cover or screenshot download. pOutTexture must stay valid until ProcessCompleted runs for this request (or CancelAll clears it).
     // highPriority: if true, request is processed before non-priority (e.g. for items currently in view).
-    void Queue( LPDIRECT3DTEXTURE8* pOutTexture, const std::string& appId, ImageDownloadType type, bool highPriority = false );
+    void Queue( D3DTexture** pOutTexture, const std::string& appId, ImageDownloadType type, bool highPriority = false );
 
     // Cancel all pending downloads; in-flight download is aborted. Safe to queue a new batch after.
     void CancelAll();
 
     // Optional: set callback to decide whether to assign loaded texture. If set, ProcessCompleted calls it; if it returns true the texture is assigned to *pOut, else the texture is released.
-    typedef bool (*CompletionCallback)( void* ctx, LPDIRECT3DTEXTURE8* pOut, const std::string& filePath, const std::string& appId, LPDIRECT3DTEXTURE8 loadedTex );
+    typedef bool (*CompletionCallback)( void* ctx, D3DTexture** pOut, const std::string& filePath, const std::string& appId, D3DTexture* loadedTex );
     void SetCompletionCallback( CompletionCallback fn, void* ctx ) { m_completionCallback = fn; m_completionCtx = ctx; }
 
     // Call from main thread (e.g. each frame). Applies completed downloads: loads file to texture and assigns *pOutTexture (or invokes callback); releases old texture at pOut first.
@@ -46,13 +46,13 @@ public:
 private:
     struct Request
     {
-        LPDIRECT3DTEXTURE8* pOutTexture;
+        D3DTexture** pOutTexture;
         std::string appId;
         ImageDownloadType type;
     };
     struct Completed
     {
-        LPDIRECT3DTEXTURE8* pOutTexture;
+        D3DTexture** pOutTexture;
         std::string filePath;
         std::string appId;
     };

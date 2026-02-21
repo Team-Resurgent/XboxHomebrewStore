@@ -144,7 +144,7 @@ ImageDownloader::~ImageDownloader()
     DeleteCriticalSection( &m_queueLock );
 }
 
-void ImageDownloader::Queue( LPDIRECT3DTEXTURE8* pOutTexture, const std::string& appId, ImageDownloadType type, bool highPriority )
+void ImageDownloader::Queue( D3DTexture** pOutTexture, const std::string& appId, ImageDownloadType type, bool highPriority )
 {
     if( !pOutTexture || appId.empty() || !m_wakeEvent ) return;
     Request r;
@@ -198,7 +198,7 @@ void ImageDownloader::ProcessCompleted()
             (*c.pOutTexture)->Release();
             *c.pOutTexture = NULL;
         }
-        LPDIRECT3DTEXTURE8 pTex = TextureHelper::LoadFromFile( c.filePath );
+        D3DTexture* pTex = TextureHelper::LoadFromFile( c.filePath );
         if( pTex )
         {
             if( m_completionCallback )

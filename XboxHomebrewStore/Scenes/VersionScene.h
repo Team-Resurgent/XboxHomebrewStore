@@ -26,7 +26,7 @@ struct SelectedAppInfo
     std::string              author;
     std::string              description;
     std::vector<VersionInfo> versions;
-    void*                    pScreenshot;  // LPDIRECT3DTEXTURE8 for display (not owned)
+    void*                    pScreenshot;  // D3DTexture* for display (not owned)
 };
 
 class VersionScene : public Scene

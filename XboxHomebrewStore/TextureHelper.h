@@ -19,8 +19,8 @@ public:
     static D3DTexture* GetStore();
     static D3DTexture* GetCategoryIcon(const std::string& name);
     static D3DTexture* GetControllerIcon(const std::string& name);
-    static D3DTexture* GetScreenshot();
-    static D3DTexture* GetCover();
+    static D3DTexture* GetScreenshotRef();
+    static D3DTexture* GetCoverRef();
 private:
     static D3DTexture* CopyTexture(D3DTexture* source);
 };

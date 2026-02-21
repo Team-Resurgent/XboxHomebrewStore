@@ -116,16 +116,20 @@ void StoreScene::DrawStoreItem(StoreItem* storeItem, int x, int y, bool selected
         Drawing::DrawTexturedRect(TextureHelper::GetCardHighlight(), mSideBarFocused ? COLOR_HIGHLIGHT : COLOR_FOCUS_HIGHLIGHT, x - 3, y - 3, ASSET_CARD_HIGHLIGHT_WIDTH, ASSET_CARD_HIGHLIGHT_HEIGHT);
     }
 
+    //144/204
+
     int iconW = ASSET_CARD_WIDTH - 18;
-    int iconH = ASSET_CARD_HEIGHT - 60;
+    int iconH = ASSET_CARD_HEIGHT - 62;
     int iconX = x + 9;
     int iconY = y + 9;
     if( iconW > 0 && iconH > 0 )
     {
         Drawing::DrawFilledRect(COLOR_SECONDARY, iconX, iconY, iconW, iconH);
-        if (storeItem->cover != NULL) {
-            Drawing::DrawTexturedRect(storeItem->cover, 0xFFFFFFFF, iconX, iconY, iconW, iconH);
+        D3DTexture* cover = storeItem->cover;
+        if (cover == NULL) {
+            cover = TextureHelper::GetCoverRef();
         }
+        Drawing::DrawTexturedRect(cover, 0xFFFFFFFF, iconX, iconY, iconW, iconH);
     }
 
     Font::DrawText(FONT_NORMAL, storeItem->name.c_str(), COLOR_WHITE, x + 8, y + iconH + 14);

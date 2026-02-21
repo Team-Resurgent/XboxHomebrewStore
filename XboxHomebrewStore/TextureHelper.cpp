@@ -110,7 +110,7 @@ D3DTexture* TextureHelper::CopyTexture(D3DTexture* source)
     pSrcSurf->Release();
     pSrcSurf = NULL;
 
-    LPDIRECT3DTEXTURE8 pDest = NULL;
+    D3DTexture* pDest = NULL;
     if( FAILED(Context::GetD3dDevice()->CreateTexture( desc.Width, desc.Height, 1, 0, desc.Format, D3DPOOL_DEFAULT, &pDest ) ) ) {
         return NULL;
     }
@@ -202,12 +202,12 @@ D3DTexture* TextureHelper::GetControllerIcon(const std::string& name)
     return (it != mControllerIcons.end()) ? it->second : NULL;
 }
 
-D3DTexture* TextureHelper::GetScreenshot()
+D3DTexture* TextureHelper::GetScreenshotRef()
 {
-    return mScreenshot != NULL ? CopyTexture(mScreenshot) : NULL;
+    return mScreenshot;
 }
 
-D3DTexture* TextureHelper::GetCover()
+D3DTexture* TextureHelper::GetCoverRef()
 {
-    return mCover != NULL ? CopyTexture(mCover) : NULL;
+    return mCover;
 }

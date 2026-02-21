@@ -11,9 +11,8 @@ struct StoreItem
     std::string category;
     std::string description;
     uint32_t state;
-
-    LPDIRECT3DTEXTURE8 cover;
-    LPDIRECT3DTEXTURE8 screenshot;
+    D3DTexture* cover;
+    D3DTexture* screenshot;
 };
 
 
