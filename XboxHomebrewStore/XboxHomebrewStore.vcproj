@@ -396,9 +396,6 @@
 					Name="Fonts"
 					Filter="">
 					<File
-						RelativePath=".\Media\Fonts\Arial_16.xpr">
-					</File>
-					<File
 						RelativePath=".\Media\Fonts\Font.sfn">
 					</File>
 				</Filter>

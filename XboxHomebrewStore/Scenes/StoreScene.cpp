@@ -211,7 +211,7 @@ void StoreScene::Render( LPDIRECT3DDEVICE8 pd3dDevice )
 {
     CalculateLayout();
 
-    Drawing::DrawTexturedRect( TextureHelper::GetBackground(), 0xFFFFFFFF, 0, 0, (int)m_fScreenWidth, (int)m_fScreenHeight );
+    Drawing::DrawTexturedRect(TextureHelper::GetBackground(), 0xFFFFFFFF, 0, 0, Context::GetScreenWidth(), Context::GetScreenHeight());
     switch( m_CurrentState )
     {
         case UI_MAIN_GRID:
