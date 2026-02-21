@@ -13,7 +13,7 @@ public:
     void PopScene();
     bool HasScene() const;
 
-    void Render( LPDIRECT3DDEVICE8 pd3dDevice );
+    void Render();
     void Update();
 
 private:

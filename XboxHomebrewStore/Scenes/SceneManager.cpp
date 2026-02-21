@@ -38,10 +38,10 @@ bool SceneManager::HasScene() const
     return m_pStack != NULL;
 }
 
-void SceneManager::Render( LPDIRECT3DDEVICE8 pd3dDevice )
+void SceneManager::Render( )
 {
     if (m_pStack && m_pStack->pScene) {
-        m_pStack->pScene->Render(pd3dDevice);
+        m_pStack->pScene->Render();
     }
 }
 

@@ -2,11 +2,13 @@
 
 #include "Main.h"
 #include "Models.h"
+#include "Font.h"
 
 struct StoreItem
 {
     std::string id;
     std::string name;
+    ScrollState nameScrollState;
     std::string author;
     std::string category;
     std::string description;

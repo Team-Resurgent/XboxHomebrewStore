@@ -16,9 +16,8 @@ VersionDetailsScene::VersionDetailsScene( const SelectedAppInfo& info, int versi
         m_versionIndex = 0;
 }
 
-void VersionDetailsScene::Render( LPDIRECT3DDEVICE8 pd3dDevice )
+void VersionDetailsScene::Render()
 {
-    (void)pd3dDevice;
     int w = Context::GetScreenWidth();
     int h = Context::GetScreenHeight();
     float fW = (float)w;

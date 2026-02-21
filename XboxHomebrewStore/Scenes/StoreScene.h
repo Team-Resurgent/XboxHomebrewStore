@@ -4,6 +4,7 @@
 
 #include "..\Main.h"
 #include "..\Store.h"
+#include "..\Font.h"
 #include "..\ImageDownloader.h"
 
 class StoreScene : public Scene
@@ -11,7 +12,7 @@ class StoreScene : public Scene
 public:
     explicit StoreScene();
     virtual ~StoreScene();
-    virtual void Render( LPDIRECT3DDEVICE8 pd3dDevice );
+    virtual void Render();
     virtual void Update();
 
 private:
@@ -22,8 +23,8 @@ private:
     void RenderCategorySidebar();
     void RenderMainGrid();
     void DrawStoreItem(StoreItem* storeItem, int x, int y, bool selected, int slotIndex);
-    void RenderDownloading( LPDIRECT3DDEVICE8 pd3dDevice );
-    void RenderSettings( LPDIRECT3DDEVICE8 pd3dDevice );
+    void RenderDownloading();
+    void RenderSettings();
 
     UIState m_CurrentState;
     BOOL m_bFocusOnSidebar;

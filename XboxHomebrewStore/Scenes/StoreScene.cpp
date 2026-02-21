@@ -148,13 +148,13 @@ void StoreScene::DrawStoreItem(StoreItem* storeItem, int x, int y, bool selected
     {
         // Selected tile: scroll the full name, show pre-truncated author
         int textMaxWidth = ASSET_CARD_WIDTH - 16;
-        Font::DrawTextScrolling(FONT_NORMAL, storeItem->name, COLOR_WHITE, textX, nameY, textMaxWidth, slotIndex);
+        Font::DrawTextScrolling(FONT_NORMAL, storeItem->name, COLOR_WHITE, textX, nameY, textMaxWidth, &storeItem->nameScrollState);
         Font::DrawText(FONT_NORMAL, storeItem->author, COLOR_TEXT_GRAY, textX, authorY);
     }
     else
     {
         // Unselected tiles: plain DrawText with pre-truncated strings - zero extra CPU cost
-        Font::ResetScroll(slotIndex);
+        storeItem->nameScrollState.active = false;
         Font::DrawText(FONT_NORMAL, storeItem->name, COLOR_WHITE, textX, nameY);
         Font::DrawText(FONT_NORMAL, storeItem->author, COLOR_TEXT_GRAY, textX, authorY);
     }
@@ -202,7 +202,7 @@ void StoreScene::RenderMainGrid()
     Font::DrawText(FONT_NORMAL, pageStr.c_str(), (uint32_t)COLOR_TEXT_GRAY, 600, Context::GetScreenHeight() - 30);
 }
 
-void StoreScene::RenderDownloading( LPDIRECT3DDEVICE8 pd3dDevice )
+void StoreScene::RenderDownloading()
 {
     ///*(void)pd3dDevice;
     //int w = (int)m_fScreenWidth;
@@ -228,15 +228,14 @@ void StoreScene::RenderDownloading( LPDIRECT3DDEVICE8 pd3dDevice )
     //Font::DrawText(FONT_NORMAL, "(B) Cancel", (uint32_t)COLOR_TEXT_GRAY, (int)( cx - 40.0f ), (int)( cy + 80.0f )*/ );
 }
 
-void StoreScene::RenderSettings( LPDIRECT3DDEVICE8 pd3dDevice )
+void StoreScene::RenderSettings( )
 {
-    (void)pd3dDevice;
     Drawing::DrawFilledRect( (uint32_t)COLOR_BG, 0, 0, (int)m_fScreenWidth, (int)m_fScreenHeight );
     Font::DrawText(FONT_NORMAL, "Settings", COLOR_WHITE, 40, 40 );
     Font::DrawText(FONT_NORMAL, "(B) Back to Store", (uint32_t)COLOR_TEXT_GRAY, 40, 100 );
 }
 
-void StoreScene::Render( LPDIRECT3DDEVICE8 pd3dDevice )
+void StoreScene::Render()
 {
     CalculateLayout();
 
@@ -251,10 +250,10 @@ void StoreScene::Render( LPDIRECT3DDEVICE8 pd3dDevice )
             break;
         case UI_DOWNLOADING:
             RenderMainGrid();
-            RenderDownloading( pd3dDevice );
+            RenderDownloading();
             break;
         case UI_SETTINGS:
-            RenderSettings( pd3dDevice );
+            RenderSettings();
             break;
         default:
             RenderHeader();

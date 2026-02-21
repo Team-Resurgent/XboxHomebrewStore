@@ -126,6 +126,7 @@ bool StoreManager::LoadPrevious()
         StoreItem& dst = mWindowStoreItems[i - 1 + loadedCount];
         dst.id = src.id;
         dst.name = src.name;
+        dst.nameScrollState = src.nameScrollState;
         dst.author = src.author;
         dst.category = src.category;
         dst.description = src.description;
@@ -140,6 +141,7 @@ bool StoreManager::LoadPrevious()
         StoreItem& src = mTempStoreItems[i];
         dst.id = src.id;
         dst.name = src.name;
+        dst.nameScrollState = src.nameScrollState;
         dst.author = src.author;
         dst.category = src.category;
         dst.description = src.description;
@@ -186,6 +188,7 @@ bool StoreManager::LoadNext()
         StoreItem& dst = mWindowStoreItems[i - itemsToRemove];
         dst.id = src.id;
         dst.name = src.name;
+        dst.nameScrollState = src.nameScrollState;
         dst.author = src.author;
         dst.category = src.category;
         dst.description = src.description;
@@ -200,6 +203,7 @@ bool StoreManager::LoadNext()
         StoreItem& src = mTempStoreItems[i];
         dst.id = src.id;
         dst.name = src.name;
+        dst.nameScrollState = src.nameScrollState;
         dst.author = src.author;
         dst.category = src.category;
         dst.description = src.description;
@@ -258,6 +262,8 @@ bool StoreManager::LoadApplications(void* dest, uint32_t offset, uint32_t count,
     StoreItem* storeItems = (StoreItem*)dest;
     for (uint32_t i = 0; i < response.items.size(); i++ )
     {
+        memset(&storeItems[i], 0, sizeof(StoreItem)); 
+
         AppItem* appItem = &response.items[i];
         storeItems[i].id = appItem->id;
         storeItems[i].name = appItem->name;
@@ -265,8 +271,6 @@ bool StoreManager::LoadApplications(void* dest, uint32_t offset, uint32_t count,
         storeItems[i].category = appItem->category;
         storeItems[i].description = appItem->description;
         storeItems[i].state = appItem->state;
-        storeItems[i].cover = NULL;
-        storeItems[i].screenshot = NULL;
     }
 
     return true;

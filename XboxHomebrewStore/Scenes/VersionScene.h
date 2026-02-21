@@ -33,11 +33,11 @@ class VersionScene : public Scene
 {
 public:
     explicit VersionScene( const SelectedAppInfo& info );
-    virtual void Render( LPDIRECT3DDEVICE8 pd3dDevice );
+    virtual void Render();
     virtual void Update();
 
 private:
-    void RenderListView( LPDIRECT3DDEVICE8 pd3dDevice );
+    void RenderListView();
 
     SelectedAppInfo m_info;
     int             m_selectedIndex;

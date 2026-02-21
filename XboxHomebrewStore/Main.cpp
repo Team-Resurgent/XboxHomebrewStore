@@ -146,7 +146,7 @@ VOID Render()
     if( SUCCEEDED( g_pd3dDevice->BeginScene() ) )
     {
         if( g_pSceneManager && g_pSceneManager->HasScene() )
-            g_pSceneManager->Render( g_pd3dDevice );
+            g_pSceneManager->Render( );
 
         g_pd3dDevice->EndScene();
     }

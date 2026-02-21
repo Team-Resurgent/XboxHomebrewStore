@@ -8,7 +8,7 @@ class VersionDetailsScene : public Scene
 {
 public:
     VersionDetailsScene( const SelectedAppInfo& info, int versionIndex );
-    virtual void Render( LPDIRECT3DDEVICE8 pd3dDevice );
+    virtual void Render();
     virtual void Update();
 
 private:
