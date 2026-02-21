@@ -52,4 +52,6 @@ public:
     static void DrawFilledRect(uint32_t color, int x, int y, int width, int height);
     static void DrawTexturedRect(D3DTexture* texture, uint32_t diffuse, int x, int y, int width, int height);
     static void DrawNinePatch(D3DTexture* texture, uint32_t diffuse, int x, int y, int width, int height, int cornerWidthPx, int cornerHeightPx, int contentWidthPx = 0, int contentHeightPx = 0);
+    static void BeginStencil(float x, float y, float w, float h);
+    static void EndStencil();
 };

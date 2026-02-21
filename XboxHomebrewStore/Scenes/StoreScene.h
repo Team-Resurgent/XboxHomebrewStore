@@ -21,7 +21,7 @@ private:
     void RenderFooter();
     void RenderCategorySidebar();
     void RenderMainGrid();
-    void DrawStoreItem(StoreItem* storeItem, int x, int y, bool selected);
+    void DrawStoreItem(StoreItem* storeItem, int x, int y, bool selected, int slotIndex);
     void RenderDownloading( LPDIRECT3DDEVICE8 pd3dDevice );
     void RenderSettings( LPDIRECT3DDEVICE8 pd3dDevice );
 

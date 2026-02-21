@@ -106,13 +106,10 @@ void StoreScene::RenderCategorySidebar()
     }
 }
 
-void StoreScene::DrawStoreItem(StoreItem* storeItem, int x, int y, bool selected)
+void StoreScene::DrawStoreItem(StoreItem* storeItem, int x, int y, bool selected, int slotIndex)
 {
-    uint32_t bgColor = selected ? (uint32_t)COLOR_CARD_SEL : (uint32_t)COLOR_CARD_BG;
-    //Drawing::DrawFilledRect(bgColor, (int)x, (int)y, (int)w, (int)h );
-
     Drawing::DrawTexturedRect(TextureHelper::GetCard(), 0xFFFFFFFF, x, y, ASSET_CARD_WIDTH, ASSET_CARD_HEIGHT);
-    
+
     if (selected == true) {
         Drawing::DrawTexturedRect(TextureHelper::GetCardHighlight(), mSideBarFocused ? COLOR_HIGHLIGHT : COLOR_FOCUS_HIGHLIGHT, x - 3, y - 3, ASSET_CARD_HIGHLIGHT_WIDTH, ASSET_CARD_HIGHLIGHT_HEIGHT);
     }
@@ -123,28 +120,46 @@ void StoreScene::DrawStoreItem(StoreItem* storeItem, int x, int y, bool selected
     int iconH = ASSET_CARD_HEIGHT - 62;
     int iconX = x + 9;
     int iconY = y + 9;
-    if( iconW > 0 && iconH > 0 )
+
+    Drawing::DrawFilledRect(COLOR_SECONDARY, iconX, iconY, iconW, iconH);
+    D3DTexture* cover = storeItem->cover;
+    if (cover == NULL) 
     {
-        Drawing::DrawFilledRect(COLOR_SECONDARY, iconX, iconY, iconW, iconH);
-        D3DTexture* cover = storeItem->cover;
-        if (cover == NULL) 
+        if (ImageDownloader::IsCoverCached(storeItem->id) == true)
         {
-            if (ImageDownloader::IsCoverCached(storeItem->id) == true)
-            {
-                storeItem->cover = TextureHelper::LoadFromFile(ImageDownloader::GetCoverCachePath(storeItem->id));
-                cover = storeItem->cover;
-            }
-            else
-            {
-                cover = TextureHelper::GetCoverRef();
-                mImageDownloader->Queue(&storeItem->cover, storeItem->id, IMAGE_COVER);
-            }
+            storeItem->cover = TextureHelper::LoadFromFile(ImageDownloader::GetCoverCachePath(storeItem->id));
+            cover = storeItem->cover;
         }
-        Drawing::DrawTexturedRect(cover, 0xFFFFFFFF, iconX, iconY, iconW, iconH);
+        else
+        {
+            cover = TextureHelper::GetCoverRef();
+            mImageDownloader->Queue(&storeItem->cover, storeItem->id, IMAGE_COVER);
+        }
+    }
+    Drawing::DrawTexturedRect(cover, 0xFFFFFFFF, iconX, iconY, iconW, iconH);
+
+    int textX   = x + 8;
+    int nameY   = y + iconH + 14;
+    int authorY = y + iconH + 32;
+
+    Drawing::BeginStencil((float)x + 8, (float)(y + iconH), (float)ASSET_CARD_WIDTH - 16, (float)62);
+
+    if (selected && !mSideBarFocused)
+    {
+        // Selected tile: scroll the full name, show pre-truncated author
+        int textMaxWidth = ASSET_CARD_WIDTH - 16;
+        Font::DrawTextScrolling(FONT_NORMAL, storeItem->name, COLOR_WHITE, textX, nameY, textMaxWidth, slotIndex);
+        Font::DrawText(FONT_NORMAL, storeItem->author, COLOR_TEXT_GRAY, textX, authorY);
+    }
+    else
+    {
+        // Unselected tiles: plain DrawText with pre-truncated strings - zero extra CPU cost
+        Font::ResetScroll(slotIndex);
+        Font::DrawText(FONT_NORMAL, storeItem->name, COLOR_WHITE, textX, nameY);
+        Font::DrawText(FONT_NORMAL, storeItem->author, COLOR_TEXT_GRAY, textX, authorY);
     }
 
-    Font::DrawText(FONT_NORMAL, storeItem->name.c_str(), COLOR_WHITE, x + 8, y + iconH + 14);
-    Font::DrawText(FONT_NORMAL, storeItem->author.c_str(), COLOR_TEXT_GRAY, x + 8, y + iconH + 32);
+    Drawing::EndStencil();
 }
 
 void StoreScene::RenderMainGrid()
@@ -180,10 +195,9 @@ void StoreScene::RenderMainGrid()
         int x = cardX + col * ( cardWidth + CARD_GAP);
         int y = cardY + row * ( cardHeight + CARD_GAP);
         StoreItem* storeItem = StoreManager::GetWindowStoreItem(currentSlot);
-        DrawStoreItem(storeItem, x, y, currentSlot == (mStoreIndex - StoreManager::GetWindowStoreItemOffset()));
+        DrawStoreItem(storeItem, x, y, currentSlot == (mStoreIndex - StoreManager::GetWindowStoreItemOffset()), currentSlot);
     }
 
-    uint32_t subindex = 0;
     std::string pageStr = String::Format("Item %d of %d", mStoreIndex + 1, StoreManager::GetSelectedCategoryTotal());
     Font::DrawText(FONT_NORMAL, pageStr.c_str(), (uint32_t)COLOR_TEXT_GRAY, 600, Context::GetScreenHeight() - 30);
 }
