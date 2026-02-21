@@ -29,15 +29,7 @@ bool StoreManager::Init()
         return false;
     }
 
-    uint32_t loadedCount = 0;
-    if (LoadApplications(mWindowStoreItems, 0, STORE_GRID_CELLS, &loadedCount) == false)
-    {
-        return false;
-    }
-    
-    mWindowStoreItemOffset = 0;
-    mWindowStoreItemCount = loadedCount;
-    return true;
+    return RefreshApplications();;
 }
 
 uint32_t StoreManager::GetCategoryCount() 
@@ -53,6 +45,7 @@ uint32_t StoreManager::GetCategoryIndex()
 void StoreManager::SetCategoryIndex(uint32_t categoryIndex)
 {
     mCategoryIndex = categoryIndex;
+    RefreshApplications();
 }
 
 CategoryItem* StoreManager::GetCategory(uint32_t categoryIndex) 
@@ -274,5 +267,29 @@ bool StoreManager::LoadApplications(void* dest, uint32_t offset, uint32_t count,
         storeItems[i].screenshot = NULL;
     }
 
+    return true;
+}
+
+bool StoreManager::RefreshApplications()
+{
+    for (uint32_t i = 0; i < mWindowStoreItemCount; i++)
+    {
+        StoreItem& storeItem = mWindowStoreItems[i];
+        if (storeItem.cover != NULL) {
+            storeItem.cover->Release();
+        }
+        if (storeItem.screenshot != NULL) {
+            storeItem.screenshot->Release();
+        }
+    }
+
+    uint32_t loadedCount = 0;
+    if (LoadApplications(mWindowStoreItems, 0, STORE_GRID_CELLS, &loadedCount) == false)
+    {
+        return false;
+    }
+    
+    mWindowStoreItemOffset = 0;
+    mWindowStoreItemCount = loadedCount;
     return true;
 }

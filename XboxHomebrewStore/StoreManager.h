@@ -37,4 +37,5 @@ public:
 private:
     static bool LoadCategories();
     static bool LoadApplications(void* dest, uint32_t offset, uint32_t count, uint32_t* loadedCount);
+    static bool RefreshApplications();
 };

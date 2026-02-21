@@ -487,7 +487,11 @@ void StoreScene::Update()
         }
         else if (InputManager::ControllerPressed(ControllerA, -1))
         {
-            StoreManager::SetCategoryIndex(mHighlightedCategoryIndex);
+            bool needsUpdate = StoreManager::GetCategoryIndex() != mHighlightedCategoryIndex;
+            if (needsUpdate == true) {
+                StoreManager::SetCategoryIndex(mHighlightedCategoryIndex);
+                mStoreIndex = 0;
+            }
         }
         else if (InputManager::ControllerPressed(ControllerDpadRight, -1))
         {
