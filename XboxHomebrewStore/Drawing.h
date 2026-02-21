@@ -32,13 +32,26 @@ typedef struct
     float u, v;
 } TEXVERTEX;
 
+typedef struct
+{
+    float x, y, z, rhw;
+    uint32_t diffuse;
+} VERTEX;
+
 class Drawing
 {
 public:
-    static void Init(D3DDevice* d3dDevice);
+    static void SaveRenderState();
+    static void RestoreRenderState();
+    static void Init();
     static void Swizzle(const void* src, const uint32_t& depth, const uint32_t& width, const uint32_t& height, void* dest);
     static bool TryCreateImage(uint8_t* imageData, D3DFORMAT format, int width, int height, Image* image);
     static bool LoadFont(const std::string filePath, void* context);
     static bool TryGenerateBitmapFont(void* context, const std::string fontName, int fontStyle, int fontSize, int lineHeight, int spacing, int textureDimension, BitmapFont* bitmapFont);
-    static void DrawFont(BitmapFont* font, const char* message, uint32_t color, int x, int y);
+    static void DrawFont(BitmapFont* font, const std::string message, uint32_t color, int x, int y);
+    static void DrawFilledRect(uint32_t color, int x, int y, int width, int height);
+    static void DrawTexturedRect(D3DTexture* texture, uint32_t diffuse, int x, int y, int width, int height);
+    static void DrawNinePatch(D3DTexture* texture, uint32_t diffuse, int x, int y, int width, int height, int cornerWidthPx, int cornerHeightPx, int contentWidthPx = 0, int contentHeightPx = 0);
+    static void BeginStencil(float x, float y, float w, float h);
+    static void EndStencil();
 };

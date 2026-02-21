@@ -1,4 +1,5 @@
 #include "Drawing.h"
+#include "Context.h"
 
 #define SSFN_IMPLEMENTATION
 #define SFFN_MAXLINES 8192
@@ -9,15 +10,77 @@
 #include "ssfn.h"
 
 #define DRAW_BATCH_MAX_VERTS 16380
+#define SAVE_STATE_COUNT 21
 
 namespace 
 {
-    D3DDevice* mD3dDevice;
+    uint32_t mSavedStateIndex;
+    uint32_t mSavedState[4 * SAVE_STATE_COUNT];
 }
 
-void Drawing::Init(D3DDevice* d3dDevice)
+void Drawing::Init()
 {
-    mD3dDevice = d3dDevice;
+    mSavedStateIndex = 0;
+}
+
+void Drawing::SaveRenderState()
+{
+    uint32_t* savedStatePage = &mSavedState[mSavedStateIndex];
+    mSavedStateIndex += SAVE_STATE_COUNT;
+
+    Context::GetD3dDevice()->GetRenderState(D3DRS_ALPHABLENDENABLE, &savedStatePage[0]);
+    Context::GetD3dDevice()->GetRenderState(D3DRS_SRCBLEND, &savedStatePage[1]);
+    Context::GetD3dDevice()->GetRenderState(D3DRS_DESTBLEND, &savedStatePage[2]);
+    Context::GetD3dDevice()->GetRenderState(D3DRS_ALPHATESTENABLE, &savedStatePage[3]);
+    Context::GetD3dDevice()->GetRenderState(D3DRS_ALPHAREF, &savedStatePage[4]);
+    Context::GetD3dDevice()->GetRenderState(D3DRS_ALPHAFUNC, &savedStatePage[5]);
+    Context::GetD3dDevice()->GetRenderState(D3DRS_FILLMODE, &savedStatePage[6]);
+    Context::GetD3dDevice()->GetRenderState(D3DRS_CULLMODE, &savedStatePage[7]);
+    Context::GetD3dDevice()->GetRenderState(D3DRS_ZENABLE, &savedStatePage[8]);
+    Context::GetD3dDevice()->GetRenderState(D3DRS_STENCILENABLE, &savedStatePage[9]);
+    Context::GetD3dDevice()->GetRenderState(D3DRS_STENCILFUNC, &savedStatePage[10]);
+    Context::GetD3dDevice()->GetRenderState(D3DRS_STENCILREF, &savedStatePage[11]);
+    Context::GetD3dDevice()->GetRenderState(D3DRS_STENCILMASK, &savedStatePage[12]);
+    Context::GetD3dDevice()->GetRenderState(D3DRS_STENCILWRITEMASK, &savedStatePage[13]);
+    Context::GetD3dDevice()->GetRenderState(D3DRS_STENCILPASS, &savedStatePage[14]);
+    Context::GetD3dDevice()->GetRenderState(D3DRS_COLORWRITEENABLE, &savedStatePage[15]);
+    Context::GetD3dDevice()->GetRenderState(D3DRS_EDGEANTIALIAS, &savedStatePage[16]);
+    Context::GetD3dDevice()->GetTextureStageState(0, D3DTSS_MINFILTER, &savedStatePage[17]);
+    Context::GetD3dDevice()->GetTextureStageState(0, D3DTSS_MAGFILTER, &savedStatePage[18]);
+    Context::GetD3dDevice()->GetTextureStageState(0, D3DTSS_COLOROP, &savedStatePage[19]);
+    Context::GetD3dDevice()->GetTextureStageState(0, D3DTSS_COLORARG1, &savedStatePage[20]);
+    Context::GetD3dDevice()->GetTextureStageState(0, D3DTSS_COLORARG2, &savedStatePage[21]);
+}
+
+void Drawing::RestoreRenderState()
+{
+    mSavedStateIndex -= SAVE_STATE_COUNT;
+    uint32_t* savedStatePage = &mSavedState[mSavedStateIndex];
+
+    Context::GetD3dDevice()->SetTexture(0, NULL);
+
+    Context::GetD3dDevice()->SetRenderState(D3DRS_ALPHABLENDENABLE, savedStatePage[0]);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_SRCBLEND, savedStatePage[1]);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_DESTBLEND, savedStatePage[2]);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_ALPHATESTENABLE, savedStatePage[3]);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_ALPHAREF, savedStatePage[4]);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_ALPHAFUNC, savedStatePage[5]);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_FILLMODE, savedStatePage[6]);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_CULLMODE, savedStatePage[7]);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_ZENABLE, savedStatePage[8]);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_STENCILENABLE, savedStatePage[9]);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_STENCILFUNC, savedStatePage[10]);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_STENCILREF, savedStatePage[11]);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_STENCILMASK, savedStatePage[12]);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_STENCILWRITEMASK, savedStatePage[13]);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_STENCILPASS, savedStatePage[14]);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_COLORWRITEENABLE, savedStatePage[15]);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_EDGEANTIALIAS, savedStatePage[16]);
+    Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_MINFILTER, savedStatePage[17]);
+    Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_MAGFILTER, savedStatePage[18]);
+    Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_COLOROP, savedStatePage[19]);
+    Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_COLORARG1, savedStatePage[20]);
+    Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_COLORARG2, savedStatePage[21]);
 }
 
 void Drawing::Swizzle(const void* src, const uint32_t& depth, const uint32_t& width, const uint32_t& height, void* dest) 
@@ -59,7 +122,7 @@ bool Drawing::TryCreateImage(uint8_t* imageData, D3DFORMAT format, int width, in
     image->width = width;
     image->height = height;
 
-    if (FAILED(D3DXCreateTexture(mD3dDevice, image->width, image->height, 1, 0, format, D3DPOOL_DEFAULT, &image->texture))) {
+    if (FAILED(D3DXCreateTexture(Context::GetD3dDevice(), image->width, image->height, 1, 0, format, D3DPOOL_DEFAULT, &image->texture))) {
         return false;
     }
 
@@ -189,12 +252,8 @@ bool Drawing::TryGenerateBitmapFont(void* context, const std::string fontName, i
     return result;
 }
 
-void Drawing::DrawFont(BitmapFont* font, const char* message, uint32_t color, int x, int y)
+void Drawing::DrawFont(BitmapFont* font, const std::string message, uint32_t color, int x, int y)
 {
-    if (!message || !message[0]) {
-        return;
-    }
-
     static TEXVERTEX batchBuf[DRAW_BATCH_MAX_VERTS];
     UINT vertexCount = 0;
 
@@ -203,10 +262,11 @@ void Drawing::DrawFont(BitmapFont* font, const char* message, uint32_t color, in
     const float invW = 1.0f / (float)font->image.width;
     const float invH = 1.0f / (float)font->image.height;
 
-    mD3dDevice->SetVertexShader(D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1);
-    mD3dDevice->SetTexture(0, font->image.texture);
+    SaveRenderState();
+    Context::GetD3dDevice()->SetVertexShader(D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1);
+    Context::GetD3dDevice()->SetTexture(0, font->image.texture);
 
-    const char* p = message;
+    const char* p = message.c_str();
     while (*p)
     {
         char* cursor = (char*)p;
@@ -222,7 +282,7 @@ void Drawing::DrawFont(BitmapFont* font, const char* message, uint32_t color, in
 
         if (vertexCount + 6 > (UINT)DRAW_BATCH_MAX_VERTS)
         {
-            mD3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLELIST, vertexCount / 3, batchBuf, sizeof(TEXVERTEX));
+            Context::GetD3dDevice()->DrawPrimitiveUP(D3DPT_TRIANGLELIST, vertexCount / 3, batchBuf, sizeof(TEXVERTEX));
             vertexCount = 0;
         }
 
@@ -250,8 +310,201 @@ void Drawing::DrawFont(BitmapFont* font, const char* message, uint32_t color, in
     }
 
     if (vertexCount > 0) {
-        mD3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLELIST, vertexCount / 3, batchBuf, sizeof(TEXVERTEX));
+        Context::GetD3dDevice()->DrawPrimitiveUP(D3DPT_TRIANGLELIST, vertexCount / 3, batchBuf, sizeof(TEXVERTEX));
     }
 
-    mD3dDevice->SetTexture(0, NULL);
+    RestoreRenderState();
+}
+
+void Drawing::DrawFilledRect(uint32_t color, int x, int y, int width, int height)
+{
+    VERTEX vertices[4];
+
+    float px = (float)x;
+    float py = (float)y;
+    float fw = (float)width;
+    float fh = (float)height;
+
+    vertices[0].x = px;      vertices[0].y = py;      vertices[0].z = 0.5f; vertices[0].rhw = 1.0f; vertices[0].diffuse = color;
+    vertices[1].x = px + fw; vertices[1].y = py;      vertices[1].z = 0.5f; vertices[1].rhw = 1.0f; vertices[1].diffuse = color;
+    vertices[2].x = px;      vertices[2].y = py + fh; vertices[2].z = 0.5f; vertices[2].rhw = 1.0f; vertices[2].diffuse = color;
+    vertices[3].x = px + fw; vertices[3].y = py + fh; vertices[3].z = 0.5f; vertices[3].rhw = 1.0f; vertices[3].diffuse = color;
+
+    SaveRenderState();
+    Context::GetD3dDevice()->SetVertexShader(D3DFVF_XYZRHW | D3DFVF_DIFFUSE);
+    Context::GetD3dDevice()->SetTexture(0, NULL);
+    Context::GetD3dDevice()->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, vertices, sizeof(VERTEX));
+    RestoreRenderState();
+}
+
+void Drawing::DrawTexturedRect(D3DTexture* texture, uint32_t diffuse, int x, int y, int width, int height)
+{
+    TEXVERTEX vertices[4];
+
+    float px = (float)x;
+    float py = (float)y;
+    float fw = (float)width;
+    float fh = (float)height;
+
+    vertices[0].x = px;      vertices[0].y = py;      vertices[0].z = 0.5f; vertices[0].rhw = 1.0f; vertices[0].diffuse = diffuse; vertices[0].u = 0.0f; vertices[0].v = 0.0f;
+    vertices[1].x = px + fw; vertices[1].y = py;      vertices[1].z = 0.5f; vertices[1].rhw = 1.0f; vertices[1].diffuse = diffuse; vertices[1].u = 1.0f; vertices[1].v = 0.0f;
+    vertices[2].x = px;      vertices[2].y = py + fh; vertices[2].z = 0.5f; vertices[2].rhw = 1.0f; vertices[2].diffuse = diffuse; vertices[2].u = 0.0f; vertices[2].v = 1.0f;
+    vertices[3].x = px + fw; vertices[3].y = py + fh; vertices[3].z = 0.5f; vertices[3].rhw = 1.0f; vertices[3].diffuse = diffuse; vertices[3].u = 1.0f; vertices[3].v = 1.0f;
+
+    SaveRenderState();
+    Context::GetD3dDevice()->SetVertexShader(D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1);
+    Context::GetD3dDevice()->SetTexture(0, texture);
+    Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+    Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+    Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+    Context::GetD3dDevice()->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, vertices, sizeof(TEXVERTEX));
+    RestoreRenderState();
+}
+
+void Drawing::DrawNinePatch(D3DTexture* texture, uint32_t diffuse, int x, int y, int width, int height, int cornerWidthPx, int cornerHeightPx, int contentWidthPx, int contentHeightPx)
+{
+    D3DSURFACE_DESC desc;
+    if (FAILED(texture->GetLevelDesc(0, &desc))) return;
+
+    const float surfaceW = (float)desc.Width;
+    const float surfaceH = (float)desc.Height;
+    const int contentW = contentWidthPx > 0 ? contentWidthPx : (int)surfaceW;
+    const int contentH = contentHeightPx > 0 ? contentHeightPx : (int)surfaceH;
+
+    int cw = cornerWidthPx;
+    int ch = cornerHeightPx;
+    if (cw > contentW / 2) cw = contentW / 2;
+    if (ch > contentH / 2) ch = contentH / 2;
+    if (cw > width / 2) cw = width / 2;
+    if (ch > height / 2) ch = height / 2;
+
+    const float u0 = 0.0f;
+    const float u1 = (float)cw / surfaceW;
+    const float u2 = (float)(contentW - cw) / surfaceW;
+    const float u3 = (float)contentW / surfaceW;
+    const float v0 = 0.0f;
+    const float v1 = (float)ch / surfaceH;
+    const float v2 = (float)(contentH - ch) / surfaceH;
+    const float v3 = (float)contentH / surfaceH;
+
+    const float x0 = (float)x;
+    const float x1 = (float)(x + cw);
+    const float x2 = (float)(x + width - cw);
+    const float x3 = (float)(x + width);
+    const float y0 = (float)y;
+    const float y1 = (float)(y + ch);
+    const float y2 = (float)(y + height - ch);
+    const float y3 = (float)(y + height);
+
+    TEXVERTEX batchBuf[54];
+    int v = 0;
+
+    batchBuf[v].x = x0; batchBuf[v].y = y0; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u0; batchBuf[v].v = v0; v++;
+    batchBuf[v].x = x1; batchBuf[v].y = y0; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u1; batchBuf[v].v = v0; v++;
+    batchBuf[v].x = x0; batchBuf[v].y = y1; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u0; batchBuf[v].v = v1; v++;
+    batchBuf[v].x = x1; batchBuf[v].y = y0; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u1; batchBuf[v].v = v0; v++;
+    batchBuf[v].x = x1; batchBuf[v].y = y1; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u1; batchBuf[v].v = v1; v++;
+    batchBuf[v].x = x0; batchBuf[v].y = y1; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u0; batchBuf[v].v = v1; v++;
+
+    batchBuf[v].x = x1; batchBuf[v].y = y0; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u1; batchBuf[v].v = v0; v++;
+    batchBuf[v].x = x2; batchBuf[v].y = y0; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u2; batchBuf[v].v = v0; v++;
+    batchBuf[v].x = x1; batchBuf[v].y = y1; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u1; batchBuf[v].v = v1; v++;
+    batchBuf[v].x = x2; batchBuf[v].y = y0; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u2; batchBuf[v].v = v0; v++;
+    batchBuf[v].x = x2; batchBuf[v].y = y1; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u2; batchBuf[v].v = v1; v++;
+    batchBuf[v].x = x1; batchBuf[v].y = y1; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u1; batchBuf[v].v = v1; v++;
+
+    batchBuf[v].x = x2; batchBuf[v].y = y0; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u2; batchBuf[v].v = v0; v++;
+    batchBuf[v].x = x3; batchBuf[v].y = y0; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u3; batchBuf[v].v = v0; v++;
+    batchBuf[v].x = x2; batchBuf[v].y = y1; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u2; batchBuf[v].v = v1; v++;
+    batchBuf[v].x = x3; batchBuf[v].y = y0; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u3; batchBuf[v].v = v0; v++;
+    batchBuf[v].x = x3; batchBuf[v].y = y1; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u3; batchBuf[v].v = v1; v++;
+    batchBuf[v].x = x2; batchBuf[v].y = y1; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u2; batchBuf[v].v = v1; v++;
+
+    batchBuf[v].x = x0; batchBuf[v].y = y1; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u0; batchBuf[v].v = v1; v++;
+    batchBuf[v].x = x1; batchBuf[v].y = y1; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u1; batchBuf[v].v = v1; v++;
+    batchBuf[v].x = x0; batchBuf[v].y = y2; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u0; batchBuf[v].v = v2; v++;
+    batchBuf[v].x = x1; batchBuf[v].y = y1; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u1; batchBuf[v].v = v1; v++;
+    batchBuf[v].x = x1; batchBuf[v].y = y2; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u1; batchBuf[v].v = v2; v++;
+    batchBuf[v].x = x0; batchBuf[v].y = y2; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u0; batchBuf[v].v = v2; v++;
+
+    batchBuf[v].x = x1; batchBuf[v].y = y1; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u1; batchBuf[v].v = v1; v++;
+    batchBuf[v].x = x2; batchBuf[v].y = y1; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u2; batchBuf[v].v = v1; v++;
+    batchBuf[v].x = x1; batchBuf[v].y = y2; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u1; batchBuf[v].v = v2; v++;
+    batchBuf[v].x = x2; batchBuf[v].y = y1; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u2; batchBuf[v].v = v1; v++;
+    batchBuf[v].x = x2; batchBuf[v].y = y2; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u2; batchBuf[v].v = v2; v++;
+    batchBuf[v].x = x1; batchBuf[v].y = y2; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u1; batchBuf[v].v = v2; v++;
+
+    batchBuf[v].x = x2; batchBuf[v].y = y1; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u2; batchBuf[v].v = v1; v++;
+    batchBuf[v].x = x3; batchBuf[v].y = y1; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u3; batchBuf[v].v = v1; v++;
+    batchBuf[v].x = x2; batchBuf[v].y = y2; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u2; batchBuf[v].v = v2; v++;
+    batchBuf[v].x = x3; batchBuf[v].y = y1; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u3; batchBuf[v].v = v1; v++;
+    batchBuf[v].x = x3; batchBuf[v].y = y2; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u3; batchBuf[v].v = v2; v++;
+    batchBuf[v].x = x2; batchBuf[v].y = y2; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u2; batchBuf[v].v = v2; v++;
+
+    batchBuf[v].x = x0; batchBuf[v].y = y2; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u0; batchBuf[v].v = v2; v++;
+    batchBuf[v].x = x1; batchBuf[v].y = y2; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u1; batchBuf[v].v = v2; v++;
+    batchBuf[v].x = x0; batchBuf[v].y = y3; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u0; batchBuf[v].v = v3; v++;
+    batchBuf[v].x = x1; batchBuf[v].y = y2; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u1; batchBuf[v].v = v2; v++;
+    batchBuf[v].x = x1; batchBuf[v].y = y3; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u1; batchBuf[v].v = v3; v++;
+    batchBuf[v].x = x0; batchBuf[v].y = y3; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u0; batchBuf[v].v = v3; v++;
+
+    batchBuf[v].x = x1; batchBuf[v].y = y2; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u1; batchBuf[v].v = v2; v++;
+    batchBuf[v].x = x2; batchBuf[v].y = y2; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u2; batchBuf[v].v = v2; v++;
+    batchBuf[v].x = x1; batchBuf[v].y = y3; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u1; batchBuf[v].v = v3; v++;
+    batchBuf[v].x = x2; batchBuf[v].y = y2; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u2; batchBuf[v].v = v2; v++;
+    batchBuf[v].x = x2; batchBuf[v].y = y3; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u2; batchBuf[v].v = v3; v++;
+    batchBuf[v].x = x1; batchBuf[v].y = y3; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u1; batchBuf[v].v = v3; v++;
+
+    batchBuf[v].x = x2; batchBuf[v].y = y2; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u2; batchBuf[v].v = v2; v++;
+    batchBuf[v].x = x3; batchBuf[v].y = y2; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u3; batchBuf[v].v = v2; v++;
+    batchBuf[v].x = x2; batchBuf[v].y = y3; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u2; batchBuf[v].v = v3; v++;
+    batchBuf[v].x = x3; batchBuf[v].y = y2; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u3; batchBuf[v].v = v2; v++;
+    batchBuf[v].x = x3; batchBuf[v].y = y3; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u3; batchBuf[v].v = v3; v++;
+    batchBuf[v].x = x2; batchBuf[v].y = y3; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u2; batchBuf[v].v = v3; v++;
+
+    SaveRenderState();
+    Context::GetD3dDevice()->SetVertexShader(D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1);
+    Context::GetD3dDevice()->SetTexture(0, texture);
+    Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+    Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+    Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+    Context::GetD3dDevice()->DrawPrimitiveUP(D3DPT_TRIANGLELIST, 18, batchBuf, sizeof(TEXVERTEX));
+    RestoreRenderState();
+}
+
+void Drawing::BeginStencil(float x, float y, float w, float h)
+{
+    SaveRenderState();
+
+    Context::GetD3dDevice()->SetRenderState(D3DRS_STENCILENABLE, TRUE);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_STENCILFUNC, D3DCMP_ALWAYS);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_STENCILREF, 1);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_STENCILMASK, 0xFFFFFFFF);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_STENCILWRITEMASK, 0xFFFFFFFF);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_STENCILPASS, D3DSTENCILOP_REPLACE);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_COLORWRITEENABLE, 0);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_ZENABLE, FALSE);
+
+    struct stencil_vertex { float x,y,z,rhw; };
+    stencil_vertex quad[4] = {
+        { x, y, 0.0f, 1.0f },
+        { x + w, y, 0.0f, 1.0f },
+        { x, y + h, 0.0f, 1.0f },
+        { x + w, y + h, 0.0f, 1.0f },
+    };
+
+    Context::GetD3dDevice()->Clear(0L, NULL, D3DCLEAR_STENCIL, 0, 1.0f, 0L);
+    Context::GetD3dDevice()->SetVertexShader(D3DFVF_XYZRHW);
+    Context::GetD3dDevice()->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(stencil_vertex));
+
+    Context::GetD3dDevice()->SetRenderState(D3DRS_COLORWRITEENABLE, D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_BLUE | D3DCOLORWRITEENABLE_ALPHA);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_STENCILFUNC, D3DCMP_EQUAL);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_STENCILREF, 1);
+    Context::GetD3dDevice()->SetRenderState(D3DRS_STENCILPASS, D3DSTENCILOP_KEEP);
+}
+
+void Drawing::EndStencil()
+{
+    Context::GetD3dDevice()->SetRenderState(D3DRS_STENCILENABLE, FALSE);
+    RestoreRenderState();
 }

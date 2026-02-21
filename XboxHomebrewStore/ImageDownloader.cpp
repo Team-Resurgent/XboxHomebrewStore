@@ -3,12 +3,12 @@
 //=============================================================================
 
 #include "ImageDownloader.h"
+#include "Defines.h"
 #include "WebManager.h"
 #include "TextureHelper.h"
+#include "Debug.h"
 #include "String.h"
 #include <stdint.h>
-#include <string.h>
-#include <vector>
 #include <utility>
 
 static uint32_t CRC32( const void* data, size_t size )
@@ -49,7 +49,17 @@ static bool FileExists( const char* path )
     return true;  /* exists and is a file (not a directory) */
 }
 
-static const int CACHE_FILE_LIMIT = 100;
+std::string ImageDownloader::GetCoverCachePath( const std::string& appId )
+{
+    return CachePathFor( appId, IMAGE_COVER );
+}
+
+bool ImageDownloader::IsCoverCached( const std::string& appId )
+{
+    return FileExists( GetCoverCachePath( appId ).c_str() );
+}
+
+#define CACHE_FILE_LIMIT STORE_CACHE_FILE_LIMIT
 
 static void CollectFileWithTime( const char* dir, std::vector<std::pair<std::string, ULONGLONG> >* out )
 {
@@ -100,48 +110,45 @@ static void EnforceCacheLimit()
 }
 
 ImageDownloader::ImageDownloader()
-    : m_wakeEvent( NULL )
-    , m_thread( NULL )
+    : m_thread( NULL )
     , m_quit( false )
     , m_cancelRequested( false )
-    , m_tempCounter( 0 )
 {
     InitializeCriticalSection( &m_queueLock );
-    InitializeCriticalSection( &m_completedLock );
-    m_wakeEvent = CreateEvent( NULL, FALSE, FALSE, NULL );
-    if( m_wakeEvent )
-    {
-        m_thread = CreateThread( NULL, 0, ThreadProc, this, 0, NULL );
-    }
+    m_thread = CreateThread( NULL, 0, ThreadProc, this, 0, NULL );
 }
 
 ImageDownloader::~ImageDownloader()
 {
     m_quit = true;
-    if( m_wakeEvent )
-        SetEvent( m_wakeEvent );
     if( m_thread )
     {
         WaitForSingleObject( m_thread, INFINITE );
         CloseHandle( m_thread );
     }
-    if( m_wakeEvent )
-        CloseHandle( m_wakeEvent );
     DeleteCriticalSection( &m_completedLock );
     DeleteCriticalSection( &m_queueLock );
 }
 
-void ImageDownloader::Queue( LPDIRECT3DTEXTURE8* pOutTexture, const std::string& appId, ImageDownloadType type )
+void ImageDownloader::Queue( D3DTexture** pOutTexture, const std::string& appId, ImageDownloadType type)
 {
-    if( !pOutTexture || appId.empty() || !m_wakeEvent ) return;
+    if( !pOutTexture || appId.empty() ) return;
+
+    for (uint32_t i = 0; i < m_queue.size(); i++) {
+        Request* item = &m_queue[i];
+        if (item->appId == appId && item->type == type) {
+            return;
+        }
+    }
+
     Request r;
     r.pOutTexture = pOutTexture;
     r.appId = appId;
     r.type = type;
+
     EnterCriticalSection( &m_queueLock );
     m_queue.push_back( r );
     LeaveCriticalSection( &m_queueLock );
-    SetEvent( m_wakeEvent );
 }
 
 void ImageDownloader::CancelAll()
@@ -150,33 +157,38 @@ void ImageDownloader::CancelAll()
     EnterCriticalSection( &m_queueLock );
     m_queue.clear();
     LeaveCriticalSection( &m_queueLock );
-    EnterCriticalSection( &m_completedLock );
-    m_completed.clear();
-    LeaveCriticalSection( &m_completedLock );
-    SetEvent( m_wakeEvent );
 }
 
-void ImageDownloader::ProcessCompleted( LPDIRECT3DDEVICE8 pd3dDevice )
-{
-    if( !pd3dDevice ) return;
-    std::deque<Completed> done;
-    EnterCriticalSection( &m_completedLock );
-    done.swap( m_completed );
-    LeaveCriticalSection( &m_completedLock );
-    for( size_t i = 0; i < done.size(); i++ )
-    {
-        Completed& c = done[i];
-        if( !c.pOutTexture ) continue;
-        if( *c.pOutTexture )
-        {
-            (*c.pOutTexture)->Release();
-            *c.pOutTexture = NULL;
-        }
-        LPDIRECT3DTEXTURE8 pTex = TextureHelper::LoadFromFile( pd3dDevice, c.filePath.c_str() );
-        if( pTex )
-            *c.pOutTexture = pTex;
-    }
-}
+//void ImageDownloader::ProcessCompleted()
+//{
+//    std::deque<Completed> done;
+//    EnterCriticalSection( &m_completedLock );
+//    done.swap( m_completed );
+//    LeaveCriticalSection( &m_completedLock );
+//    for( size_t i = 0; i < done.size(); i++ )
+//    {
+//        Completed& c = done[i];
+//        if( !c.pOutTexture ) continue;
+//        if( *c.pOutTexture )
+//        {
+//            (*c.pOutTexture)->Release();
+//            *c.pOutTexture = NULL;
+//        }
+//        D3DTexture* pTex = TextureHelper::LoadFromFile( c.filePath );
+//        if( pTex )
+//        {
+//            if( m_completionCallback )
+//            {
+//                if( !m_completionCallback( m_completionCtx, c.pOutTexture, c.filePath, c.appId, pTex ) )
+//                    pTex->Release();
+//                else
+//                    *c.pOutTexture = pTex;
+//            }
+//            else
+//                *c.pOutTexture = pTex;
+//        }
+//    }
+//}
 
 DWORD WINAPI ImageDownloader::ThreadProc( LPVOID param )
 {
@@ -189,27 +201,28 @@ void ImageDownloader::WorkerLoop()
 {
     while( !m_quit )
     {
-        WaitForSingleObject( m_wakeEvent, INFINITE );
         if( m_quit ) break;
 
         Request req;
         bool moreInQueue = false;
+
         EnterCriticalSection( &m_queueLock );
         bool haveRequest = !m_queue.empty();
         if( haveRequest )
         {
             req = m_queue.front();
             m_queue.pop_front();
-            moreInQueue = !m_queue.empty();
         }
-        if( m_queue.empty() )
+        if ( m_queue.empty() )
             m_cancelRequested = false;
         LeaveCriticalSection( &m_queueLock );
-        if( moreInQueue && m_wakeEvent )
-            SetEvent( m_wakeEvent );
 
-        if( !haveRequest )
+
+        if (!haveRequest )
+        {
+            Sleep(10);
             continue;
+        }
 
         std::string path = CachePathFor( req.appId, req.type );
         bool haveFile = FileExists( path.c_str() );
@@ -218,7 +231,7 @@ void ImageDownloader::WorkerLoop()
             EnforceCacheLimit();
             bool ok = false;
             if( req.type == IMAGE_COVER )
-                ok = WebManager::TryDownloadCover( req.appId, 256, 256, path, NULL, NULL, &m_cancelRequested );
+                ok = WebManager::TryDownloadCover( req.appId, 144, 204, path, NULL, NULL, &m_cancelRequested );
             else
                 ok = WebManager::TryDownloadScreenshot( req.appId, 640, 360, path, NULL, NULL, &m_cancelRequested );
             if( m_cancelRequested || m_quit )
@@ -227,11 +240,7 @@ void ImageDownloader::WorkerLoop()
                 continue;
         }
 
-        Completed c;
-        c.pOutTexture = req.pOutTexture;
-        c.filePath = path;
-        EnterCriticalSection( &m_completedLock );
-        m_completed.push_back( c );
-        LeaveCriticalSection( &m_completedLock );
+        //D3DTexture* pTex = TextureHelper::LoadFromFile( path );
+        //*req.pOutTexture = pTex;
     }
 }

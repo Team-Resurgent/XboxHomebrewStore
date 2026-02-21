@@ -1,56 +1,113 @@
-//=============================================================================
-// TextureHelper.cpp - Load and store media textures
-//=============================================================================
-
 #include "TextureHelper.h"
+#include "Context.h"
+#include "Defines.h"
 #include "String.h"
 #include <d3dx8.h>
+#include <string.h>
+#include <cctype>
 
-LPDIRECT3DTEXTURE8 TextureHelper::s_pScreenshot = NULL;
-LPDIRECT3DTEXTURE8 TextureHelper::s_pCover = NULL;
-
-static const char* MEDIA_PATH = "D:\\Media\\";
-
-static HRESULT LoadTextureFromFile( LPDIRECT3DDEVICE8 pd3dDevice, const char* filename, LPDIRECT3DTEXTURE8* ppTexture )
-{
-    if( !pd3dDevice || !filename || !ppTexture ) return E_INVALIDARG;
-    std::string path = ( filename[1] != ':' ) ? String::Format( "%s%s", MEDIA_PATH, filename ) : std::string( filename );
-    return D3DXCreateTextureFromFileEx( pd3dDevice, path.c_str(),
-        D3DX_DEFAULT, D3DX_DEFAULT, D3DX_DEFAULT, 0, D3DFMT_UNKNOWN, D3DPOOL_DEFAULT,
-        D3DX_DEFAULT, D3DX_DEFAULT, 0, NULL, NULL, ppTexture );
+namespace {
+    D3DTexture* mBackground = NULL;
+    D3DTexture* mHeader = NULL;
+    D3DTexture* mFooter = NULL;
+    D3DTexture* mSidebar = NULL;
+    D3DTexture* mStore = NULL;
+    D3DTexture* mCategoryHighlight = NULL;
+    D3DTexture* mCard = NULL;
+    D3DTexture* mCardHighlight = NULL;
+    D3DTexture* mNewBadge = NULL;
+    D3DTexture* mUpdateBadge = NULL;
+    std::map<std::string, D3DTexture*> mCategoryIcons;
+    std::map<std::string, D3DTexture*> mControllerIcons;
+    D3DTexture* mScreenshot = NULL;
+    D3DTexture* mCover = NULL;
 }
 
-LPDIRECT3DTEXTURE8 TextureHelper::LoadFromFile( LPDIRECT3DDEVICE8 pd3dDevice, const char* filePath )
+bool TextureHelper::Init()
 {
-    if( !pd3dDevice || !filePath ) return NULL;
-    LPDIRECT3DTEXTURE8 pTex = NULL;
-    if( FAILED( D3DXCreateTextureFromFileEx( pd3dDevice, filePath,
+    bool result = true;
+    mBackground = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "Background.jpg"));
+    result &= mBackground == NULL;
+    mHeader = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "Header.png"));
+    result &= mHeader == NULL;
+    mFooter = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "Footer.png"));
+    result &= mFooter == NULL;
+    mSidebar = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "Sidebar.png"));
+    result &= mSidebar == NULL;
+    mCategoryHighlight = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "CategoryHighlight.png"));
+    result &= mCategoryHighlight == NULL;
+    mCard = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "Card.png"));
+    result &= mCard == NULL;
+    mCardHighlight = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "CardHighlight.png"));
+    result &= mCardHighlight == NULL;
+    mNewBadge = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "NewBadge.png"));
+    result &= mNewBadge == NULL;
+    mUpdateBadge = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "UpdateBadge.png"));
+    result &= mUpdateBadge == NULL;
+    mStore = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "Store.png"));
+    result &= mStore == NULL;
+
+    std::string categoriesPath = String::Format( "%sCategories\\", MEDIA_PATH );
+    std::string pattern = String::Format( "%s*.png", categoriesPath.c_str() );
+    WIN32_FIND_DATAA fd;
+    HANDLE h = FindFirstFileA( pattern.c_str(), &fd );
+    if (h != INVALID_HANDLE_VALUE) {
+        do {
+            if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+                const char* dot = strrchr( fd.cFileName, '.' );
+                std::string name = dot ? std::string( fd.cFileName, dot - fd.cFileName ) : fd.cFileName;
+                for (size_t i = 0; i < name.size(); i++)
+                    name[i] = (char)tolower( (unsigned char)name[i] );
+                std::string path = String::Format( "%s%s", categoriesPath.c_str(), fd.cFileName );
+                D3DTexture* tex = LoadFromFile( path );
+                if (tex != NULL)
+                    mCategoryIcons[name] = tex;
+            }
+        } while (FindNextFileA( h, &fd ));
+        FindClose( h );
+    }
+
+    std::string controllerPath = String::Format( "%sController\\", MEDIA_PATH );
+    std::string controllerPattern = String::Format( "%s*.png", controllerPath.c_str() );
+    HANDLE hController = FindFirstFileA( controllerPattern.c_str(), &fd );
+    if (hController != INVALID_HANDLE_VALUE) {
+        do {
+            if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+                const char* dot = strrchr( fd.cFileName, '.' );
+                std::string name = dot ? std::string( fd.cFileName, dot - fd.cFileName ) : fd.cFileName;
+                for (size_t i = 0; i < name.size(); i++)
+                    name[i] = (char)tolower( (unsigned char)name[i] );
+                std::string path = String::Format( "%s%s", controllerPath.c_str(), fd.cFileName );
+                D3DTexture* tex = LoadFromFile( path );
+                if (tex != NULL)
+                    mControllerIcons[name] = tex;
+            }
+        } while (FindNextFileA( hController, &fd ));
+        FindClose( hController );
+    }
+
+    mScreenshot = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "Screenshot.jpg"));
+    result &= mScreenshot == NULL;
+    mCover = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "Cover.jpg"));
+    result &= mCover == NULL;
+    return result;
+}
+
+D3DTexture* TextureHelper::LoadFromFile(const std::string filePath)
+{
+    D3DTexture* tex = NULL;
+    if (FAILED(D3DXCreateTextureFromFileEx(Context::GetD3dDevice(), filePath.c_str(),
         D3DX_DEFAULT, D3DX_DEFAULT, D3DX_DEFAULT, 0, D3DFMT_UNKNOWN, D3DPOOL_DEFAULT,
-        D3DX_DEFAULT, D3DX_DEFAULT, 0, NULL, NULL, &pTex ) ) ) {
+        D3DX_DEFAULT, D3DX_DEFAULT, 0, NULL, NULL, &tex))) {
         return NULL;
     }
-    return pTex;
+    return tex;
 }
 
-HRESULT TextureHelper::Init( LPDIRECT3DDEVICE8 pd3dDevice )
+D3DTexture* TextureHelper::CopyTexture(D3DTexture* source)
 {
-    if( !pd3dDevice ) return E_INVALIDARG;
-    HRESULT hr;
-    if( FAILED( hr = LoadTextureFromFile( pd3dDevice, "Screenshot.jpg", &s_pScreenshot ) ) ) {
-        return hr;
-    }
-    if( FAILED( hr = LoadTextureFromFile( pd3dDevice, "Cover.jpg", &s_pCover ) ) ) {
-        if( s_pScreenshot ) { s_pScreenshot->Release(); s_pScreenshot = NULL; }
-        return hr;
-    }
-    return S_OK;
-}
-
-LPDIRECT3DTEXTURE8 TextureHelper::CopyTexture( LPDIRECT3DDEVICE8 pd3dDevice, LPDIRECT3DTEXTURE8 pSource )
-{
-    if( !pd3dDevice || !pSource ) return NULL;
     LPDIRECT3DSURFACE8 pSrcSurf = NULL;
-    if( FAILED( pSource->GetSurfaceLevel( 0, &pSrcSurf ) ) ) return NULL;
+    if( FAILED(source->GetSurfaceLevel( 0, &pSrcSurf ) ) ) return NULL;
     D3DSURFACE_DESC desc;
     if( FAILED( pSrcSurf->GetDesc( &desc ) ) ) {
         pSrcSurf->Release();
@@ -59,8 +116,8 @@ LPDIRECT3DTEXTURE8 TextureHelper::CopyTexture( LPDIRECT3DDEVICE8 pd3dDevice, LPD
     pSrcSurf->Release();
     pSrcSurf = NULL;
 
-    LPDIRECT3DTEXTURE8 pDest = NULL;
-    if( FAILED( pd3dDevice->CreateTexture( desc.Width, desc.Height, 1, 0, desc.Format, D3DPOOL_DEFAULT, &pDest ) ) ) {
+    D3DTexture* pDest = NULL;
+    if( FAILED(Context::GetD3dDevice()->CreateTexture( desc.Width, desc.Height, 1, 0, desc.Format, D3DPOOL_DEFAULT, &pDest ) ) ) {
         return NULL;
     }
     LPDIRECT3DSURFACE8 pDstSurf = NULL;
@@ -68,14 +125,14 @@ LPDIRECT3DTEXTURE8 TextureHelper::CopyTexture( LPDIRECT3DDEVICE8 pd3dDevice, LPD
         pDest->Release();
         return NULL;
     }
-    if( FAILED( pSource->GetSurfaceLevel( 0, &pSrcSurf ) ) ) {
+    if( FAILED(source->GetSurfaceLevel( 0, &pSrcSurf ) ) ) {
         pDstSurf->Release();
         pDest->Release();
         return NULL;
     }
     RECT rect = { 0, 0, (LONG)desc.Width, (LONG)desc.Height };
     POINT point = { 0, 0 };
-    HRESULT hr = pd3dDevice->CopyRects( pSrcSurf, &rect, 1, pDstSurf, &point );
+    HRESULT hr = Context::GetD3dDevice()->CopyRects( pSrcSurf, &rect, 1, pDstSurf, &point );
     pSrcSurf->Release();
     pDstSurf->Release();
     if( FAILED( hr ) ) {
@@ -85,12 +142,88 @@ LPDIRECT3DTEXTURE8 TextureHelper::CopyTexture( LPDIRECT3DDEVICE8 pd3dDevice, LPD
     return pDest;
 }
 
-LPDIRECT3DTEXTURE8 TextureHelper::GetScreenshot( LPDIRECT3DDEVICE8 pd3dDevice )
+D3DTexture* TextureHelper::GetBackground()
 {
-    return s_pScreenshot ? CopyTexture( pd3dDevice, s_pScreenshot ) : NULL;
+    return mBackground;
 }
 
-LPDIRECT3DTEXTURE8 TextureHelper::GetCover( LPDIRECT3DDEVICE8 pd3dDevice )
+D3DTexture* TextureHelper::GetHeader()
 {
-    return s_pCover ? CopyTexture( pd3dDevice, s_pCover ) : NULL;
+    return mHeader;
+}
+
+D3DTexture* TextureHelper::GetFooter()
+{
+    return mFooter;
+}
+
+D3DTexture* TextureHelper::GetSidebar()
+{
+    return mSidebar;
+}
+
+D3DTexture* TextureHelper::GetStore()
+{
+    return mStore;
+}
+
+D3DTexture* TextureHelper::GetCategoryHighlight()
+{
+    return mCategoryHighlight;
+}
+
+D3DTexture* TextureHelper::GetCard()
+{
+    return mCard;
+}
+
+D3DTexture* TextureHelper::GetCardHighlight()
+{
+    return mCardHighlight;
+}
+
+D3DTexture* TextureHelper::GetNewBadge()
+{
+    return mNewBadge;
+}
+
+D3DTexture* TextureHelper::GetUpdateBadge()
+{
+    return mUpdateBadge;
+}
+
+D3DTexture* TextureHelper::GetCategoryIcon(const std::string& name)
+{
+    std::string key = name;
+    for (size_t i = 0; i < key.size(); i++) {
+        key[i] = (char)tolower( (unsigned char)key[i] );
+    }
+    std::map<std::string, D3DTexture*>::const_iterator it = mCategoryIcons.find( key );
+    if (it != mCategoryIcons.end()) {
+        return it->second;
+    }
+    it = mCategoryIcons.find( "other" );
+    if (it != mCategoryIcons.end()) {
+        return it->second;
+    }
+    return mCategoryIcons.empty() ? NULL : mCategoryIcons.begin()->second;
+}
+
+D3DTexture* TextureHelper::GetControllerIcon(const std::string& name)
+{
+    std::string key = name;
+    for (size_t i = 0; i < key.size(); i++)
+        key[i] = (char)tolower( (unsigned char)key[i] );
+    std::map<std::string, D3DTexture*>::const_iterator it = mControllerIcons.find( key );
+    return (it != mControllerIcons.end()) ? it->second : NULL;
+}
+
+D3DTexture* TextureHelper::GetScreenshotRef()
+{
+    return mScreenshot;
+}
+
+D3DTexture* TextureHelper::GetCoverRef()
+{
+    return mCover;
 }

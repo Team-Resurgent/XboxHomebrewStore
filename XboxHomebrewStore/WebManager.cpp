@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-const std::string store_api_url = "https://192.168.1.84:5001";
+const std::string store_api_url = "https://192.168.1.88:5001";
 const std::string store_app_controller = "/api/apps";
 const std::string store_versions = "/versions";
 const std::string store_categories = "/api/categories";
@@ -44,15 +44,10 @@ static bool ParseAppsResponse(const std::string& raw, AppsResponse& out)
 {
     JSON_Value* root = json_parse_string(raw.c_str());
     if (!root) return false;
-    JSON_Object* obj = json_value_get_object(root);
-    if (!obj)
-    {
-        json_value_free(root);
-        return false;
-    }
+
     out.items.clear();
-    JSON_Value* itemsVal = JsonHelper::GetObjectMember(obj, "items");
-    JSON_Array* itemsArr = itemsVal ? json_value_get_array(itemsVal) : NULL;
+
+    JSON_Array* itemsArr = json_value_get_array(root);
     if (itemsArr)
     {
         size_t count = json_array_get_count(itemsArr);
@@ -73,12 +68,7 @@ static bool ParseAppsResponse(const std::string& raw, AppsResponse& out)
             }
         }
     }
-    out.page = JsonHelper::ToUInt32(JsonHelper::GetObjectMember(obj, "page"));
-    out.pageSize = JsonHelper::ToUInt32(JsonHelper::GetObjectMember(obj, "pageSize"));
-    out.totalCount = JsonHelper::ToUInt32(JsonHelper::GetObjectMember(obj, "totalCount"));
-    out.totalPages = JsonHelper::ToUInt32(JsonHelper::GetObjectMember(obj, "totalPages"));
-    out.hasNextPage = JsonHelper::ToBool(JsonHelper::GetObjectMember(obj, "hasNextPage"));
-    out.hasPreviousPage = JsonHelper::ToBool(JsonHelper::GetObjectMember(obj, "hasPreviousPage"));
+
     json_value_free(root);
     return true;
 }
@@ -102,7 +92,7 @@ static bool ParseCategoriesResponse(const std::string& raw, CategoriesResponse& 
         if (itemObj)
         {
             CategoryItem cat;
-            cat.category = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "category"));
+            cat.name = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "name"));
             cat.count = JsonHelper::ToUInt32(JsonHelper::GetObjectMember(itemObj, "count"));
             out.push_back(cat);
         }
@@ -137,8 +127,6 @@ static bool ParseVersionsResponse(const std::string& raw, VersionsResponse& out)
             ver.changeLog = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "changelog"));
             ver.titleId = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "title_id"));
             ver.region = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "region"));
-            ver.state = 0;
-            ver.install_path = "";
             out.push_back(ver);
         }
     }
@@ -188,16 +176,6 @@ static void ApplyCommonOptions(CURL* curl)
 bool WebManager::Init()
 {
     return curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK;
-}
-
-void WebManager::Cleanup()
-{
-    if (s_persistentCurl != NULL)
-    {
-        curl_easy_cleanup(s_persistentCurl);
-        s_persistentCurl = NULL;
-    }
-    curl_global_cleanup();
 }
 
 bool WebManager::TryGetFileSize(const std::string& url, uint32_t& outSize)
@@ -301,10 +279,10 @@ bool WebManager::TryDownload(const std::string& url, const std::string& filePath
     return true;
 }
 
-bool WebManager::TryGetApps(AppsResponse& result, uint32_t page, uint32_t pageSize, const std::string& category, const std::string& name)
+bool WebManager::TryGetApps(AppsResponse& result, uint32_t offset, uint32_t count, const std::string& category, const std::string& name)
 {
     result.items.clear();
-    std::string url = store_api_url + store_app_controller + String::Format("?page=%u&pageSize=%u", page, pageSize);
+    std::string url = store_api_url + store_app_controller + String::Format("?offset=%u&count=%u", offset, count);
     if (!category.empty())
     {
         url += "&category=" + category;

@@ -22,7 +22,7 @@
 				Optimization="0"
 				OptimizeForProcessor="2"
 				AdditionalIncludeDirectories="&quot;$(SolutionDir)Libraries\libbearssl\include&quot;;&quot;$(SolutionDir)Libraries\libcurl\include&quot;;&quot;$(SolutionDir)Libraries\libutil\include&quot;"
-				PreprocessorDefinitions="_DEBUG;_XBOX;CURL_STATICLIB"
+				PreprocessorDefinitions="_DEBUG;_XBOX;CURL_STATICLIB;DEBUG_MOUSE;DEBUG_KEYBOARD"
 				MinimalRebuild="TRUE"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
@@ -36,7 +36,7 @@
 				Name="VCCustomBuildTool"/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="xapilibd.lib d3d8d.lib d3dx8d.lib xgraphicsd.lib dsoundd.lib dmusicd.lib xactengd.lib xsndtrkd.lib xvoiced.lib xonlined.lib xboxkrnl.lib xbdm.lib libbearssl.lib libcurl.lib"
+				AdditionalDependencies="xapilibd.lib d3d8d.lib d3dx8d.lib xgraphicsd.lib dsoundd.lib dmusicd.lib xactengd.lib xsndtrkd.lib xvoiced.lib xonlined.lib xboxkrnl.lib xbdm.lib libbearssl.lib libcurl.lib xkbdd.lib"
 				OutputFile="$(OutDir)/$(ProjectName).exe"
 				LinkIncremental="2"
 				AdditionalLibraryDirectories="&quot;$(SolutionDir)Libraries\libbearssl&quot;;&quot;$(SolutionDir)Libraries\libcurl&quot;"
@@ -76,7 +76,7 @@
 				OmitFramePointers="TRUE"
 				OptimizeForProcessor="2"
 				AdditionalIncludeDirectories="&quot;$(SolutionDir)Libraries\libbearssl\include&quot;;&quot;$(SolutionDir)Libraries\libcurl\include&quot;;&quot;$(SolutionDir)Libraries\libutil\include&quot;"
-				PreprocessorDefinitions="NDEBUG;_XBOX;PROFILE;CURL_STATICLIB"
+				PreprocessorDefinitions="NDEBUG;_XBOX;PROFILE;CURL_STATICLIB;DEBUG_MOUSE;DEBUG_KEYBOARD"
 				StringPooling="TRUE"
 				RuntimeLibrary="0"
 				BufferSecurityCheck="TRUE"
@@ -91,7 +91,7 @@
 				Name="VCCustomBuildTool"/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="xapilib.lib d3d8i.lib d3dx8.lib xgraphics.lib dsound.lib dmusici.lib xactengi.lib xsndtrk.lib xvoice.lib xonlines.lib xboxkrnl.lib xbdm.lib xperf.lib libbearssl.lib libcurl.lib"
+				AdditionalDependencies="xapilib.lib d3d8i.lib d3dx8.lib xgraphics.lib dsound.lib dmusici.lib xactengi.lib xsndtrk.lib xvoice.lib xonlines.lib xboxkrnl.lib xbdm.lib xperf.lib libbearssl.lib libcurl.lib xkbdd.lib"
 				OutputFile="$(OutDir)/$(ProjectName).exe"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="&quot;$(SolutionDir)Libraries\libbearssl&quot;;&quot;$(SolutionDir)Libraries\libcurl&quot;"
@@ -134,7 +134,7 @@
 				OmitFramePointers="TRUE"
 				OptimizeForProcessor="2"
 				AdditionalIncludeDirectories="&quot;$(SolutionDir)Libraries\libbearssl\include&quot;;&quot;$(SolutionDir)Libraries\libcurl\include&quot;;&quot;$(SolutionDir)Libraries\libutil\include&quot;"
-				PreprocessorDefinitions="NDEBUG;_XBOX;PROFILE;FASTCAP;CURL_STATICLIB"
+				PreprocessorDefinitions="NDEBUG;_XBOX;PROFILE;FASTCAP;CURL_STATICLIB;DEBUG_MOUSE;DEBUG_KEYBOARD"
 				StringPooling="TRUE"
 				RuntimeLibrary="0"
 				BufferSecurityCheck="TRUE"
@@ -150,7 +150,7 @@
 				Name="VCCustomBuildTool"/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="xapilib.lib d3d8i.lib d3dx8.lib xgraphics.lib dsound.lib dmusici.lib xactengi.lib xsndtrk.lib xvoice.lib xonlines.lib xboxkrnl.lib xbdm.lib xperf.lib libbearssl.lib libcurl.lib"
+				AdditionalDependencies="xapilib.lib d3d8i.lib d3dx8.lib xgraphics.lib dsound.lib dmusici.lib xactengi.lib xsndtrk.lib xvoice.lib xonlines.lib xboxkrnl.lib xbdm.lib xperf.lib libbearssl.lib libcurl.lib xkbdd.lib"
 				OutputFile="$(OutDir)/$(ProjectName).exe"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="&quot;$(SolutionDir)Libraries\libbearssl&quot;;&quot;$(SolutionDir)Libraries\libcurl&quot;"
@@ -193,7 +193,7 @@
 				OmitFramePointers="TRUE"
 				OptimizeForProcessor="2"
 				AdditionalIncludeDirectories="&quot;$(SolutionDir)Libraries\libbearssl\include&quot;;&quot;$(SolutionDir)Libraries\libcurl\include&quot;;&quot;$(SolutionDir)Libraries\libutil\include&quot;"
-				PreprocessorDefinitions="NDEBUG;_XBOX;CURL_STATICLIB"
+				PreprocessorDefinitions="NDEBUG;_XBOX;CURL_STATICLIB;DEBUG_MOUSE;DEBUG_KEYBOARD"
 				StringPooling="TRUE"
 				RuntimeLibrary="0"
 				BufferSecurityCheck="TRUE"
@@ -208,7 +208,7 @@
 				Name="VCCustomBuildTool"/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="xapilib.lib d3d8.lib d3dx8.lib xgraphics.lib dsound.lib dmusic.lib xacteng.lib xsndtrk.lib xvoice.lib xonlines.lib xboxkrnl.lib libbearssl.lib libcurl.lib"
+				AdditionalDependencies="xapilib.lib d3d8.lib d3dx8.lib xgraphics.lib dsound.lib dmusic.lib xacteng.lib xsndtrk.lib xvoice.lib xonlines.lib xboxkrnl.lib libbearssl.lib libcurl.lib xkbdd.lib"
 				OutputFile="$(OutDir)/$(ProjectName).exe"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="&quot;$(SolutionDir)Libraries\libbearssl&quot;;&quot;$(SolutionDir)Libraries\libcurl&quot;"
@@ -250,7 +250,7 @@
 				OmitFramePointers="TRUE"
 				OptimizeForProcessor="2"
 				AdditionalIncludeDirectories="&quot;$(SolutionDir)Libraries\libbearssl\include&quot;;&quot;$(SolutionDir)Libraries\libcurl\include&quot;;&quot;$(SolutionDir)Libraries\libutil\include&quot;"
-				PreprocessorDefinitions="NDEBUG;_XBOX;LTCG;CURL_STATICLIB"
+				PreprocessorDefinitions="NDEBUG;_XBOX;LTCG;CURL_STATICLIB;DEBUG_MOUSE;DEBUG_KEYBOARD"
 				StringPooling="TRUE"
 				RuntimeLibrary="0"
 				BufferSecurityCheck="TRUE"
@@ -265,7 +265,7 @@
 				Name="VCCustomBuildTool"/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="xapilib.lib d3d8ltcg.lib d3dx8.lib xgraphicsltcg.lib dsound.lib dmusicltcg.lib xactengltcg.lib xsndtrk.lib xvoice.lib xonlines.lib xboxkrnl.lib libbearssl.lib libcurl.lib"
+				AdditionalDependencies="xapilib.lib d3d8ltcg.lib d3dx8.lib xgraphicsltcg.lib dsound.lib dmusicltcg.lib xactengltcg.lib xsndtrk.lib xvoice.lib xonlines.lib xboxkrnl.lib libbearssl.lib libcurl.lib xkbdd.lib"
 				OutputFile="$(OutDir)/$(ProjectName).exe"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="&quot;$(SolutionDir)Libraries\libbearssl&quot;;&quot;$(SolutionDir)Libraries\libcurl&quot;"
@@ -303,6 +303,9 @@
 			Filter="cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx"
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}">
 			<File
+				RelativePath=".\Context.cpp">
+			</File>
+			<File
 				RelativePath=".\Debug.cpp">
 			</File>
 			<File
@@ -315,10 +318,16 @@
 				RelativePath=".\ImageDownloader.cpp">
 			</File>
 			<File
+				RelativePath=".\InputManager.cpp">
+			</File>
+			<File
 				RelativePath=".\JsonHelper.cpp">
 			</File>
 			<File
 				RelativePath=".\Main.cpp">
+			</File>
+			<File
+				RelativePath=".\Math.cpp">
 			</File>
 			<File
 				RelativePath=".\Network.cpp">
@@ -327,7 +336,7 @@
 				RelativePath=".\parson.c">
 			</File>
 			<File
-				RelativePath=".\Store.cpp">
+				RelativePath=".\StoreManager.cpp">
 			</File>
 			<File
 				RelativePath=".\String.cpp">
@@ -341,34 +350,160 @@
 			<File
 				RelativePath=".\WebManager.cpp">
 			</File>
-			<File
-				RelativePath=".\xbinput.cpp">
-			</File>
-			<File
-				RelativePath=".\xbresource.cpp">
-			</File>
-			<File
-				RelativePath=".\xbutil.cpp">
-			</File>
 			<Filter
 				Name="Media"
 				Filter="">
 				<File
+					RelativePath=".\Media\Background.jpg">
+				</File>
+				<File
+					RelativePath=".\Media\Card.png">
+				</File>
+				<File
+					RelativePath=".\Media\CardHighlight.png">
+				</File>
+				<File
+					RelativePath=".\Media\CategoryHighlight.png">
+				</File>
+				<File
+					RelativePath=".\Media\concept.png">
+				</File>
+				<File
 					RelativePath=".\Media\Cover.jpg">
 				</File>
 				<File
+					RelativePath=".\Media\Footer.png">
+				</File>
+				<File
+					RelativePath=".\Media\Header.png">
+				</File>
+				<File
+					RelativePath=".\Media\NewBadge.png">
+				</File>
+				<File
+					RelativePath=".\Media\scale_controller_icons.py">
+				</File>
+				<File
 					RelativePath=".\Media\Screenshot.jpg">
+				</File>
+				<File
+					RelativePath=".\Media\Sidebar.png">
+				</File>
+				<File
+					RelativePath=".\Media\Store.png">
+				</File>
+				<File
+					RelativePath=".\Media\UpdateBadge.png">
 				</File>
 				<Filter
 					Name="Fonts"
 					Filter="">
 					<File
-						RelativePath=".\Media\Fonts\Arial_16.xpr">
-					</File>
-					<File
 						RelativePath=".\Media\Fonts\Font.sfn">
 					</File>
 				</Filter>
+				<Filter
+					Name="Controller"
+					Filter="">
+					<File
+						RelativePath=".\Media\Controller\Back.png">
+					</File>
+					<File
+						RelativePath=".\Media\Controller\ButtonA.png">
+					</File>
+					<File
+						RelativePath=".\Media\Controller\ButtonB.png">
+					</File>
+					<File
+						RelativePath=".\Media\Controller\ButtonBlack.png">
+					</File>
+					<File
+						RelativePath=".\Media\Controller\ButtonWhite.png">
+					</File>
+					<File
+						RelativePath=".\Media\Controller\ButtonX.png">
+					</File>
+					<File
+						RelativePath=".\Media\Controller\ButtonY.png">
+					</File>
+					<File
+						RelativePath=".\Media\Controller\DpadDown.png">
+					</File>
+					<File
+						RelativePath=".\Media\Controller\DpadLeft.png">
+					</File>
+					<File
+						RelativePath=".\Media\Controller\DpadRight.png">
+					</File>
+					<File
+						RelativePath=".\Media\Controller\DpadUp.png">
+					</File>
+					<File
+						RelativePath=".\Media\Controller\Start.png">
+					</File>
+					<File
+						RelativePath=".\Media\Controller\StickLeft.png">
+					</File>
+					<File
+						RelativePath=".\Media\Controller\StickRight.png">
+					</File>
+					<File
+						RelativePath=".\Media\Controller\TriggerLeft.png">
+					</File>
+					<File
+						RelativePath=".\Media\Controller\TriggerRight.png">
+					</File>
+				</Filter>
+				<Filter
+					Name="Categories"
+					Filter="">
+					<File
+						RelativePath=".\Media\Categories\all apps.png">
+					</File>
+					<File
+						RelativePath=".\Media\Categories\applications.png">
+					</File>
+					<File
+						RelativePath=".\Media\Categories\dashboard.png">
+					</File>
+					<File
+						RelativePath=".\Media\Categories\dlc.png">
+					</File>
+					<File
+						RelativePath=".\Media\Categories\emulators.png">
+					</File>
+					<File
+						RelativePath=".\Media\Categories\games.png">
+					</File>
+					<File
+						RelativePath=".\Media\Categories\media.png">
+					</File>
+					<File
+						RelativePath=".\Media\Categories\other.png">
+					</File>
+					<File
+						RelativePath=".\Media\Categories\saves.png">
+					</File>
+					<File
+						RelativePath=".\Media\Categories\tools.png">
+					</File>
+				</Filter>
+			</Filter>
+			<Filter
+				Name="Scenes"
+				Filter="">
+				<File
+					RelativePath=".\Scenes\SceneManager.cpp">
+				</File>
+				<File
+					RelativePath=".\Scenes\StoreScene.cpp">
+				</File>
+				<File
+					RelativePath=".\Scenes\VersionDetailsScene.cpp">
+				</File>
+				<File
+					RelativePath=".\Scenes\VersionScene.cpp">
+				</File>
 			</Filter>
 		</Filter>
 		<Filter
@@ -376,7 +511,13 @@
 			Filter="h;hpp;hxx;hm;inl;inc;xsd"
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}">
 			<File
+				RelativePath=".\Context.h">
+			</File>
+			<File
 				RelativePath=".\Debug.h">
+			</File>
+			<File
+				RelativePath=".\Defines.h">
 			</File>
 			<File
 				RelativePath=".\Drawing.h">
@@ -388,10 +529,16 @@
 				RelativePath=".\ImageDownloader.h">
 			</File>
 			<File
+				RelativePath=".\InputManager.h">
+			</File>
+			<File
 				RelativePath=".\JsonHelper.h">
 			</File>
 			<File
 				RelativePath=".\Main.h">
+			</File>
+			<File
+				RelativePath=".\Math.h">
 			</File>
 			<File
 				RelativePath=".\Models.h">
@@ -412,7 +559,7 @@
 				RelativePath=".\stb_image.h">
 			</File>
 			<File
-				RelativePath=".\Store.h">
+				RelativePath=".\StoreManager.h">
 			</File>
 			<File
 				RelativePath=".\String.h">
@@ -425,15 +572,6 @@
 			</File>
 			<File
 				RelativePath=".\WebManager.h">
-			</File>
-			<File
-				RelativePath=".\xbinput.h">
-			</File>
-			<File
-				RelativePath=".\xbresource.h">
-			</File>
-			<File
-				RelativePath=".\xbutil.h">
 			</File>
 			<Filter
 				Name="Curl"
@@ -464,6 +602,25 @@
 				</File>
 				<File
 					RelativePath="..\Libraries\libcurl\include\curl\urlapi.h">
+				</File>
+			</Filter>
+			<Filter
+				Name="Scenes"
+				Filter="">
+				<File
+					RelativePath=".\Scenes\Scene.h">
+				</File>
+				<File
+					RelativePath=".\Scenes\SceneManager.h">
+				</File>
+				<File
+					RelativePath=".\Scenes\StoreScene.h">
+				</File>
+				<File
+					RelativePath=".\Scenes\VersionDetailsScene.h">
+				</File>
+				<File
+					RelativePath=".\Scenes\VersionScene.h">
 				</File>
 			</Filter>
 		</Filter>

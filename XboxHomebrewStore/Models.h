@@ -3,7 +3,7 @@
 #include "Main.h"
 #include <vector>
 
-struct AppItem
+typedef struct
 {
     std::string id;
     std::string name;
@@ -11,20 +11,14 @@ struct AppItem
     std::string category;
     std::string description;
     uint32_t state;
-};
+} AppItem;
 
-struct AppsResponse
+typedef struct
 {
     std::vector<AppItem> items;
-    uint32_t page;
-    uint32_t pageSize;
-    uint32_t totalCount;
-    uint32_t totalPages;
-    bool hasNextPage;
-    bool hasPreviousPage;
-};
+} AppsResponse;
 
-struct VersionItem
+typedef struct
 {
     std::string id;
     std::string version;
@@ -33,17 +27,15 @@ struct VersionItem
     std::string changeLog;
     std::string titleId;
     std::string region;
-
-    uint32_t state;
-    std::string install_path;  // Local install path (from user state)
-};
+    //uint32_t state;
+    //std::string install_path;  // Local install path (from user state)
+} VersionItem;
 
 typedef std::vector<VersionItem> VersionsResponse;
 
-struct CategoryItem
-{
-    std::string category;
+typedef struct {
+    std::string name;
     uint32_t count;
-};
+} CategoryItem;
 
 typedef std::vector<CategoryItem> CategoriesResponse;
