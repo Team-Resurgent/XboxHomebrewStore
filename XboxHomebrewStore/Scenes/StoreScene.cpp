@@ -176,6 +176,15 @@ void StoreScene::DrawStoreItem(StoreItem* storeItem, int x, int y, bool selected
     }
 
     Drawing::EndStencil();
+
+    if (storeItem->state == 1)
+    {
+        Drawing::DrawTexturedRect(TextureHelper::GetNewBadge(), 0xFFFFFFFF, x - 4, y - 12, ASSET_BADGE_NEW_WIDTH, ASSET_BADGE_NEW_HEIGHT);
+    }
+    else if (storeItem->state == 2)
+    {
+        Drawing::DrawTexturedRect(TextureHelper::GetNewBadge(), 0xFFFFFFFF, x - 4, y - 12, ASSET_BADGE_UPDATE_WIDTH, ASSET_BADGE_UPDATE_HEIGHT);
+    }
 }
 
 void StoreScene::RenderMainGrid()
