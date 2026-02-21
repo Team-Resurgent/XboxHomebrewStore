@@ -92,7 +92,7 @@ static bool ParseCategoriesResponse(const std::string& raw, CategoriesResponse& 
         if (itemObj)
         {
             CategoryItem cat;
-            cat.category = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "category"));
+            cat.name = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "name"));
             cat.count = JsonHelper::ToUInt32(JsonHelper::GetObjectMember(itemObj, "count"));
             out.push_back(cat);
         }

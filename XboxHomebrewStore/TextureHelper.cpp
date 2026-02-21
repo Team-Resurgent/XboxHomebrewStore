@@ -15,6 +15,8 @@ namespace {
     D3DTexture* mCategoryHighlight = NULL;
     D3DTexture* mCard = NULL;
     D3DTexture* mCardHighlight = NULL;
+    D3DTexture* mNewBadge = NULL;
+    D3DTexture* mUpdateBadge = NULL;
     std::map<std::string, D3DTexture*> mCategoryIcons;
     std::map<std::string, D3DTexture*> mControllerIcons;
     D3DTexture* mScreenshot = NULL;
@@ -38,6 +40,10 @@ bool TextureHelper::Init()
     result &= mCard == NULL;
     mCardHighlight = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "CardHighlight.png"));
     result &= mCardHighlight == NULL;
+    mNewBadge = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "NewBadge.png"));
+    result &= mNewBadge == NULL;
+    mUpdateBadge = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "UpdateBadge.png"));
+    result &= mUpdateBadge == NULL;
     mStore = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "Store.png"));
     result &= mStore == NULL;
 
@@ -174,6 +180,16 @@ D3DTexture* TextureHelper::GetCard()
 D3DTexture* TextureHelper::GetCardHighlight()
 {
     return mCardHighlight;
+}
+
+D3DTexture* TextureHelper::GetNewBadge()
+{
+    return mNewBadge;
+}
+
+D3DTexture* TextureHelper::GetUpdateBadge()
+{
+    return mUpdateBadge;
 }
 
 D3DTexture* TextureHelper::GetCategoryIcon(const std::string& name)

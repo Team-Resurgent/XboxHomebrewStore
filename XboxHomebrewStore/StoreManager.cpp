@@ -8,7 +8,7 @@
 
 namespace {
     uint32_t mCategoryIndex;
-    std::vector<CategoryItem> mCategories;
+    std::vector<StoreCategory> mCategories;
     uint32_t mWindowStoreItemOffset;
     uint32_t mWindowStoreItemCount;
     StoreItem* mWindowStoreItems;
@@ -50,7 +50,7 @@ void StoreManager::SetCategoryIndex(uint32_t categoryIndex)
     RefreshApplications();
 }
 
-CategoryItem* StoreManager::GetCategory(uint32_t categoryIndex) 
+StoreCategory* StoreManager::GetStoreCategory(uint32_t categoryIndex) 
 { 
     return &mCategories[categoryIndex]; 
 }
@@ -62,7 +62,7 @@ uint32_t StoreManager::GetSelectedCategoryTotal()
 
 std::string StoreManager::GetSelectedCategoryName() 
 { 
-    return mCategories[mCategoryIndex].category; 
+    return mCategories[mCategoryIndex].name; 
 }
 
 uint32_t StoreManager::GetWindowStoreItemOffset()
@@ -190,6 +190,7 @@ bool StoreManager::LoadNext()
         dst.name = src.name;
         dst.nameScrollState = src.nameScrollState;
         dst.author = src.author;
+        dst.authorScrollState = src.authorScrollState;
         dst.category = src.category;
         dst.description = src.description;
         dst.state = src.state;
@@ -205,6 +206,7 @@ bool StoreManager::LoadNext()
         dst.name = src.name;
         dst.nameScrollState = src.nameScrollState;
         dst.author = src.author;
+        dst.authorScrollState = src.authorScrollState;
         dst.category = src.category;
         dst.description = src.description;
         dst.state = src.state;
@@ -229,16 +231,17 @@ bool StoreManager::LoadCategories()
         return false;
     }
     
-    CategoryItem allApps;
-    allApps.category = "All Apps";
+    StoreCategory allApps;
+    allApps.name = "All Apps";
     allApps.count = 0;
 
     for (uint32_t i = 0; i < categoriesResponse.size(); i++)
     {
-        CategoryItem item;
-        item.category = categoriesResponse[i].category;
-        item.count = categoriesResponse[i].count;
-        mCategories.push_back(item);
+        StoreCategory storeCategory;
+        memset(&storeCategory, 0, sizeof(StoreCategory));
+        storeCategory.name = categoriesResponse[i].name;
+        storeCategory.count = categoriesResponse[i].count;
+        mCategories.push_back(storeCategory);
 
         allApps.count += categoriesResponse[i].count;
     }
@@ -249,7 +252,7 @@ bool StoreManager::LoadCategories()
 
 bool StoreManager::LoadApplications(void* dest, uint32_t offset, uint32_t count, uint32_t* loadedCount)
 {
-    std::string categoryFilter = mCategoryIndex == 0 ? "" : mCategories[mCategoryIndex].category;
+    std::string categoryFilter = mCategoryIndex == 0 ? "" : mCategories[mCategoryIndex].name;
 
     AppsResponse response;
     if (!WebManager::TryGetApps(response, offset, count, categoryFilter, ""))

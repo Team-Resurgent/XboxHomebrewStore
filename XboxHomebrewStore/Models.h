@@ -34,7 +34,7 @@ typedef struct
 typedef std::vector<VersionItem> VersionsResponse;
 
 typedef struct {
-    std::string category;
+    std::string name;
     uint32_t count;
 } CategoryItem;
 

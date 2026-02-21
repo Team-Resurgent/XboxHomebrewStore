@@ -16,6 +16,8 @@ public:
     static D3DTexture* GetCategoryHighlight();
     static D3DTexture* GetCard();
     static D3DTexture* GetCardHighlight();
+    static D3DTexture* GetNewBadge();
+    static D3DTexture* GetUpdateBadge();
     static D3DTexture* GetStore();
     static D3DTexture* GetCategoryIcon(const std::string& name);
     static D3DTexture* GetControllerIcon(const std::string& name);

@@ -10,6 +10,7 @@ struct StoreItem
     std::string name;
     ScrollState nameScrollState;
     std::string author;
+    ScrollState authorScrollState;
     std::string category;
     std::string description;
     uint32_t state;
@@ -17,6 +18,12 @@ struct StoreItem
     D3DTexture* screenshot;
 };
 
+struct StoreCategory
+{
+    std::string name;
+    ScrollState nameScrollState;
+    uint32_t count;
+};
 
 class StoreManager
 {
@@ -25,7 +32,7 @@ public:
     static uint32_t GetCategoryCount();
     static uint32_t GetCategoryIndex();
     static void SetCategoryIndex(uint32_t categoryIndex);
-    static CategoryItem* GetCategory(uint32_t categoryIndex);
+    static StoreCategory* GetStoreCategory(uint32_t categoryIndex);
     static uint32_t GetSelectedCategoryTotal();
     static std::string GetSelectedCategoryName();
     static uint32_t GetWindowStoreItemOffset();

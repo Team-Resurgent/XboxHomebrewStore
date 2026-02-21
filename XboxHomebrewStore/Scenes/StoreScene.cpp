@@ -78,11 +78,31 @@ void StoreScene::RenderCategorySidebar()
     Drawing::DrawTexturedRect(TextureHelper::GetSidebar(), 0xffffffff, 0, ASSET_SIDEBAR_Y, ASSET_SIDEBAR_WIDTH, sidebarHeight);
 
     int32_t y = ASSET_SIDEBAR_Y + 30;
-
     uint32_t categoryCount = StoreManager::GetCategoryCount();
+
+    Drawing::BeginStencil(48.0f, (float)ASSET_SIDEBAR_Y, ASSET_SIDEBAR_WIDTH - 64.0f, (float)sidebarHeight);
     for (uint32_t i = 0; i < categoryCount; i++)
     {
-        CategoryItem* categoryItem = StoreManager::GetCategory(i);
+        StoreCategory* storeCategory = StoreManager::GetStoreCategory(i);
+
+        bool highlighted = i == mHighlightedCategoryIndex;
+        bool focused = mSideBarFocused && highlighted;
+
+        if (focused == true) {
+            Font::DrawTextScrolling(FONT_NORMAL, storeCategory->name, COLOR_WHITE, 48, y, ASSET_SIDEBAR_WIDTH - 64, &storeCategory->nameScrollState);
+        } else {
+            Font::DrawText(FONT_NORMAL, storeCategory->name, COLOR_WHITE, 48, y);
+        }
+
+        y += 44;
+    }
+    Drawing::EndStencil();
+
+    y = ASSET_SIDEBAR_Y + 30;
+
+    for (uint32_t i = 0; i < categoryCount; i++)
+    {
+        StoreCategory* storeCategory = StoreManager::GetStoreCategory(i);
 
         bool highlighted = i == mHighlightedCategoryIndex;
         bool focused = mSideBarFocused && highlighted;
@@ -94,14 +114,13 @@ void StoreScene::RenderCategorySidebar()
         bool activated = i == StoreManager::GetCategoryIndex();
         if (mSideBarFocused == true)
         {
-            Drawing::DrawTexturedRect(TextureHelper::GetCategoryIcon(categoryItem->category), activated ? COLOR_FOCUS_HIGHLIGHT : 0xffffffff, 16, y - 2, ASSET_CATEGORY_ICON_WIDTH, ASSET_CATEGORY_ICON_HEIGHT);
+            Drawing::DrawTexturedRect(TextureHelper::GetCategoryIcon(storeCategory->name), activated ? COLOR_FOCUS_HIGHLIGHT : 0xffffffff, 16, y - 2, ASSET_CATEGORY_ICON_WIDTH, ASSET_CATEGORY_ICON_HEIGHT);
         }
         else
         {
-            Drawing::DrawTexturedRect(TextureHelper::GetCategoryIcon(categoryItem->category), activated ? COLOR_HIGHLIGHT : 0xffffffff, 16, y - 2, ASSET_CATEGORY_ICON_WIDTH, ASSET_CATEGORY_ICON_HEIGHT);
+            Drawing::DrawTexturedRect(TextureHelper::GetCategoryIcon(storeCategory->name), activated ? COLOR_HIGHLIGHT : 0xffffffff, 16, y - 2, ASSET_CATEGORY_ICON_WIDTH, ASSET_CATEGORY_ICON_HEIGHT);
         }
 
-        Font::DrawText(FONT_NORMAL, categoryItem->category.c_str(), COLOR_WHITE, 48, y);
         y += 44;
     }
 }
@@ -146,15 +165,12 @@ void StoreScene::DrawStoreItem(StoreItem* storeItem, int x, int y, bool selected
 
     if (selected && !mSideBarFocused)
     {
-        // Selected tile: scroll the full name, show pre-truncated author
         int textMaxWidth = ASSET_CARD_WIDTH - 16;
         Font::DrawTextScrolling(FONT_NORMAL, storeItem->name, COLOR_WHITE, textX, nameY, textMaxWidth, &storeItem->nameScrollState);
-        Font::DrawText(FONT_NORMAL, storeItem->author, COLOR_TEXT_GRAY, textX, authorY);
+        Font::DrawTextScrolling(FONT_NORMAL, storeItem->author, COLOR_TEXT_GRAY, textX, authorY, textMaxWidth, &storeItem->authorScrollState);
     }
     else
     {
-        // Unselected tiles: plain DrawText with pre-truncated strings - zero extra CPU cost
-        storeItem->nameScrollState.active = false;
         Font::DrawText(FONT_NORMAL, storeItem->name, COLOR_WHITE, textX, nameY);
         Font::DrawText(FONT_NORMAL, storeItem->author, COLOR_TEXT_GRAY, textX, authorY);
     }
@@ -292,7 +308,7 @@ void StoreScene::HandleInput()
 
     // UI_MAIN_GRID
     int numCategories = StoreManager::GetCategoryCount();
-    int count = StoreManager::GetCategory(0)->count;
+    int count = StoreManager::GetStoreCategory(0)->count;
     int totalSlots = m_nGridCols * m_nGridRows;
     int baseIndex = m_nScrollOffset;
     int visibleCount = totalSlots;

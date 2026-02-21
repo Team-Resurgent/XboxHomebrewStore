@@ -381,6 +381,9 @@
 					RelativePath=".\Media\Header.png">
 				</File>
 				<File
+					RelativePath=".\Media\NewBadge.png">
+				</File>
+				<File
 					RelativePath=".\Media\scale_controller_icons.py">
 				</File>
 				<File
@@ -391,6 +394,9 @@
 				</File>
 				<File
 					RelativePath=".\Media\Store.png">
+				</File>
+				<File
+					RelativePath=".\Media\UpdateBadge.png">
 				</File>
 				<Filter
 					Name="Fonts"
