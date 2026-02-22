@@ -161,7 +161,7 @@ bool StoreManager::LoadNext()
     int32_t newWindowStoreItemOffset = mWindowStoreItemOffset + Context::GetGridCols();
 
     int32_t loadedCount = 0;
-    if (LoadApplications(mTempStoreItems, newWindowStoreItemOffset + Context::GetGridCols(), Context::GetGridCols(), &loadedCount) == false)
+    if (LoadApplications(mTempStoreItems, newWindowStoreItemOffset, Context::GetGridCols(), &loadedCount) == false)
     {
         return false;
     }
