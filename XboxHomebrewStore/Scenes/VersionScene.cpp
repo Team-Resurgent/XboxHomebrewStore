@@ -21,7 +21,7 @@ VersionScene::VersionScene(const StoreVersions& storeVersions)
 
 void VersionScene::Render()
 {
-    Drawing::DrawTexturedRect(TextureHelper::GetBackground(), 0xFFFFFFFF, 0, 0, Context::GetScreenWidth(), Context::GetScreenHeight());
+    Drawing::DrawTexturedRect(TextureHelper::GetBackground(), 0xFFFFFFFF, 0.0f, 0, Context::GetScreenWidth(), Context::GetScreenHeight());
     
     RenderHeader();
     RenderFooter();
@@ -38,23 +38,23 @@ void VersionScene::RenderHeader()
 
 void VersionScene::RenderFooter()
 {
-    int32_t footerY = Context::GetScreenHeight() - ASSET_FOOTER_HEIGHT;
-    Drawing::DrawTexturedRect(TextureHelper::GetFooter(), 0xffffffff, 0, footerY, Context::GetScreenWidth(), ASSET_FOOTER_HEIGHT);
+    float footerY = Context::GetScreenHeight() - ASSET_FOOTER_HEIGHT;
+    Drawing::DrawTexturedRect(TextureHelper::GetFooter(), 0xffffffff, 0.0f, footerY, Context::GetScreenWidth(), ASSET_FOOTER_HEIGHT);
 
-    Drawing::DrawTexturedRect(TextureHelper::GetControllerIcon("StickLeft"), 0xffffffff, 16, footerY + 10, ASSET_CONTROLLER_ICON_WIDTH, ASSET_CONTROLLER_ICON_HEIGHT);
+    Drawing::DrawTexturedRect(TextureHelper::GetControllerIcon("StickLeft"), 0xffffffff, 16.0f, footerY + 10, ASSET_CONTROLLER_ICON_WIDTH, ASSET_CONTROLLER_ICON_HEIGHT);
     Font::DrawText(FONT_NORMAL, "Hide A: Details B: Exit LT/RT: Category D-pad: Move", COLOR_WHITE, 52, footerY + 12);
 }
 
 void VersionScene::RenderVersionSidebar()
 {
-    int32_t sidebarHeight = (Context::GetScreenHeight() - ASSET_SIDEBAR_Y) - ASSET_FOOTER_HEIGHT;
+    float sidebarHeight = (Context::GetScreenHeight() - ASSET_SIDEBAR_Y) - ASSET_FOOTER_HEIGHT;
     Drawing::DrawTexturedRect(TextureHelper::GetSidebar(), 0xffffffff, 0, ASSET_SIDEBAR_Y, ASSET_SIDEBAR_WIDTH, sidebarHeight);
 
     Font::DrawText(FONT_NORMAL, "Versions...", COLOR_WHITE, 16, ASSET_SIDEBAR_Y + 16);
 
     int32_t versionCount = mStoreVersions.versions.size();
 
-    int32_t maxItems = (sidebarHeight - 64) / 44;
+    int32_t maxItems = (int32_t)(sidebarHeight - 64) / 44;
     int32_t start = 0;
     if (versionCount >= maxItems) {
         start = Math::ClampInt32(mHighlightedVersionIndex - (maxItems / 2), 0, versionCount - maxItems);
@@ -64,7 +64,7 @@ void VersionScene::RenderVersionSidebar()
 
     for (int32_t pass = 0; pass < 2; pass++) 
     {
-        int32_t y = ASSET_SIDEBAR_Y + 64;
+        float y = ASSET_SIDEBAR_Y + 64.0f;
 
         if (pass == 1) {
             Drawing::BeginStencil(16, (float)ASSET_SIDEBAR_Y, ASSET_SIDEBAR_WIDTH - 32.0f, (float)sidebarHeight);
@@ -83,13 +83,13 @@ void VersionScene::RenderVersionSidebar()
             {
                 if (highlighted || focused)
                 {
-                    Drawing::DrawTexturedRect(TextureHelper::GetCategoryHighlight(), focused ? COLOR_FOCUS_HIGHLIGHT : COLOR_HIGHLIGHT, 0, y - 32, ASSET_SIDEBAR_HIGHLIGHT_WIDTH, ASSET_SIDEBAR_HIGHLIGHT_HEIGHT);
+                    Drawing::DrawTexturedRect(TextureHelper::GetCategoryHighlight(), focused ? COLOR_FOCUS_HIGHLIGHT : COLOR_HIGHLIGHT, 0.0f, y - 32.0f, ASSET_SIDEBAR_HIGHLIGHT_WIDTH, ASSET_SIDEBAR_HIGHLIGHT_HEIGHT);
                 }
             }
             else
             {
                 if (focused == true) {
-                    Font::DrawTextScrolling(FONT_NORMAL, storeVersion->version, COLOR_WHITE, 16, y, ASSET_SIDEBAR_WIDTH - 64, &storeVersion->versionScrollState);
+                    Font::DrawTextScrolling(FONT_NORMAL, storeVersion->version, COLOR_WHITE, 16.0f, y, ASSET_SIDEBAR_WIDTH - 64.0f, &storeVersion->versionScrollState);
                 } else {
                     Font::DrawText(FONT_NORMAL, storeVersion->version, COLOR_WHITE, 16, y);
                 }
@@ -106,8 +106,8 @@ void VersionScene::RenderVersionSidebar()
 
 void VersionScene::RenderListView()
 {
-    int gridX = ASSET_SIDEBAR_WIDTH;
-    int gridY = ASSET_SIDEBAR_Y;
+    float gridX = ASSET_SIDEBAR_WIDTH;
+    float gridY = ASSET_SIDEBAR_Y;
 
     if (mStoreVersions.screenshot ) {
         Drawing::DrawTexturedRect(mStoreVersions.screenshot, 0xFFFFFFFF, (int)200, gridY, ASSET_SCREENSHOT_WIDTH, ASSET_SCREENSHOT_HEIGHT);
@@ -119,35 +119,35 @@ void VersionScene::RenderListView()
 
     gridY += ASSET_SCREENSHOT_HEIGHT + 16;
 
-    Font::DrawText(FONT_NORMAL, "Name:", COLOR_WHITE, 200, gridY);
-    Font::DrawText(FONT_NORMAL, mStoreVersions.name, COLOR_TEXT_GRAY, 350, gridY);
+    Font::DrawText(FONT_NORMAL, "Name:", COLOR_WHITE, 200.0f, gridY);
+    Font::DrawText(FONT_NORMAL, mStoreVersions.name, COLOR_TEXT_GRAY, 350.0f, gridY);
     gridY += 30;
-    Font::DrawText(FONT_NORMAL, "Author:", COLOR_WHITE, 200, gridY);
-    Font::DrawText(FONT_NORMAL, mStoreVersions.author, COLOR_TEXT_GRAY, 350, gridY);
+    Font::DrawText(FONT_NORMAL, "Author:", COLOR_WHITE, 200.0f, gridY);
+    Font::DrawText(FONT_NORMAL, mStoreVersions.author, COLOR_TEXT_GRAY, 350.0f, gridY);
     gridY += 30;
-    Font::DrawText(FONT_NORMAL, "Description:", COLOR_WHITE, 200, gridY);
-    Font::DrawText(FONT_NORMAL, mStoreVersions.description, COLOR_TEXT_GRAY, 350, gridY);
+    Font::DrawText(FONT_NORMAL, "Description:", COLOR_WHITE, 200.0f, gridY);
+    Font::DrawText(FONT_NORMAL, mStoreVersions.description, COLOR_TEXT_GRAY, 350.0f, gridY);
     gridY += 30;
 
     StoreVersion* storeVersion = &mStoreVersions.versions[mHighlightedVersionIndex];
 
-    Font::DrawText(FONT_NORMAL, "Version:", COLOR_WHITE, 200, gridY);
-    Font::DrawText(FONT_NORMAL, storeVersion->version, COLOR_TEXT_GRAY, 350, gridY);
+    Font::DrawText(FONT_NORMAL, "Version:", COLOR_WHITE, 200.0f, gridY);
+    Font::DrawText(FONT_NORMAL, storeVersion->version, COLOR_TEXT_GRAY, 350.0f, gridY);
     gridY += 30;
-    Font::DrawText(FONT_NORMAL, "Title ID:", COLOR_WHITE, 200, gridY);
-    Font::DrawText(FONT_NORMAL, storeVersion->titleId, COLOR_TEXT_GRAY, 350, gridY);
+    Font::DrawText(FONT_NORMAL, "Title ID:", COLOR_WHITE, 200.0f, gridY);
+    Font::DrawText(FONT_NORMAL, storeVersion->titleId, COLOR_TEXT_GRAY, 350.0f, gridY);
     gridY += 30;
-    Font::DrawText(FONT_NORMAL, "Release Date:", COLOR_WHITE, 200, gridY);
-    Font::DrawText(FONT_NORMAL, storeVersion->releaseDate, COLOR_TEXT_GRAY, 350, gridY);
+    Font::DrawText(FONT_NORMAL, "Release Date:", COLOR_WHITE, 200.0f, gridY);
+    Font::DrawText(FONT_NORMAL, storeVersion->releaseDate, COLOR_TEXT_GRAY, 350.0f, gridY);
     gridY += 30;
-    Font::DrawText(FONT_NORMAL, "Region:", COLOR_WHITE, 200, gridY);
-    Font::DrawText(FONT_NORMAL, storeVersion->region, COLOR_TEXT_GRAY, 350, gridY);
+    Font::DrawText(FONT_NORMAL, "Region:", COLOR_WHITE, 200.0f, gridY);
+    Font::DrawText(FONT_NORMAL, storeVersion->region, COLOR_TEXT_GRAY, 350.0f, gridY);
     gridY += 30;
-    Font::DrawText(FONT_NORMAL, "Change Log:", COLOR_WHITE, 200, gridY);
-    Font::DrawText(FONT_NORMAL, storeVersion->changeLog, COLOR_TEXT_GRAY, 350, gridY);
+    Font::DrawText(FONT_NORMAL, "Change Log:", COLOR_WHITE, 200.0f, gridY);
+    Font::DrawText(FONT_NORMAL, storeVersion->changeLog, COLOR_TEXT_GRAY, 350.0f, gridY);
     gridY += 30;
-    Font::DrawText(FONT_NORMAL, "Size:", COLOR_WHITE, 200, gridY);
-    Font::DrawText(FONT_NORMAL, String::FormatSize(storeVersion->size), COLOR_TEXT_GRAY, 350, gridY);
+    Font::DrawText(FONT_NORMAL, "Size:", COLOR_WHITE, 200.0f, gridY);
+    Font::DrawText(FONT_NORMAL, String::FormatSize(storeVersion->size), COLOR_TEXT_GRAY, 350.0f, gridY);
 }
 
 void VersionScene::Update()

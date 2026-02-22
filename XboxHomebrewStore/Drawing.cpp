@@ -252,13 +252,13 @@ bool Drawing::TryGenerateBitmapFont(void* context, const std::string fontName, i
     return result;
 }
 
-void Drawing::DrawFont(BitmapFont* font, const std::string message, uint32_t color, int x, int y)
+void Drawing::DrawFont(BitmapFont* font, const std::string message, uint32_t color, float x, float y)
 {
     static TEXVERTEX batchBuf[DRAW_BATCH_MAX_VERTS];
     UINT vertexCount = 0;
 
-    int xPos = x;
-    int yPos = y;
+    float xPos = x;
+    float yPos = y;
     const float invW = 1.0f / (float)font->image.width;
     const float invH = 1.0f / (float)font->image.height;
 
@@ -292,8 +292,8 @@ void Drawing::DrawFont(BitmapFont* font, const std::string message, uint32_t col
         float uvH = rect.height * invH;
         float u0 = uvX, v0 = uvY, u1 = uvX + uvW, v1 = uvY + uvH;
 
-        float px = (float)xPos - 0.5f;
-        float py = (float)yPos - 0.5f;
+        float px = xPos - 0.5f;
+        float py = yPos - 0.5f;
         float fw = (float)rect.width;
         float fh = (float)rect.height;
 
@@ -316,14 +316,14 @@ void Drawing::DrawFont(BitmapFont* font, const std::string message, uint32_t col
     RestoreRenderState();
 }
 
-void Drawing::DrawFilledRect(uint32_t color, int x, int y, int width, int height)
+void Drawing::DrawFilledRect(uint32_t color, float x, float y, float width, float height)
 {
     VERTEX vertices[4];
 
-    float px = (float)x;
-    float py = (float)y;
-    float fw = (float)width;
-    float fh = (float)height;
+    float px = x;
+    float py = y;
+    float fw = width;
+    float fh = height;
 
     vertices[0].x = px;      vertices[0].y = py;      vertices[0].z = 0.5f; vertices[0].rhw = 1.0f; vertices[0].diffuse = color;
     vertices[1].x = px + fw; vertices[1].y = py;      vertices[1].z = 0.5f; vertices[1].rhw = 1.0f; vertices[1].diffuse = color;
@@ -337,14 +337,14 @@ void Drawing::DrawFilledRect(uint32_t color, int x, int y, int width, int height
     RestoreRenderState();
 }
 
-void Drawing::DrawTexturedRect(D3DTexture* texture, uint32_t diffuse, int x, int y, int width, int height)
+void Drawing::DrawTexturedRect(D3DTexture* texture, uint32_t diffuse, float x, float y, float width, float height)
 {
     TEXVERTEX vertices[4];
 
-    float px = (float)x;
-    float py = (float)y;
-    float fw = (float)width;
-    float fh = (float)height;
+    float px = x;
+    float py = y;
+    float fw = width;
+    float fh = height;
 
     vertices[0].x = px;      vertices[0].y = py;      vertices[0].z = 0.5f; vertices[0].rhw = 1.0f; vertices[0].diffuse = diffuse; vertices[0].u = 0.0f; vertices[0].v = 0.0f;
     vertices[1].x = px + fw; vertices[1].y = py;      vertices[1].z = 0.5f; vertices[1].rhw = 1.0f; vertices[1].diffuse = diffuse; vertices[1].u = 1.0f; vertices[1].v = 0.0f;
@@ -361,18 +361,18 @@ void Drawing::DrawTexturedRect(D3DTexture* texture, uint32_t diffuse, int x, int
     RestoreRenderState();
 }
 
-void Drawing::DrawNinePatch(D3DTexture* texture, uint32_t diffuse, int x, int y, int width, int height, int cornerWidthPx, int cornerHeightPx, int contentWidthPx, int contentHeightPx)
+void Drawing::DrawNinePatch(D3DTexture* texture, uint32_t diffuse, float x, float y, float width, float height, float cornerWidthPx, float cornerHeightPx, float contentWidthPx, float contentHeightPx)
 {
     D3DSURFACE_DESC desc;
     if (FAILED(texture->GetLevelDesc(0, &desc))) return;
 
     const float surfaceW = (float)desc.Width;
     const float surfaceH = (float)desc.Height;
-    const int contentW = contentWidthPx > 0 ? contentWidthPx : (int)surfaceW;
-    const int contentH = contentHeightPx > 0 ? contentHeightPx : (int)surfaceH;
+    const float contentW = contentWidthPx > 0 ? contentWidthPx : (int)surfaceW;
+    const float contentH = contentHeightPx > 0 ? contentHeightPx : (int)surfaceH;
 
-    int cw = cornerWidthPx;
-    int ch = cornerHeightPx;
+    float cw = cornerWidthPx;
+    float ch = cornerHeightPx;
     if (cw > contentW / 2) cw = contentW / 2;
     if (ch > contentH / 2) ch = contentH / 2;
     if (cw > width / 2) cw = width / 2;

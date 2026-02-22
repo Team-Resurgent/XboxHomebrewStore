@@ -17,9 +17,9 @@ namespace
         return (font == FONT_NORMAL) ? &mNormalMainFont : &mLargeMainFont;
     }
 
-    int MeasureInternal(BitmapFont* bitmapFont, const std::string& message)
+    float MeasureInternal(BitmapFont* bitmapFont, const std::string& message)
     {
-        int width = 0;
+        float width = 0;
         const char* p = message.c_str();
         bool first = true;
         while (*p)
@@ -49,12 +49,12 @@ void Font::Init()
     }
 }
 
-int Font::MeasureText(const FontType font, const std::string& message)
+float Font::MeasureText(const FontType font, const std::string& message)
 {
     return MeasureInternal(GetBitmapFont(font), message);
 }
 
-std::string Font::TruncateText(const FontType font, const std::string& message, int maxWidth)
+std::string Font::TruncateText(const FontType font, const std::string& message, float maxWidth)
 {
     BitmapFont* bitmapFont = GetBitmapFont(font);
 
@@ -63,11 +63,11 @@ std::string Font::TruncateText(const FontType font, const std::string& message, 
     }
 
     const std::string ellipsis = "...";
-    int ellipsisWidth = MeasureInternal(bitmapFont, ellipsis);
-    int budget = maxWidth - ellipsisWidth;
+    float ellipsisWidth = MeasureInternal(bitmapFont, ellipsis);
+    float budget = maxWidth - ellipsisWidth;
 
     std::string truncated;
-    int width = 0;
+    float width = 0;
     const char* p = message.c_str();
     while (*p)
     {
@@ -93,12 +93,12 @@ std::string Font::TruncateText(const FontType font, const std::string& message, 
     return truncated + ellipsis;
 }
 
-void Font::DrawText(const FontType font, const std::string message, uint32_t color, int x, int y)
+void Font::DrawText(const FontType font, const std::string message, uint32_t color, float x, float y)
 {
     Drawing::DrawFont(GetBitmapFont(font), message, color, x, y);
 }
 
-void Font::DrawTextScrolling(const FontType font, const std::string& message, uint32_t color, int x, int y, int maxWidth, ScrollState* scrollState)
+void Font::DrawTextScrolling(const FontType font, const std::string& message, uint32_t color, float x, float y, float maxWidth, ScrollState* scrollState)
 {
     BitmapFont* bitmapFont = GetBitmapFont(font);
 
@@ -138,11 +138,11 @@ void Font::DrawTextScrolling(const FontType font, const std::string& message, ui
         scrollState->pauseTimer = SCROLL_PAUSE;
     }
 
-    int offsetPx = (int)scrollState->offset;
+    float offsetPx = scrollState->offset;
 
     Drawing::DrawFont(bitmapFont, message, color, x - offsetPx, y);
 
-    int secondOffset = offsetPx - (scrollState->textWidth + SCROLL_GAP);
+    float secondOffset = offsetPx - (scrollState->textWidth + SCROLL_GAP);
     if (secondOffset < maxWidth) {
         Drawing::DrawFont(bitmapFont, message, color, x - secondOffset, y);
     }

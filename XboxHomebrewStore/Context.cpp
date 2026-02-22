@@ -39,26 +39,26 @@ SceneManager* Context::GetSceneManager()
     return s_pSceneManager;
 }
 
-int Context::GetScreenWidth()
+float Context::GetScreenWidth()
 {
-    return s_nScreenWidth;
+    return (float)s_nScreenWidth;
 }
 
-int Context::GetScreenHeight()
+float Context::GetScreenHeight()
 {
-    return s_nScreenHeight;
+    return (float)s_nScreenHeight;
 }
 
 int Context::GetGridCols()
 {
-    int gridWidth = GetScreenWidth() - ASSET_SIDEBAR_WIDTH; 
-    return (gridWidth + CARD_GAP) / (ASSET_CARD_WIDTH + CARD_GAP);
+    float gridWidth = GetScreenWidth() - ASSET_SIDEBAR_WIDTH; 
+    return (int)((gridWidth + CARD_GAP) / (ASSET_CARD_WIDTH + CARD_GAP));
 }
 
 int Context::GetGridRows()
 {
-    int gridHeight = GetScreenHeight() - (ASSET_HEADER_HEIGHT + ASSET_FOOTER_HEIGHT);
-    return (gridHeight + CARD_GAP) / (ASSET_CARD_HEIGHT + CARD_GAP);
+    float gridHeight = GetScreenHeight() - (ASSET_HEADER_HEIGHT + ASSET_FOOTER_HEIGHT);
+    return (int)((gridHeight + CARD_GAP) / (ASSET_CARD_HEIGHT + CARD_GAP));
 }
 
 int Context::GetGridCells()

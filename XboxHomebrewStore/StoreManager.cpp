@@ -226,7 +226,7 @@ bool StoreManager::TryGetStoreVersions(int32_t storeItemIndex, StoreVersions* st
     storeVersions->author = storeItem->author;
     storeVersions->description = storeItem->description;
 
-    for (int32_t i = 0; i < versionsResponse.size(); i++)
+    for (int32_t i = 0; i < (int32_t)versionsResponse.size(); i++)
     {
         VersionItem* versionItem = &versionsResponse[i];
 
@@ -261,7 +261,7 @@ bool StoreManager::LoadCategories()
     allApps.name = "All Apps";
     allApps.count = 0;
 
-    for (int32_t i = 0; i < categoriesResponse.size(); i++)
+    for (int32_t i = 0; i < (int32_t)categoriesResponse.size(); i++)
     {
         StoreCategory storeCategory;
         memset(&storeCategory, 0, sizeof(StoreCategory));
@@ -289,7 +289,7 @@ bool StoreManager::LoadApplications(void* dest, int32_t offset, int32_t count, i
     *loadedCount = response.items.size();
 
     StoreItem* storeItems = (StoreItem*)dest;
-    for (int32_t i = 0; i < response.items.size(); i++ )
+    for (int32_t i = 0; i < (int32_t)response.items.size(); i++ )
     {
         memset(&storeItems[i], 0, sizeof(StoreItem)); 
 

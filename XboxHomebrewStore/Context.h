@@ -14,8 +14,8 @@ public:
     static void SetSceneManager( SceneManager* pMgr );
     static void SetScreenSize( int width, int height );
     static SceneManager* GetSceneManager();
-    static int GetScreenWidth();
-    static int GetScreenHeight();
+    static float GetScreenWidth();
+    static float GetScreenHeight();
     static int GetGridCols();
     static int GetGridRows();
     static int GetGridCells();

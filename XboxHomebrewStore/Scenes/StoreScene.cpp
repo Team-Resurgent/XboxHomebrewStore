@@ -34,23 +34,23 @@ void StoreScene::RenderHeader()
 
 void StoreScene::RenderFooter()
 {
-    int32_t footerY = Context::GetScreenHeight() - ASSET_FOOTER_HEIGHT;
+    float footerY = Context::GetScreenHeight() - ASSET_FOOTER_HEIGHT;
     Drawing::DrawTexturedRect(TextureHelper::GetFooter(), 0xffffffff, 0, footerY, Context::GetScreenWidth(), ASSET_FOOTER_HEIGHT);
 
-    Drawing::DrawTexturedRect(TextureHelper::GetControllerIcon("StickLeft"), 0xffffffff, 16, footerY + 10, ASSET_CONTROLLER_ICON_WIDTH, ASSET_CONTROLLER_ICON_HEIGHT);
+    Drawing::DrawTexturedRect(TextureHelper::GetControllerIcon("StickLeft"), 0xffffffff, 16.0f, footerY + 10.0f, ASSET_CONTROLLER_ICON_WIDTH, ASSET_CONTROLLER_ICON_HEIGHT);
     Font::DrawText(FONT_NORMAL, "Hide A: Details B: Exit LT/RT: Category D-pad: Move", COLOR_WHITE, 52, footerY + 12);
 }
 
 void StoreScene::RenderCategorySidebar()
 {
-    int32_t sidebarHeight = (Context::GetScreenHeight() - ASSET_SIDEBAR_Y) - ASSET_FOOTER_HEIGHT;
+    float sidebarHeight = (Context::GetScreenHeight() - ASSET_SIDEBAR_Y) - ASSET_FOOTER_HEIGHT;
     Drawing::DrawTexturedRect(TextureHelper::GetSidebar(), 0xffffffff, 0, ASSET_SIDEBAR_Y, ASSET_SIDEBAR_WIDTH, sidebarHeight);
 
     Font::DrawText(FONT_NORMAL, "Categories...", COLOR_WHITE, 16, ASSET_SIDEBAR_Y + 16);
 
     int32_t categoryCount = StoreManager::GetCategoryCount();
 
-    int32_t maxItems = (sidebarHeight - 64) / 44;
+    int32_t maxItems = (int32_t)(sidebarHeight - 64) / 44;
     int32_t start = 0;
     if (categoryCount >= maxItems) {
         start = Math::ClampInt32(mHighlightedCategoryIndex - (maxItems / 2), 0, categoryCount - maxItems);
@@ -60,7 +60,7 @@ void StoreScene::RenderCategorySidebar()
 
     for (int32_t pass = 0; pass < 2; pass++) 
     {
-        int32_t y = ASSET_SIDEBAR_Y + 64;
+        float y = ASSET_SIDEBAR_Y + 64;
 
         if (pass == 1) {
             Drawing::BeginStencil(48.0f, (float)ASSET_SIDEBAR_Y, ASSET_SIDEBAR_WIDTH - 64.0f, (float)sidebarHeight);
@@ -110,7 +110,7 @@ void StoreScene::RenderCategorySidebar()
     }
 }
 
-void StoreScene::DrawStoreItem(StoreItem* storeItem, int x, int y, bool selected, int slotIndex)
+void StoreScene::DrawStoreItem(StoreItem* storeItem, float x, float y, bool selected, int slotIndex)
 {
     Drawing::DrawTexturedRect(TextureHelper::GetCard(), 0xFFFFFFFF, x, y, ASSET_CARD_WIDTH, ASSET_CARD_HEIGHT);
 
@@ -120,10 +120,10 @@ void StoreScene::DrawStoreItem(StoreItem* storeItem, int x, int y, bool selected
 
     //144/204
 
-    int iconW = ASSET_CARD_WIDTH - 18;
-    int iconH = ASSET_CARD_HEIGHT - 62;
-    int iconX = x + 9;
-    int iconY = y + 9;
+    float iconW = ASSET_CARD_WIDTH - 18;
+    float iconH = ASSET_CARD_HEIGHT - 62;
+    float iconX = x + 9;
+    float iconY = y + 9;
 
     D3DTexture* cover = storeItem->cover;
     if (cover == NULL) 
@@ -141,15 +141,15 @@ void StoreScene::DrawStoreItem(StoreItem* storeItem, int x, int y, bool selected
     }
     Drawing::DrawTexturedRect(cover, 0xFFFFFFFF, iconX, iconY, iconW, iconH);
 
-    int textX   = x + 8;
-    int nameY   = y + iconH + 14;
-    int authorY = y + iconH + 32;
+    float textX   = x + 8;
+    float nameY   = y + iconH + 14;
+    float authorY = y + iconH + 32;
 
     Drawing::BeginStencil((float)x + 8, (float)(y + iconH), (float)ASSET_CARD_WIDTH - 16, (float)62);
 
     if (selected && !mSideBarFocused)
     {
-        int textMaxWidth = ASSET_CARD_WIDTH - 16;
+        float textMaxWidth = ASSET_CARD_WIDTH - 16;
         Font::DrawTextScrolling(FONT_NORMAL, storeItem->name, COLOR_WHITE, textX, nameY, textMaxWidth, &storeItem->nameScrollState);
         Font::DrawTextScrolling(FONT_NORMAL, storeItem->author, COLOR_TEXT_GRAY, textX, authorY, textMaxWidth, &storeItem->authorScrollState);
     }
@@ -173,10 +173,10 @@ void StoreScene::DrawStoreItem(StoreItem* storeItem, int x, int y, bool selected
 
 void StoreScene::RenderMainGrid()
 {
-    int gridX = ASSET_SIDEBAR_WIDTH;
-    int gridY = ASSET_HEADER_HEIGHT;
-    int gridWidth = Context::GetScreenWidth() - ASSET_SIDEBAR_WIDTH; 
-    int gridHeight = Context::GetScreenHeight() - (ASSET_HEADER_HEIGHT + ASSET_FOOTER_HEIGHT);
+    float gridX = ASSET_SIDEBAR_WIDTH;
+    float gridY = ASSET_HEADER_HEIGHT;
+    float gridWidth = Context::GetScreenWidth() - ASSET_SIDEBAR_WIDTH; 
+    float gridHeight = Context::GetScreenHeight() - (ASSET_HEADER_HEIGHT + ASSET_FOOTER_HEIGHT);
 
     int count = StoreManager::GetWindowStoreItemCount();
     if( count == 0 )
@@ -185,13 +185,13 @@ void StoreScene::RenderMainGrid()
         return;
     }
   
-    int cardWidth = ASSET_CARD_WIDTH;
-    int cardHeight = ASSET_CARD_HEIGHT;
-    int storeItemsWidth = (Context::GetGridCols() * (cardWidth + CARD_GAP)) - CARD_GAP;
-    int storeItemsHeight = (Context::GetGridRows() * (cardHeight + CARD_GAP)) - CARD_GAP;
+    float cardWidth = ASSET_CARD_WIDTH;
+    float cardHeight = ASSET_CARD_HEIGHT;
+    float storeItemsWidth = (Context::GetGridCols() * (cardWidth + CARD_GAP)) - CARD_GAP;
+    float storeItemsHeight = (Context::GetGridRows() * (cardHeight + CARD_GAP)) - CARD_GAP;
 
-    int cardX = gridX + ((gridWidth - storeItemsWidth) / 2);
-    int cardY = gridY + ((gridHeight - storeItemsHeight) / 2);;
+    float cardX = gridX + ((gridWidth - storeItemsWidth) / 2);
+    float cardY = gridY + ((gridHeight - storeItemsHeight) / 2);;
 
 
     int32_t totalSlots = Context::GetGridCells();
@@ -201,8 +201,8 @@ void StoreScene::RenderMainGrid()
     {
         int row = currentSlot / Context::GetGridCols();
         int col = currentSlot % Context::GetGridCols();
-        int x = cardX + col * ( cardWidth + CARD_GAP);
-        int y = cardY + row * ( cardHeight + CARD_GAP);
+        float x = cardX + col * ( cardWidth + CARD_GAP);
+        float y = cardY + row * ( cardHeight + CARD_GAP);
         StoreItem* storeItem = StoreManager::GetWindowStoreItem(currentSlot);
         DrawStoreItem(storeItem, x, y, currentSlot == (mStoreIndex - StoreManager::GetWindowStoreItemOffset()), currentSlot);
     }
