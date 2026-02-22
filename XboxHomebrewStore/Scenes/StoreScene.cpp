@@ -95,7 +95,7 @@ void StoreScene::RenderCategorySidebar()
             else
             {
                 if (focused == true) {
-                    Font::DrawTextScrolling(FONT_NORMAL, storeCategory->name, COLOR_WHITE, 48, y, ASSET_SIDEBAR_WIDTH - 64, &storeCategory->nameScrollState);
+                    Font::DrawTextScrolling(FONT_NORMAL, storeCategory->name, COLOR_WHITE, 48, y, ASSET_SIDEBAR_WIDTH - 64, storeCategory->nameScrollState);
                 } else {
                     Font::DrawText(FONT_NORMAL, storeCategory->name, COLOR_WHITE, 48, y);
                 }
@@ -110,7 +110,7 @@ void StoreScene::RenderCategorySidebar()
     }
 }
 
-void StoreScene::DrawStoreItem(StoreItem* storeItem, float x, float y, bool selected, int slotIndex)
+void StoreScene::DrawStoreItem(StoreItem* storeItem, float x, float y, bool selected, int32_t slotIndex)
 {
     Drawing::DrawTexturedRect(TextureHelper::GetCard(), 0xFFFFFFFF, x, y, ASSET_CARD_WIDTH, ASSET_CARD_HEIGHT);
 
@@ -126,7 +126,7 @@ void StoreScene::DrawStoreItem(StoreItem* storeItem, float x, float y, bool sele
     float iconY = y + 9;
 
     D3DTexture* cover = storeItem->cover;
-    if (cover == NULL) 
+    if (cover == nullptr) 
     {
         if (ImageDownloader::IsCoverCached(storeItem->appId) == true)
         {
@@ -150,8 +150,8 @@ void StoreScene::DrawStoreItem(StoreItem* storeItem, float x, float y, bool sele
     if (selected && !mSideBarFocused)
     {
         float textMaxWidth = ASSET_CARD_WIDTH - 16;
-        Font::DrawTextScrolling(FONT_NORMAL, storeItem->name, COLOR_WHITE, textX, nameY, textMaxWidth, &storeItem->nameScrollState);
-        Font::DrawTextScrolling(FONT_NORMAL, storeItem->author, COLOR_TEXT_GRAY, textX, authorY, textMaxWidth, &storeItem->authorScrollState);
+        Font::DrawTextScrolling(FONT_NORMAL, storeItem->name, COLOR_WHITE, textX, nameY, textMaxWidth, storeItem->nameScrollState);
+        Font::DrawTextScrolling(FONT_NORMAL, storeItem->author, COLOR_TEXT_GRAY, textX, authorY, textMaxWidth, storeItem->authorScrollState);
     }
     else
     {
@@ -178,7 +178,7 @@ void StoreScene::RenderMainGrid()
     float gridWidth = Context::GetScreenWidth() - ASSET_SIDEBAR_WIDTH; 
     float gridHeight = Context::GetScreenHeight() - (ASSET_HEADER_HEIGHT + ASSET_FOOTER_HEIGHT);
 
-    int count = StoreManager::GetWindowStoreItemCount();
+    int32_t count = StoreManager::GetWindowStoreItemCount();
     if( count == 0 )
     {
         Font::DrawText(FONT_NORMAL, "No apps in this category.", (uint32_t)COLOR_TEXT_GRAY, gridX, gridY);
@@ -191,7 +191,7 @@ void StoreScene::RenderMainGrid()
     float storeItemsHeight = (Context::GetGridRows() * (cardHeight + CARD_GAP)) - CARD_GAP;
 
     float cardX = gridX + ((gridWidth - storeItemsWidth) / 2);
-    float cardY = gridY + ((gridHeight - storeItemsHeight) / 2);;
+    float cardY = gridY + ((gridHeight - storeItemsHeight) / 2);
 
 
     int32_t totalSlots = Context::GetGridCells();
@@ -199,8 +199,8 @@ void StoreScene::RenderMainGrid()
     int32_t slotsInView = Math::MinInt32(totalSlots, windowCount);
     for (int32_t currentSlot = 0; currentSlot < slotsInView; currentSlot++ )
     {
-        int row = currentSlot / Context::GetGridCols();
-        int col = currentSlot % Context::GetGridCols();
+        int32_t row = currentSlot / Context::GetGridCols();
+        int32_t col = currentSlot % Context::GetGridCols();
         float x = cardX + col * ( cardWidth + CARD_GAP);
         float y = cardY + row * ( cardHeight + CARD_GAP);
         StoreItem* storeItem = StoreManager::GetWindowStoreItem(currentSlot);
@@ -248,8 +248,8 @@ void StoreScene::Update()
     }
     else
     {
-        int col = mStoreIndex % Context::GetGridCols();
-        int row = mStoreIndex / Context::GetGridCols();
+        int32_t col = mStoreIndex % Context::GetGridCols();
+        int32_t row = mStoreIndex / Context::GetGridCols();
         if (InputManager::ControllerPressed(ControllerDpadLeft, -1))
         {
             if (col == 0) {

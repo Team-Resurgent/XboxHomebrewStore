@@ -24,9 +24,9 @@ VersionScene::VersionScene(const StoreVersions& storeVersions)
 
     const float infoXPos = 350.0f;
     float descMaxWidth = (float)Context::GetScreenWidth() - infoXPos - 20.0f;
-    Font::MeasureTextWrapped(FONT_NORMAL, mStoreVersions.description, descMaxWidth, NULL, &mDescriptionHeight);
+    Font::MeasureTextWrapped(FONT_NORMAL, mStoreVersions.description, descMaxWidth, nullptr, &mDescriptionHeight);
     if (!mStoreVersions.versions.empty()) {
-        Font::MeasureTextWrapped(FONT_NORMAL, mStoreVersions.versions[0].changeLog, descMaxWidth, NULL, &mChangeLogHeight);
+        Font::MeasureTextWrapped(FONT_NORMAL, mStoreVersions.versions[0].changeLog, descMaxWidth, nullptr, &mChangeLogHeight);
         mLastMeasuredVersionIndex = 0;
     }
 }
@@ -101,7 +101,7 @@ void VersionScene::RenderVersionSidebar()
             else
             {
                 if (focused == true) {
-                    Font::DrawTextScrolling(FONT_NORMAL, storeVersion->version, COLOR_WHITE, 16.0f, y, ASSET_SIDEBAR_WIDTH - 64.0f, &storeVersion->versionScrollState);
+                    Font::DrawTextScrolling(FONT_NORMAL, storeVersion->version, COLOR_WHITE, 16.0f, y, ASSET_SIDEBAR_WIDTH - 64.0f, storeVersion->versionScrollState);
                 } else {
                     Font::DrawText(FONT_NORMAL, storeVersion->version, COLOR_WHITE, 16, y);
                 }
@@ -120,13 +120,12 @@ void VersionScene::RenderListView()
 {
     const float titleXPos = 200.0f;
     const float infoXPos = 350.0f;
+    const float infoMaxWidth = (float)Context::GetScreenWidth() - infoXPos - 20.0f;
 
     StoreVersion* storeVersion = &mStoreVersions.versions[mHighlightedVersionIndex];
-    float descMaxWidth = (float)Context::GetScreenWidth() - infoXPos - 20.0f;
-    float changeLogMaxWidth = (float)Context::GetScreenWidth() - infoXPos - 20.0f;
 
     if (mHighlightedVersionIndex != mLastMeasuredVersionIndex) {
-        Font::MeasureTextWrapped(FONT_NORMAL, storeVersion->changeLog, changeLogMaxWidth, NULL, &mChangeLogHeight);
+        Font::MeasureTextWrapped(FONT_NORMAL, storeVersion->changeLog, infoMaxWidth, nullptr, &mChangeLogHeight);
         mLastMeasuredVersionIndex = mHighlightedVersionIndex;
     }
 
@@ -166,7 +165,7 @@ void VersionScene::RenderListView()
     Font::DrawText(FONT_NORMAL, mStoreVersions.author, COLOR_TEXT_GRAY, infoXPos, gridY);
     gridY += 30;
     Font::DrawText(FONT_NORMAL, "Description:", COLOR_WHITE, titleXPos, gridY);
-    Font::DrawTextWrapped(FONT_NORMAL, mStoreVersions.description, COLOR_TEXT_GRAY, infoXPos, gridY, descMaxWidth);
+    Font::DrawTextWrapped(FONT_NORMAL, mStoreVersions.description, COLOR_TEXT_GRAY, infoXPos, gridY, infoMaxWidth);
     gridY += mDescriptionHeight + 8.0f;
 
     Font::DrawText(FONT_NORMAL, "Version:", COLOR_WHITE, titleXPos, gridY);
@@ -182,7 +181,7 @@ void VersionScene::RenderListView()
     Font::DrawText(FONT_NORMAL, storeVersion->region, COLOR_TEXT_GRAY, infoXPos, gridY);
     gridY += 30;
     Font::DrawText(FONT_NORMAL, "Change Log:", COLOR_WHITE, titleXPos, gridY);
-    Font::DrawTextWrapped(FONT_NORMAL, storeVersion->changeLog, COLOR_TEXT_GRAY, infoXPos, gridY, changeLogMaxWidth);
+    Font::DrawTextWrapped(FONT_NORMAL, storeVersion->changeLog, COLOR_TEXT_GRAY, infoXPos, gridY, infoMaxWidth);
     gridY += mChangeLogHeight + 8.0f;
     Font::DrawText(FONT_NORMAL, "Size:", COLOR_WHITE, titleXPos, gridY);
     Font::DrawText(FONT_NORMAL, String::FormatSize(storeVersion->size), COLOR_TEXT_GRAY, infoXPos, gridY);

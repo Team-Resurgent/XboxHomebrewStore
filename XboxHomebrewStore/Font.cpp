@@ -3,9 +3,6 @@
 #include "Drawing.h"
 #include "Defines.h"
 #include "ssfn.h"
-#include <map>
-#include <string.h>
-
 namespace
 {
     ssfn_t      mMainFontContext;
@@ -189,7 +186,7 @@ std::string Font::TruncateText(const FontType font, const std::string& message, 
             continue;
         }
 
-        int charW = it->second.width + (truncated.empty() ? 0 : bitmapFont->spacing);
+        int32_t charW = it->second.width + (truncated.empty() ? 0 : bitmapFont->spacing);
         if (width + charW > budget) {
             break;
         }
@@ -201,7 +198,7 @@ std::string Font::TruncateText(const FontType font, const std::string& message, 
     return truncated + ellipsis;
 }
 
-void Font::DrawText(const FontType font, const std::string message, uint32_t color, float x, float y)
+void Font::DrawText(const FontType font, const std::string& message, uint32_t color, float x, float y)
 {
     Drawing::DrawFont(GetBitmapFont(font), message, color, x, y);
 }
@@ -211,53 +208,53 @@ void Font::DrawTextWrapped(const FontType font, const std::string& message, uint
     Drawing::DrawFontWrapped(GetBitmapFont(font), message, color, x, y, maxWidth);
 }
 
-void Font::DrawTextScrolling(const FontType font, const std::string& message, uint32_t color, float x, float y, float maxWidth, ScrollState* scrollState)
+void Font::DrawTextScrolling(const FontType font, const std::string& message, uint32_t color, float x, float y, float maxWidth, ScrollState& scrollState)
 {
     BitmapFont* bitmapFont = GetBitmapFont(font);
 
-    if (!scrollState->active)
+    if (!scrollState.active)
     {
-        MeasureInternal(bitmapFont, message, &scrollState->textWidth);
-        scrollState->offset     = 0.0f;
-        scrollState->lastTick   = GetTickCount();
-        scrollState->pauseTimer = SCROLL_PAUSE;
-        scrollState->active     = true;
+        MeasureInternal(bitmapFont, message, &scrollState.textWidth);
+        scrollState.offset     = 0.0f;
+        scrollState.lastTick   = GetTickCount();
+        scrollState.pauseTimer = SCROLL_PAUSE;
+        scrollState.active     = true;
     }
 
-    if (scrollState->textWidth <= maxWidth)
+    if (scrollState.textWidth <= maxWidth)
     {
         Drawing::DrawFont(bitmapFont, message, color, x, y);
         return;
     }
 
     DWORD now = GetTickCount();
-    float dt = (float)(now - scrollState->lastTick) / 1000.0f;
+    float dt = (float)(now - scrollState.lastTick) / 1000.0f;
     if (dt > 0.1f) {
         dt = 0.1f;
     }
-    scrollState->lastTick = now;
+    scrollState.lastTick = now;
 
-    if (scrollState->pauseTimer > 0.0f)
+    if (scrollState.pauseTimer > 0.0f)
     {
-        scrollState->pauseTimer -= dt;
+        scrollState.pauseTimer -= dt;
         Drawing::DrawFont(bitmapFont, message, color, x, y);
         return;
     }
 
-    scrollState->offset += SCROLL_SPEED * dt;
+    scrollState.offset += SCROLL_SPEED * dt;
 
-    float loopWidth = (float)(scrollState->textWidth + SCROLL_GAP);
-    if (scrollState->offset >= loopWidth)
+    float loopWidth = (float)(scrollState.textWidth + SCROLL_GAP);
+    if (scrollState.offset >= loopWidth)
     {
-        scrollState->offset    -= loopWidth;
-        scrollState->pauseTimer = SCROLL_PAUSE;
+        scrollState.offset    -= loopWidth;
+        scrollState.pauseTimer = SCROLL_PAUSE;
     }
 
-    float offsetPx = scrollState->offset;
+    float offsetPx = scrollState.offset;
 
     Drawing::DrawFont(bitmapFont, message, color, x - offsetPx, y);
 
-    float secondOffset = offsetPx - (scrollState->textWidth + SCROLL_GAP);
+    float secondOffset = offsetPx - (scrollState.textWidth + SCROLL_GAP);
     if (secondOffset < maxWidth) {
         Drawing::DrawFont(bitmapFont, message, color, x - secondOffset, y);
     }

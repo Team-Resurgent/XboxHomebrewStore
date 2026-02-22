@@ -20,7 +20,7 @@ private:
     void RenderFooter();
     void RenderCategorySidebar();
     void RenderMainGrid();
-    void DrawStoreItem(StoreItem* storeItem, float x, float y, bool selected, int slotIndex);
+    void DrawStoreItem(StoreItem* storeItem, float x, float y, bool selected, int32_t slotIndex);
 
     ImageDownloader* mImageDownloader;
     bool mSideBarFocused;

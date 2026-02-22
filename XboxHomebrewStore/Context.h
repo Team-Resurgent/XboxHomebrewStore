@@ -12,11 +12,11 @@ public:
 
     static void SetDevice( void* pDevice );
     static void SetSceneManager( SceneManager* pMgr );
-    static void SetScreenSize( int width, int height );
+    static void SetScreenSize( int32_t width, int32_t height );
     static SceneManager* GetSceneManager();
     static float GetScreenWidth();
     static float GetScreenHeight();
-    static int GetGridCols();
-    static int GetGridRows();
-    static int GetGridCells();
+    static int32_t GetGridCols();
+    static int32_t GetGridRows();
+    static int32_t GetGridCells();
 };

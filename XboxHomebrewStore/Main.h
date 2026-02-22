@@ -2,14 +2,21 @@
 
 #include <xtl.h>
 #include <xgraphics.h>
-#include <string>
+#include <d3dx8.h>
 #include <stdint.h>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <string.h>
 #include <stdio.h>
-#include <tchar.h> 
-#include <cstdio>
+#include <tchar.h>
+#include <time.h>
 #include <cassert>
+#include <cctype>
+#include <cstdio>
 #include <curl/curl.h>
 #include <winsockx.h>
-#include <vector>
-#include <map>
 #include <deque>
+#include <map>
+#include <string>
+#include <utility>
+#include <vector>

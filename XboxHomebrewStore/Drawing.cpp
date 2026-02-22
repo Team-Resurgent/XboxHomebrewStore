@@ -83,7 +83,7 @@ void Drawing::RestoreRenderState()
     mSavedStateIndex -= SAVE_STATE_COUNT;
     uint32_t* savedStatePage = &mSavedState[mSavedStateIndex];
 
-    Context::GetD3dDevice()->SetTexture(0, NULL);
+    Context::GetD3dDevice()->SetTexture(0, nullptr);
 
     Context::GetD3dDevice()->SetRenderState(D3DRS_ALPHABLENDENABLE, savedStatePage[0]);
     Context::GetD3dDevice()->SetRenderState(D3DRS_SRCBLEND, savedStatePage[1]);
@@ -114,12 +114,12 @@ void Drawing::Swizzle(const void* src, const uint32_t& depth, const uint32_t& wi
     for (UINT y = 0; y < height; y++) {
         UINT sy = 0;
         if (y < width) {
-            for (int bit = 0; bit < 16; bit++)
+            for (int32_t bit = 0; bit < 16; bit++)
                 sy |= ((y >> bit) & 1) << (2 * bit);
             sy <<= 1; // y counts twice
         } else {
             UINT y_mask = y % width;
-            for (int bit = 0; bit < 16; bit++)
+            for (int32_t bit = 0; bit < 16; bit++)
                 sy |= ((y_mask >> bit) & 1) << (2 * bit);
             sy <<= 1; // y counts twice
             sy += (y / width) * width * width;
@@ -128,11 +128,11 @@ void Drawing::Swizzle(const void* src, const uint32_t& depth, const uint32_t& wi
         for (UINT x = 0; x < width; x++) {
             UINT sx = 0;
             if (x < height * 2) {
-                for (int bit = 0; bit < 16; bit++)
+                for (int32_t bit = 0; bit < 16; bit++)
                     sx |= ((x >> bit) & 1) << (2 * bit);
             } else {
-                int x_mask = x % (2 * height);
-                for (int bit = 0; bit < 16; bit++)
+                int32_t x_mask = x % (2 * height);
+                for (int32_t bit = 0; bit < 16; bit++)
                     sx |= ((x_mask >> bit) & 1) << (2 * bit);
                 sx += (x / (2 * height)) * 2 * height * height;
             }
@@ -143,7 +143,7 @@ void Drawing::Swizzle(const void* src, const uint32_t& depth, const uint32_t& wi
     }
 }
 
-bool Drawing::TryCreateImage(uint8_t* imageData, D3DFORMAT format, int width, int height, Image* image) 
+bool Drawing::TryCreateImage(uint8_t* imageData, D3DFORMAT format, int32_t width, int32_t height, Image* image) 
 {
     image->width = width;
     image->height = height;
@@ -158,7 +158,7 @@ bool Drawing::TryCreateImage(uint8_t* imageData, D3DFORMAT format, int width, in
     image->uv_height = image->height / (float)surfaceDesc.Height;
     
     D3DLOCKED_RECT lockedRect;
-    if (SUCCEEDED(image->texture->LockRect(0, &lockedRect, NULL, 0))) {
+    if (SUCCEEDED(image->texture->LockRect(0, &lockedRect, nullptr, 0))) {
         uint8_t* tempBuffer = (uint8_t*)malloc(surfaceDesc.Size);
         memset(tempBuffer, 0, surfaceDesc.Size);
         uint8_t* src = imageData;
@@ -204,18 +204,18 @@ bool Drawing::LoadFont(const std::string filePath, void* context)
 }
 
 
-bool Drawing::TryGenerateBitmapFont(void* context, const std::string fontName, int fontStyle, int fontSize, int lineHeight, int spacing, int textureDimension, BitmapFont* bitmapFont) 
+bool Drawing::TryGenerateBitmapFont(void* context, const std::string fontName, int32_t fontStyle, int32_t fontSize, int32_t lineHeight, int32_t spacing, int32_t textureDimension, BitmapFont* bitmapFont) 
 {
-    ssfn_select((ssfn_t*)context, SSFN_FAMILY_ANY, fontName.c_str(), fontStyle, fontSize);
+    ssfn_select((ssfn_t*)context, SSFN_FAMILY_ANY, fontName.c_str(), (int)fontStyle, (int)fontSize);
 
-    int textureWidth = textureDimension;
-    int textureHeight = textureDimension;
+    int32_t textureWidth = textureDimension;
+    int32_t textureHeight = textureDimension;
 
     uint32_t* imageData = (uint32_t*)malloc(textureWidth * textureHeight * 4);
     memset(imageData, 0, textureWidth * textureHeight * 4);
 
-    int x = 2;
-    int y = 2;
+    int32_t x = 2;
+    int32_t y = 2;
 
     char* charsToEncode = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
     char* currentCharPos = charsToEncode;
@@ -260,7 +260,7 @@ bool Drawing::TryGenerateBitmapFont(void* context, const std::string fontName, i
         buffer.y = y + bounds_top;
         buffer.w = textureWidth;
         buffer.h = textureHeight;
-        buffer.p = textureWidth * 4;
+        buffer.p = (uint16_t)(textureWidth * 4);
         buffer.bg = 0xffffffff;
         buffer.fg = 0xffffffff;
 
@@ -278,7 +278,7 @@ bool Drawing::TryGenerateBitmapFont(void* context, const std::string fontName, i
     return result;
 }
 
-void Drawing::DrawFont(BitmapFont* font, const std::string message, uint32_t color, float x, float y)
+void Drawing::DrawFont(BitmapFont* font, const std::string& message, uint32_t color, float x, float y)
 {
     static TEXVERTEX batchBuf[DRAW_BATCH_MAX_VERTS];
     UINT vertexCount = 0;
@@ -342,7 +342,7 @@ void Drawing::DrawFont(BitmapFont* font, const std::string message, uint32_t col
     RestoreRenderState();
 }
 
-void Drawing::DrawFontWrapped(BitmapFont* font, const std::string message, uint32_t color, float x, float y, float maxWidth)
+void Drawing::DrawFontWrapped(BitmapFont* font, const std::string& message, uint32_t color, float x, float y, float maxWidth)
 {
     static TEXVERTEX batchBuf[DRAW_BATCH_MAX_VERTS];
     UINT vertexCount = 0;
@@ -453,7 +453,7 @@ void Drawing::DrawFilledRect(uint32_t color, float x, float y, float width, floa
 
     SaveRenderState();
     Context::GetD3dDevice()->SetVertexShader(D3DFVF_XYZRHW | D3DFVF_DIFFUSE);
-    Context::GetD3dDevice()->SetTexture(0, NULL);
+    Context::GetD3dDevice()->SetTexture(0, nullptr);
     Context::GetD3dDevice()->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, vertices, sizeof(VERTEX));
     RestoreRenderState();
 }
@@ -491,8 +491,8 @@ void Drawing::DrawNinePatch(D3DTexture* texture, uint32_t diffuse, float x, floa
 
     const float surfaceW = (float)desc.Width;
     const float surfaceH = (float)desc.Height;
-    const float contentW = contentWidthPx > 0 ? contentWidthPx : (int)surfaceW;
-    const float contentH = contentHeightPx > 0 ? contentHeightPx : (int)surfaceH;
+    const float contentW = contentWidthPx > 0 ? contentWidthPx : (float)(int32_t)surfaceW;
+    const float contentH = contentHeightPx > 0 ? contentHeightPx : (float)(int32_t)surfaceH;
 
     float cw = cornerWidthPx;
     float ch = cornerHeightPx;
@@ -528,7 +528,7 @@ void Drawing::DrawNinePatch(D3DTexture* texture, uint32_t diffuse, float x, floa
     const float y3 = (float)(y + height);
 
     TEXVERTEX batchBuf[54];
-    int v = 0;
+    int32_t v = 0;
 
     batchBuf[v].x = x0; batchBuf[v].y = y0; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u0; batchBuf[v].v = v0; v++;
     batchBuf[v].x = x1; batchBuf[v].y = y0; batchBuf[v].z = 0.5f; batchBuf[v].rhw = 1.0f; batchBuf[v].diffuse = diffuse; batchBuf[v].u = u1; batchBuf[v].v = v0; v++;
@@ -624,7 +624,7 @@ void Drawing::BeginStencil(float x, float y, float w, float h)
         { x + w, y + h, 0.0f, 1.0f },
     };
 
-    Context::GetD3dDevice()->Clear(0L, NULL, D3DCLEAR_STENCIL, 0, 1.0f, 0L);
+    Context::GetD3dDevice()->Clear(0L, nullptr, D3DCLEAR_STENCIL, 0, 1.0f, 0L);
     Context::GetD3dDevice()->SetVertexShader(D3DFVF_XYZRHW);
     Context::GetD3dDevice()->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(stencil_vertex));
 

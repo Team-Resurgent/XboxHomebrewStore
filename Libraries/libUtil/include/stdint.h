@@ -210,4 +210,6 @@ typedef long               ssize_t;
 #define UINT64_C(x)        (x ## ULL)
 #define INTMAX_C(x)        INT64_C(x)
 #define UINTMAX_C(x)       UINT64_C(x)
-#endif 
+#endif
+
+#define nullptr NULL

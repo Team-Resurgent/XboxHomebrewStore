@@ -1,6 +1,6 @@
 #include "SceneManager.h"
 
-SceneManager::SceneManager() : m_pStack(NULL)
+SceneManager::SceneManager() : m_pStack(nullptr)
 {
 }
 
@@ -24,7 +24,7 @@ void SceneManager::PushScene(Scene* pScene)
 
 void SceneManager::PopScene()
 {
-    if (m_pStack == NULL) {
+    if (m_pStack == nullptr) {
         return;
     }
     SceneNode* pNode = m_pStack;
@@ -35,7 +35,7 @@ void SceneManager::PopScene()
 
 bool SceneManager::HasScene() const
 {
-    return m_pStack != NULL;
+    return m_pStack != nullptr;
 }
 
 void SceneManager::Render( )

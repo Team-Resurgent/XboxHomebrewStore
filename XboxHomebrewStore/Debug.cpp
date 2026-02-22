@@ -1,10 +1,15 @@
 #include "Debug.h"
 
-void Debug::Print(std::string format, ...)
+void Debug::Print(const std::string& format, ...)
 {
     va_list args;
     va_start(args, format);
-    uint32_t length = _vsnprintf(NULL, 0, format.c_str(), args);
+    int length = _vsnprintf(nullptr, 0, format.c_str(), args);
+    if (length < 0)
+    {
+        va_end(args);
+        return;
+    }
     char* message = (char*)malloc(length + 1);
     _vsnprintf(message, length, format.c_str(), args);
     message[length] = 0;

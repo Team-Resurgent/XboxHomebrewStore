@@ -2,8 +2,6 @@
 
 #include "External.h"
 
-#include <string>
-
 class DriveMount
 {
 public:

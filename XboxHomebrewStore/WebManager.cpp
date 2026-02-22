@@ -2,17 +2,13 @@
 #include "String.h"
 #include "parson.h"
 #include "JsonHelper.h"
-#include <time.h>
-#include <stdlib.h>
-#include <string.h>
-
 const std::string store_api_url = "https://192.168.1.91:5001";
 const std::string store_app_controller = "/api/apps";
 const std::string store_versions = "/versions";
 const std::string store_categories = "/api/categories";
 
 static const char* ntp_server = "167.160.187.12";
-static const int ntp_port = 123;
+static const int32_t ntp_port = 123;
 static const unsigned long ntp_epoch_offset = 2208988800UL;
 
 extern "C" {
@@ -27,7 +23,7 @@ struct ProgressContext
 };
 
 // Persistent curl handle for connection reuse (avoids repeated TCP/SSL handshake)
-static CURL* s_persistentCurl = NULL;
+static CURL* s_persistentCurl = nullptr;
 
 static size_t StringWriteCallback(char* ptr, size_t size, size_t nmemb, void* userdata)
 {
@@ -43,7 +39,9 @@ static size_t StringWriteCallback(char* ptr, size_t size, size_t nmemb, void* us
 static bool ParseAppsResponse(const std::string& raw, AppsResponse& out)
 {
     JSON_Value* root = json_parse_string(raw.c_str());
-    if (!root) return false;
+    if (!root) {
+        return false;
+    }
 
     out.items.clear();
 
@@ -51,10 +49,11 @@ static bool ParseAppsResponse(const std::string& raw, AppsResponse& out)
     if (itemsArr)
     {
         size_t count = json_array_get_count(itemsArr);
+        out.items.reserve(count);
         for (size_t i = 0; i < count; i++)
         {
             JSON_Value* elemVal = json_array_get_value(itemsArr, i);
-            JSON_Object* itemObj = elemVal ? json_value_get_object(elemVal) : NULL;
+            JSON_Object* itemObj = elemVal ? json_value_get_object(elemVal) : nullptr;
             if (itemObj)
             {
                 AppItem app;
@@ -76,7 +75,9 @@ static bool ParseAppsResponse(const std::string& raw, AppsResponse& out)
 static bool ParseCategoriesResponse(const std::string& raw, CategoriesResponse& out)
 {
     JSON_Value* root = json_parse_string(raw.c_str());
-    if (!root) return false;
+    if (!root) {
+        return false;
+    }
     JSON_Array* arr = json_value_get_array(root);
     if (!arr)
     {
@@ -85,10 +86,11 @@ static bool ParseCategoriesResponse(const std::string& raw, CategoriesResponse& 
     }
     out.clear();
     size_t count = json_array_get_count(arr);
+    out.reserve(count);
     for (size_t i = 0; i < count; i++)
     {
         JSON_Value* elemVal = json_array_get_value(arr, i);
-        JSON_Object* itemObj = elemVal ? json_value_get_object(elemVal) : NULL;
+        JSON_Object* itemObj = elemVal ? json_value_get_object(elemVal) : nullptr;
         if (itemObj)
         {
             CategoryItem cat;
@@ -104,7 +106,9 @@ static bool ParseCategoriesResponse(const std::string& raw, CategoriesResponse& 
 static bool ParseVersionsResponse(const std::string& raw, VersionsResponse& out)
 {
     JSON_Value* root = json_parse_string(raw.c_str());
-    if (!root) return false;
+    if (!root) {
+        return false;
+    }
     JSON_Array* arr = json_value_get_array(root);
     if (!arr)
     {
@@ -113,10 +117,11 @@ static bool ParseVersionsResponse(const std::string& raw, VersionsResponse& out)
     }
     out.clear();
     size_t count = json_array_get_count(arr);
+    out.reserve(count);
     for (size_t i = 0; i < count; i++)
     {
         JSON_Value* elemVal = json_array_get_value(arr, i);
-        JSON_Object* itemObj = elemVal ? json_value_get_object(elemVal) : NULL;
+        JSON_Object* itemObj = elemVal ? json_value_get_object(elemVal) : nullptr;
         if (itemObj)
         {
             VersionItem ver;
@@ -139,11 +144,11 @@ static int ProgressCallback(void* clientp, double dltotal, double dlnow, double 
     (void)ultotal;
     (void)ulnow;
     ProgressContext* ctx = (ProgressContext*)clientp;
-    if (ctx != NULL && ctx->pCancelRequested != NULL && *ctx->pCancelRequested)
+    if (ctx != nullptr && ctx->pCancelRequested != nullptr && *ctx->pCancelRequested)
     {
         return 1;
     }
-    if (ctx != NULL && ctx->fn != NULL)
+    if (ctx != nullptr && ctx->fn != nullptr)
     {
         ctx->fn((uint32_t)dlnow, (uint32_t)dltotal, ctx->userData);
     }
@@ -153,7 +158,7 @@ static int ProgressCallback(void* clientp, double dltotal, double dlnow, double 
 // Helper: get or create persistent curl handle
 static CURL* GetCurl()
 {
-    if (s_persistentCurl != NULL)
+    if (s_persistentCurl != nullptr)
     {
         curl_easy_reset(s_persistentCurl);
         return s_persistentCurl;
@@ -183,7 +188,9 @@ bool WebManager::TryGetFileSize(const std::string& url, uint32_t& outSize)
     outSize = 0;
 
     CURL* curl = GetCurl();
-    if (curl == NULL) return false;
+    if (curl == nullptr) {
+        return false;
+    }
 
     ApplyCommonOptions(curl);
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
@@ -215,14 +222,14 @@ bool WebManager::TryDownload(const std::string& url, const std::string& filePath
         return false;
     }
     FILE* fp = fopen(filePath.c_str(), "wb");
-    if (fp == NULL)
+    if (fp == nullptr)
     {
         return false;
     }
 
     // Use a dedicated handle for downloads so API calls can still use the persistent one
     CURL* curl = curl_easy_init();
-    if (curl == NULL)
+    if (curl == nullptr)
     {
         fclose(fp);
         return false;
@@ -236,7 +243,7 @@ bool WebManager::TryDownload(const std::string& url, const std::string& filePath
 
     // Set larger file write buffer via setvbuf for fewer disk writes
     char* fileBuf = (char*)malloc(65536);
-    if (fileBuf != NULL)
+    if (fileBuf != nullptr)
     {
         setvbuf(fp, fileBuf, _IOFBF, 65536);
     }
@@ -245,7 +252,7 @@ bool WebManager::TryDownload(const std::string& url, const std::string& filePath
     progCtx.fn = progressFn;
     progCtx.userData = progressUserData;
     progCtx.pCancelRequested = pCancelRequested;
-    if (progressFn != NULL || pCancelRequested != NULL)
+    if (progressFn != nullptr || pCancelRequested != nullptr)
     {
         curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
         curl_easy_setopt(curl, CURLOPT_PROGRESSFUNCTION, ProgressCallback);
@@ -266,7 +273,7 @@ bool WebManager::TryDownload(const std::string& url, const std::string& filePath
     fclose(fp);
     curl_easy_cleanup(curl);
 
-    if (fileBuf != NULL)
+    if (fileBuf != nullptr)
     {
         free(fileBuf);
     }
@@ -294,7 +301,9 @@ bool WebManager::TryGetApps(AppsResponse& result, int32_t offset, int32_t count,
 
     std::string raw;
     CURL* curl = GetCurl();
-    if (curl == NULL) return false;
+    if (curl == nullptr) {
+        return false;
+    }
 
     ApplyCommonOptions(curl);
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
@@ -305,8 +314,7 @@ bool WebManager::TryGetApps(AppsResponse& result, int32_t offset, int32_t count,
 
     long http_code = 0;
     CURLcode res = curl_easy_perform(curl);
-    if (res == CURLE_OK)
-    {
+    if (res == CURLE_OK) {
         res = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
     }
 
@@ -323,7 +331,9 @@ bool WebManager::TryGetCategories(CategoriesResponse& result)
 
     std::string raw;
     CURL* curl = GetCurl();
-    if (curl == NULL) return false;
+    if (curl == nullptr) {
+        return false;
+    }
 
     ApplyCommonOptions(curl);
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
@@ -333,8 +343,7 @@ bool WebManager::TryGetCategories(CategoriesResponse& result)
 
     long http_code = 0;
     CURLcode res = curl_easy_perform(curl);
-    if (res == CURLE_OK)
-    {
+    if (res == CURLE_OK) {
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
     }
 
@@ -351,7 +360,9 @@ bool WebManager::TryGetVersions(const std::string& id, VersionsResponse& result)
 
     std::string raw;
     CURL* curl = GetCurl();
-    if (curl == NULL) return false;
+    if (curl == nullptr) {
+        return false;
+    }
 
     ApplyCommonOptions(curl);
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
@@ -361,8 +372,7 @@ bool WebManager::TryGetVersions(const std::string& id, VersionsResponse& result)
 
     long http_code = 0;
     CURLcode res = curl_easy_perform(curl);
-    if (res == CURLE_OK)
-    {
+    if (res == CURLE_OK) {
         res = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
     }
 
@@ -437,7 +447,7 @@ bool WebManager::TrySyncTime()
     LONGLONG ll = Int32x32To64(unixTime, 10000000) + 116444736000000000LL;
     ft.dwLowDateTime = (DWORD)ll;
     ft.dwHighDateTime = (DWORD)(ll >> 32);
-    NtSetSystemTime(&ft, NULL);
+    NtSetSystemTime(&ft, nullptr);
 
     closesocket(sock);
     return true;

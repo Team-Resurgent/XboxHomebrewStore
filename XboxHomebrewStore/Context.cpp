@@ -7,10 +7,10 @@
 #include "Scenes/SceneManager.h"
 
 namespace {
-    D3DDevice* mD3dDevice = NULL;
-    static SceneManager* s_pSceneManager = NULL;
-    static int s_nScreenWidth = 640;
-    static int s_nScreenHeight = 480;
+    D3DDevice* mD3dDevice = nullptr;
+    static SceneManager* s_pSceneManager = nullptr;
+    static int32_t s_nScreenWidth = 640;
+    static int32_t s_nScreenHeight = 480;
 }
 
 void Context::SetD3dDevice(D3DDevice* d3dDevice)
@@ -28,7 +28,7 @@ void Context::SetSceneManager( SceneManager* pMgr )
     s_pSceneManager = pMgr;
 }
 
-void Context::SetScreenSize( int width, int height )
+void Context::SetScreenSize( int32_t width, int32_t height )
 {
     s_nScreenWidth = width;
     s_nScreenHeight = height;
@@ -49,19 +49,19 @@ float Context::GetScreenHeight()
     return (float)s_nScreenHeight;
 }
 
-int Context::GetGridCols()
+int32_t Context::GetGridCols()
 {
     float gridWidth = GetScreenWidth() - ASSET_SIDEBAR_WIDTH; 
-    return (int)((gridWidth + CARD_GAP) / (ASSET_CARD_WIDTH + CARD_GAP));
+    return (int32_t)((gridWidth + CARD_GAP) / (ASSET_CARD_WIDTH + CARD_GAP));
 }
 
-int Context::GetGridRows()
+int32_t Context::GetGridRows()
 {
     float gridHeight = GetScreenHeight() - (ASSET_HEADER_HEIGHT + ASSET_FOOTER_HEIGHT);
-    return (int)((gridHeight + CARD_GAP) / (ASSET_CARD_HEIGHT + CARD_GAP));
+    return (int32_t)((gridHeight + CARD_GAP) / (ASSET_CARD_HEIGHT + CARD_GAP));
 }
 
-int Context::GetGridCells()
+int32_t Context::GetGridCells()
 {
     return GetGridCols() * GetGridRows();
 }

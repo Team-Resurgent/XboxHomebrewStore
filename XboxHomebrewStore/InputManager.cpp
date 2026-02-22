@@ -139,16 +139,16 @@ void InputManager::ProcessController()
 	DWORD removals = 0;
     if (XGetDeviceChanges(XDEVICE_TYPE_GAMEPAD, &insertions, &removals) == TRUE)
 	{
-		for (int i = 0; i < XGetPortCount(); i++)
+		for (int32_t i = 0; i < XGetPortCount(); i++)
 		{
 			if ((insertions & 1) == 1)
 			{
-				mControllerHandles[i] = XInputOpen(XDEVICE_TYPE_GAMEPAD, i, XDEVICE_NO_SLOT, NULL);
+				mControllerHandles[i] = XInputOpen(XDEVICE_TYPE_GAMEPAD, i, XDEVICE_NO_SLOT, nullptr);
 			}
 			if ((removals & 1) == 1)
 			{
 				XInputClose(mControllerHandles[i]);
-				mControllerHandles[i] = NULL;
+				mControllerHandles[i] = nullptr;
 			}
 			insertions = insertions >> 1;
 			removals = removals >> 1;
@@ -167,10 +167,10 @@ void InputManager::ProcessController()
     }
     mControllerTick = now;
 
-    for (int i = 0; i < XGetPortCount(); i++)
+    for (int32_t i = 0; i < XGetPortCount(); i++)
 	{
         XINPUT_STATE controllerInputState;
-        if (mControllerHandles[i] == NULL || XInputGetState(mControllerHandles[i], &controllerInputState) != 0) 
+        if (mControllerHandles[i] == nullptr || XInputGetState(mControllerHandles[i], &controllerInputState) != 0) 
 		{
 			continue;
 		}
@@ -232,26 +232,26 @@ void InputManager::ProcessRemote()
 	DWORD removals = 0;
     if (XGetDeviceChanges(XDEVICE_TYPE_IR_REMOTE, &insertions, &removals) == TRUE)
 	{
-		for (int i = 0; i < XGetPortCount(); i++)
+		for (int32_t i = 0; i < XGetPortCount(); i++)
 		{
 			if ((insertions & 1) == 1)
 			{
-				mRemoteHandles[i] = XInputOpen(XDEVICE_TYPE_IR_REMOTE, i, XDEVICE_NO_SLOT, NULL);
+				mRemoteHandles[i] = XInputOpen(XDEVICE_TYPE_IR_REMOTE, i, XDEVICE_NO_SLOT, nullptr);
 			}
 			if ((removals & 1) == 1)
 			{
 				XInputClose(mRemoteHandles[i]);
-				mRemoteHandles[i] = NULL;
+				mRemoteHandles[i] = nullptr;
 			}
 			insertions = insertions >> 1;
 			removals = removals >> 1;
 		}
 	}
 
-    for (int i = 0; i < XGetPortCount(); i++)
+    for (int32_t i = 0; i < XGetPortCount(); i++)
 	{
         XInputStateEx remoteInputState;
-        if (mRemoteHandles[i] == NULL || XInputGetState(mRemoteHandles[i], (XINPUT_STATE*)&remoteInputState) != 0 || remoteInputState.FirstEvent == 0x00) 
+        if (mRemoteHandles[i] == nullptr || XInputGetState(mRemoteHandles[i], (XINPUT_STATE*)&remoteInputState) != 0 || remoteInputState.FirstEvent == 0x00) 
 		{
 			continue;
 		}
@@ -314,26 +314,26 @@ void InputManager::ProcessMouse()
 	DWORD removals = 0;
     if (XGetDeviceChanges(XDEVICE_TYPE_DEBUG_MOUSE, &insertions, &removals) == TRUE)
 	{
-		for (int i = 0; i < XGetPortCount(); i++)
+		for (int32_t i = 0; i < XGetPortCount(); i++)
 		{
 			if ((insertions & 1) == 1)
 			{
-				mMouseHandles[i] = XInputOpen(XDEVICE_TYPE_DEBUG_MOUSE, i, XDEVICE_NO_SLOT, NULL);
+				mMouseHandles[i] = XInputOpen(XDEVICE_TYPE_DEBUG_MOUSE, i, XDEVICE_NO_SLOT, nullptr);
 			}
 			if ((removals & 1) == 1)
 			{
 				XInputClose(mMouseHandles[i]);
-				mMouseHandles[i] = NULL;
+				mMouseHandles[i] = nullptr;
 			}
 			insertions = insertions >> 1;
 			removals = removals >> 1;
 		}
 	}
 
-	for (int i = 0; i < XGetPortCount(); i++)
+	for (int32_t i = 0; i < XGetPortCount(); i++)
 	{
         XINPUT_STATE mouseInputState;
-		if (mMouseHandles[i] == NULL || XInputGetState(mMouseHandles[i], &mouseInputState) != 0) 
+		if (mMouseHandles[i] == nullptr || XInputGetState(mMouseHandles[i], &mouseInputState) != 0) 
 		{
 			continue;
 		}
@@ -362,7 +362,7 @@ void InputManager::ProcessKeyboard()
 	DWORD removals = 0;
     if (XGetDeviceChanges(XDEVICE_TYPE_DEBUG_KEYBOARD, &insertions, &removals) == TRUE)
 	{
-		for (int i = 0; i < XGetPortCount(); i++)
+		for (int32_t i = 0; i < XGetPortCount(); i++)
 		{
 			if ((insertions & 1) == 1)
 			{
@@ -378,7 +378,7 @@ void InputManager::ProcessKeyboard()
 			if ((removals & 1) == 1)
 			{
 				XInputClose(mKeyboardHandles[i]);
-				mKeyboardHandles[i] = NULL;
+				mKeyboardHandles[i] = nullptr;
 			}
 			insertions = insertions >> 1;
 			removals = removals >> 1;
@@ -389,14 +389,16 @@ void InputManager::ProcessKeyboard()
 #ifndef XINPUT_DEBUG_KEYSTROKE_FLAG_REPEAT
 #define XINPUT_DEBUG_KEYSTROKE_FLAG_REPEAT 0x02
 #endif
-    for (int i = 0; i < XGetPortCount(); i++)
+    for (int32_t i = 0; i < XGetPortCount(); i++)
     {
-        if (mKeyboardHandles[i] == NULL)
+        if (mKeyboardHandles[i] == nullptr) {
             continue;
+        }
         XINPUT_DEBUG_KEYSTROKE currentKeyStroke;
         memset(&currentKeyStroke, 0, sizeof(currentKeyStroke));
-        if (XInputDebugGetKeystroke(&currentKeyStroke) != 0)
+        if (XInputDebugGetKeystroke(&currentKeyStroke) != 0) {
             continue;
+        }
         const bool keyUp = (currentKeyStroke.Flags & XINPUT_DEBUG_KEYSTROKE_FLAG_KEYUP) != 0;
         const bool repeat = (currentKeyStroke.Flags & XINPUT_DEBUG_KEYSTROKE_FLAG_REPEAT) != 0;
         /* Allow keys with only VirtualKey (e.g. Page Up/Down have Ascii 0) */
@@ -460,11 +462,11 @@ void InputManager::ProcessMemoryUnit()
     }
 }
 
-bool InputManager::ControllerPressed(ControllerButton button, int port)
+bool InputManager::ControllerPressed(ControllerButton button, int32_t port)
 {
-	for (int i = 0; i < XGetPortCount(); i++)
+	for (int32_t i = 0; i < XGetPortCount(); i++)
 	{
-		if (port >= 0 && port != i || mControllerHandles[i] == NULL)
+		if (port >= 0 && port != i || mControllerHandles[i] == nullptr)
 		{
 			continue;
 		}
@@ -476,11 +478,11 @@ bool InputManager::ControllerPressed(ControllerButton button, int port)
 	return false;
 }
 
-bool InputManager::RemotePressed(RemoteButton button, int port)
+bool InputManager::RemotePressed(RemoteButton button, int32_t port)
 {
-    for (int i = 0; i < XGetPortCount(); i++)
+    for (int32_t i = 0; i < XGetPortCount(); i++)
 	{
-		if (port >= 0 && port != i || mRemoteHandles[i] == NULL)
+		if (port >= 0 && port != i || mRemoteHandles[i] == nullptr)
 		{
 			continue;
 		}
@@ -492,11 +494,11 @@ bool InputManager::RemotePressed(RemoteButton button, int port)
 	return false;
 }
 
-bool InputManager::MousePressed(MouseButton button, int port)
+bool InputManager::MousePressed(MouseButton button, int32_t port)
 {
-	for (int i = 0; i < XGetPortCount(); i++)
+	for (int32_t i = 0; i < XGetPortCount(); i++)
 	{
-		if (port >= 0 && port != i || mMouseHandles[i] == NULL)
+		if (port >= 0 && port != i || mMouseHandles[i] == nullptr)
 		{
 			continue;
 		}
@@ -508,13 +510,13 @@ bool InputManager::MousePressed(MouseButton button, int port)
 	return false;
 }
 
-bool InputManager::TryGetControllerState(int port, ControllerState* controllerState)
+bool InputManager::TryGetControllerState(int32_t port, ControllerState* controllerState)
 {
-    if (controllerState != NULL)
+    if (controllerState != nullptr)
     {
-	    for (int i = 0; i < XGetPortCount(); i++)
+	    for (int32_t i = 0; i < XGetPortCount(); i++)
 	    {
-		    if (port >= 0 && port != i || mControllerHandles[i] == NULL)
+		    if (port >= 0 && port != i || mControllerHandles[i] == nullptr)
 		    {
 			    continue;
 		    }
@@ -525,13 +527,13 @@ bool InputManager::TryGetControllerState(int port, ControllerState* controllerSt
 	return false;
 }
 
-bool InputManager::TryGetRemoteState(int port, RemoteState* remoteState)
+bool InputManager::TryGetRemoteState(int32_t port, RemoteState* remoteState)
 {
-    if (remoteState != NULL)
+    if (remoteState != nullptr)
     {
-	    for (int i = 0; i < XGetPortCount(); i++)
+	    for (int32_t i = 0; i < XGetPortCount(); i++)
 	    {
-		    if (port >= 0 && port != i || mRemoteHandles[i] == NULL)
+		    if (port >= 0 && port != i || mRemoteHandles[i] == nullptr)
 		    {
 			    continue;
 		    }
@@ -542,13 +544,13 @@ bool InputManager::TryGetRemoteState(int port, RemoteState* remoteState)
 	return false;
 }
 
-bool InputManager::TryGetMouseState(int port, MouseState* mouseState)
+bool InputManager::TryGetMouseState(int32_t port, MouseState* mouseState)
 {
-    if (mouseState != NULL)
+    if (mouseState != nullptr)
     {
-	    for (int i = 0; i < XGetPortCount(); i++)
+	    for (int32_t i = 0; i < XGetPortCount(); i++)
 	    {
-		    if (port >= 0 && port != i || mMouseHandles[i] == NULL)
+		    if (port >= 0 && port != i || mMouseHandles[i] == nullptr)
 		    {
 			    continue;
 		    }
@@ -559,13 +561,13 @@ bool InputManager::TryGetMouseState(int port, MouseState* mouseState)
 	return false;
 }
 
-bool InputManager::TryGetKeyboardState(int port, KeyboardState* keyboardState)
+bool InputManager::TryGetKeyboardState(int32_t port, KeyboardState* keyboardState)
 {
-    if (keyboardState != NULL)
+    if (keyboardState != nullptr)
     {
-	    for (int i = 0; i < XGetPortCount(); i++)
+	    for (int32_t i = 0; i < XGetPortCount(); i++)
 	    {
-		    if (port >= 0 && port != i || mKeyboardHandles[i] == NULL)
+		    if (port >= 0 && port != i || mKeyboardHandles[i] == nullptr)
 		    {
 			    continue;
 		    }
@@ -576,11 +578,11 @@ bool InputManager::TryGetKeyboardState(int port, KeyboardState* keyboardState)
 	return false;
 }
 
-bool InputManager::HasController(int port)
+bool InputManager::HasController(int32_t port)
 {
-	for (int i = 0; i < XGetPortCount(); i++)
+	for (int32_t i = 0; i < XGetPortCount(); i++)
 	{
-		if (port >= 0 && port != i || mControllerHandles[i] == NULL)
+		if (port >= 0 && port != i || mControllerHandles[i] == nullptr)
 		{
 			continue;
 		}
@@ -589,11 +591,11 @@ bool InputManager::HasController(int port)
 	return false;
 }
 
-bool InputManager::HasRemote(int port)
+bool InputManager::HasRemote(int32_t port)
 {
-	for (int i = 0; i < XGetPortCount(); i++)
+	for (int32_t i = 0; i < XGetPortCount(); i++)
 	{
-		if (port >= 0 && port != i || mRemoteHandles[i] == NULL)
+		if (port >= 0 && port != i || mRemoteHandles[i] == nullptr)
 		{
 			continue;
 		}
@@ -602,11 +604,11 @@ bool InputManager::HasRemote(int port)
 	return false;
 }
 
-bool InputManager::HasMouse(int port)
+bool InputManager::HasMouse(int32_t port)
 {
-	for (int i = 0; i < XGetPortCount(); i++)
+	for (int32_t i = 0; i < XGetPortCount(); i++)
 	{
-		if (port >= 0 && port != i || mMouseHandles[i] == NULL)
+		if (port >= 0 && port != i || mMouseHandles[i] == nullptr)
 		{
 			continue;
 		}
@@ -616,7 +618,7 @@ bool InputManager::HasMouse(int port)
 }
 
 bool InputManager::IsMemoryUnitMounted(char letter) {
-    for (int i = 0; i < XGetPortCount() * 2; i++) {
+    for (int32_t i = 0; i < XGetPortCount() * 2; i++) {
         if (mMemoryUnityHandles[i] == letter) {
             return true;
         }

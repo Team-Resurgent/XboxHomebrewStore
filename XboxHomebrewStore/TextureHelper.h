@@ -1,8 +1,6 @@
 #pragma once
 
 #include "Main.h"
-#include <map>
-#include <string>
 
 class TextureHelper
 {

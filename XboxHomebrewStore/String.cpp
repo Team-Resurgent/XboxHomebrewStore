@@ -1,6 +1,4 @@
 #include "String.h"
-#include <stdarg.h>
-#include <stdlib.h>
 
 std::string String::Format(const char* format, ...)
 {
@@ -13,7 +11,7 @@ std::string String::Format(const char* format, ...)
         return std::string();
     }
     char* buf = (char*)malloc(length + 1);
-    if (buf == NULL)
+    if (buf == nullptr)
     {
         va_end(args);
         return std::string();

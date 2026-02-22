@@ -32,7 +32,7 @@ bool StoreManager::Init()
         return false;
     }
 
-    return RefreshApplications();;
+    return RefreshApplications();
 }
 
 int32_t StoreManager::GetCategoryCount() 
@@ -113,7 +113,7 @@ bool StoreManager::LoadPrevious()
     for (int32_t i = 0; i < itemsToRemove; i++)
     {
         StoreItem& storeItem = mWindowStoreItems[mWindowStoreItemCount - 1 - i];
-        if (storeItem.cover != NULL) {
+        if (storeItem.cover != nullptr) {
             storeItem.cover->Release();
         }
     }
@@ -170,7 +170,7 @@ bool StoreManager::LoadNext()
     for (int32_t i = 0; i < itemsToRemove; i++)
     {
         StoreItem& storeItem = mWindowStoreItems[i];
-        if (storeItem.cover != NULL) {
+        if (storeItem.cover != nullptr) {
             storeItem.cover->Release();
         }
     }
@@ -286,10 +286,11 @@ bool StoreManager::LoadApplications(void* dest, int32_t offset, int32_t count, i
         return false;
     }
 
-    *loadedCount = response.items.size();
+    const int32_t itemCount = (int32_t)response.items.size();
+    *loadedCount = itemCount;
 
     StoreItem* storeItems = (StoreItem*)dest;
-    for (int32_t i = 0; i < (int32_t)response.items.size(); i++ )
+    for (int32_t i = 0; i < itemCount; i++ )
     {
         memset(&storeItems[i], 0, sizeof(StoreItem)); 
 
@@ -310,7 +311,7 @@ bool StoreManager::RefreshApplications()
     for (int32_t i = 0; i < mWindowStoreItemCount; i++)
     {
         StoreItem& storeItem = mWindowStoreItems[i];
-        if (storeItem.cover != NULL) {
+        if (storeItem.cover != nullptr) {
             storeItem.cover->Release();
         }
     }

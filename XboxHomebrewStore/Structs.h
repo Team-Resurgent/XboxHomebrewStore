@@ -28,7 +28,7 @@ struct VersionItem
     std::string guid;
     std::string version;
     uint32_t size;
-    int state;
+    int32_t state;
     std::string release_date;
     std::string changelog;
     std::string title_id;

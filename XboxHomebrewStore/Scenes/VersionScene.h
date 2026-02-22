@@ -15,7 +15,7 @@ struct VersionInfo
     std::string changeLog;
     std::string titleId;
     std::string region;
-    int         state;  // STATE_* for display
+    int32_t     state;  // STATE_* for display
 };
 
 /** Selected app data passed when opening VersionScene. */

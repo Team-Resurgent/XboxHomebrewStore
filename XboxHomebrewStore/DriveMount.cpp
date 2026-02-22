@@ -2,11 +2,6 @@
 #include "External.h"
 #include "String.h"
 #include "InputManager.h"
-#include <stdlib.h>
-#include <string.h>
-#include <string>
-#include <map>
-
 enum DriveKind
 {
     DriveKindCdRom,
@@ -91,14 +86,14 @@ static DriveEntry* FindDrive(const std::string& driveName)
 {
     if (driveName.empty())
     {
-        return NULL;
+        return nullptr;
     }
     DriveMap& drives = GetDrives();
     std::string key = NormalizeDriveName(driveName);
     DriveMap::iterator it = drives.find(key);
     if (it == drives.end())
     {
-        return NULL;
+        return nullptr;
     }
     return &it->second;
 }
@@ -179,7 +174,7 @@ static bool DoMount(DriveEntry* ent)
     if (ent->kind == DriveKindCdRom)
     {
         unsigned long trayState = 0;
-        if (HalReadSMCTrayState(&trayState, NULL) == STATUS_SUCCESS && trayState == SMC_TRAY_STATE_MEDIA_DETECT)
+        if (HalReadSMCTrayState(&trayState, nullptr) == STATUS_SUCCESS && trayState == SMC_TRAY_STATE_MEDIA_DETECT)
         {
             return true;
         }
@@ -189,13 +184,13 @@ static bool DoMount(DriveEntry* ent)
     std::string path = String::Format("%s:\\", ent->name.c_str());
     ULARGE_INTEGER totalBytes;
     totalBytes.QuadPart = 0;
-    return GetDiskFreeSpaceExA(path.c_str(), NULL, &totalBytes, NULL) ? true : false;
+    return GetDiskFreeSpaceExA(path.c_str(), nullptr, &totalBytes, nullptr) ? true : false;
 }
 
 bool DriveMount::Mount(std::string driveName)
 {
     DriveEntry* ent = FindDrive(driveName);
-    if (ent == NULL)
+    if (ent == nullptr)
     {
         return false;
     }
@@ -205,7 +200,7 @@ bool DriveMount::Mount(std::string driveName)
 bool DriveMount::Unmount(std::string driveName)
 {
     DriveEntry* ent = FindDrive(driveName);
-    if (ent == NULL)
+    if (ent == nullptr)
     {
         return false;
     }

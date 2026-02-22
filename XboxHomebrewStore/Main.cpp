@@ -25,7 +25,9 @@ static void CoverDownloadProgress(uint32_t dlNow, uint32_t dlTotal, void* userDa
 //-----------------------------------------------------------------------------
 LPDIRECT3D8             g_pD3D          = NULL;
 LPDIRECT3DDEVICE8       g_pd3dDevice    = NULL;
-SceneManager*           g_pSceneManager = NULL;
+LPDIRECT3D8             g_pD3D          = nullptr;
+LPDIRECT3DDEVICE8       g_pd3dDevice    = nullptr;
+SceneManager*           g_pSceneManager = nullptr;
 
 
 typedef struct {
@@ -47,7 +49,7 @@ DISPLAY_MODE displayModes[] = {
     // Width  Height Progressive Widescreen
 
     // HDTV Progressive Modes
-    {1280, 720, TRUE, TRUE, 60}, // 1280x720 progressive 16x9
+    //{1280, 720, TRUE, TRUE, 60}, // 1280x720 progressive 16x9
 
     // EDTV Progressive Modes
     {720, 480, TRUE, TRUE, 60}, // 720x480 progressive 16x9
@@ -149,7 +151,7 @@ bool InitD3D()
     }
 
     LPDIRECT3D8 d3d = Direct3DCreate8(D3D_SDK_VERSION);
-    if (d3d == NULL) {
+    if (d3d == nullptr) {
         Debug::Print("Failed to create d3d\n");
         return false;
     }
@@ -169,7 +171,7 @@ bool InitD3D()
     params.FullScreen_PresentationInterval = D3DPRESENT_INTERVAL_DEFAULT;
 
     LPDIRECT3DDEVICE8 d3dDevice;
-    if (FAILED(d3d->CreateDevice(0, D3DDEVTYPE_HAL, NULL, D3DCREATE_HARDWARE_VERTEXPROCESSING, &params, &d3dDevice))) {
+    if (FAILED(d3d->CreateDevice(0, D3DDEVTYPE_HAL, nullptr, D3DCREATE_HARDWARE_VERTEXPROCESSING, &params, &d3dDevice))) {
         Debug::Print("Failed to create device\n");
         return false;
     }
@@ -193,7 +195,7 @@ bool InitD3D()
 VOID Render()
 {
     // Clear the backbuffer to dark gray
-    g_pd3dDevice->Clear( 0, NULL, D3DCLEAR_TARGET|D3DCLEAR_ZBUFFER, 
+    g_pd3dDevice->Clear( 0, nullptr, D3DCLEAR_TARGET|D3DCLEAR_ZBUFFER, 
                         D3DCOLOR_XRGB(33,33,33), 1.0f, 0 );
 
     // Begin the scene
@@ -206,7 +208,7 @@ VOID Render()
     }
 
     // Present the backbuffer contents to the display
-    g_pd3dDevice->Present( NULL, NULL, NULL, NULL );
+    g_pd3dDevice->Present( nullptr, nullptr, nullptr, nullptr );
 }
 
 //-----------------------------------------------------------------------------
@@ -222,15 +224,15 @@ VOID __cdecl main()
         return;
     }
 
-    if( !CreateDirectory( "T:\\Cache", NULL ) && GetLastError() != ERROR_ALREADY_EXISTS )
+    if( !CreateDirectory( "T:\\Cache", nullptr ) && GetLastError() != ERROR_ALREADY_EXISTS )
     {
         OutputDebugString( "Could not create T:\\Cache\n" );
     }
-    if( !CreateDirectory( "T:\\Cache\\Covers", NULL ) && GetLastError() != ERROR_ALREADY_EXISTS )
+    if( !CreateDirectory( "T:\\Cache\\Covers", nullptr ) && GetLastError() != ERROR_ALREADY_EXISTS )
     {
         OutputDebugString( "Could not create T:\\Cache\\Covers\n" );
     }
-    if( !CreateDirectory( "T:\\Cache\\Screenshots", NULL ) && GetLastError() != ERROR_ALREADY_EXISTS )
+    if( !CreateDirectory( "T:\\Cache\\Screenshots", nullptr ) && GetLastError() != ERROR_ALREADY_EXISTS )
     {
         OutputDebugString( "Could not create T:\\Cache\\Screenshots\n" );
     }
@@ -256,7 +258,7 @@ VOID __cdecl main()
 
     {
         const std::string coverPath = "D:\\Media\\next-dashboard-cover.png";
-        if (WebManager::TryDownloadCover("next-dashboard-t0h4", 256, 256, coverPath, CoverDownloadProgress, NULL, NULL))
+        if (WebManager::TryDownloadCover("next-dashboard-t0h4", 256, 256, coverPath, CoverDownloadProgress, nullptr, nullptr))
         {
             Debug::Print(std::string("Cover saved to %s\n"), coverPath.c_str());
         }

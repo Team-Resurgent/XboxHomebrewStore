@@ -5,5 +5,5 @@
 class Debug
 {
 public:
-    static void Print(std::string format, ...);
+    static void Print(const std::string& format, ...);
 };
