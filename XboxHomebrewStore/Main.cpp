@@ -9,6 +9,7 @@
 #include "Debug.h"
 #include "String.h"
 #include "Context.h"
+#include "Math.h"
 #include "Scenes/SceneManager.h"
 #include "Scenes/StoreScene.h"
 
@@ -23,8 +24,6 @@ static void CoverDownloadProgress(uint32_t dlNow, uint32_t dlTotal, void* userDa
 //-----------------------------------------------------------------------------
 // Global variables
 //-----------------------------------------------------------------------------
-LPDIRECT3D8             g_pD3D          = NULL;
-LPDIRECT3DDEVICE8       g_pd3dDevice    = NULL;
 LPDIRECT3D8             g_pD3D          = nullptr;
 LPDIRECT3DDEVICE8       g_pd3dDevice    = nullptr;
 SceneManager*           g_pSceneManager = nullptr;
@@ -183,7 +182,12 @@ bool InitD3D()
     d3dDevice->SetRenderState( D3DRS_SRCBLEND, D3DBLEND_SRCALPHA );
     d3dDevice->SetRenderState( D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA );
     
-    Context::SetScreenSize(displayModes[currentMode].dwWidth, displayModes[currentMode].dwHeight);
+    Context::SetActualSize(displayModes[currentMode].dwWidth, displayModes[currentMode].dwHeight);
+    if (displayModes[currentMode].dwHeight < 720) {
+        Context::SetLogicalSize(Math::AspectScaleWidth((float)displayModes[currentMode].dwWidth, displayModes[currentMode].dwHeight, 720), 720);
+    } else {
+        Context::SetLogicalSize(displayModes[currentMode].dwWidth, displayModes[currentMode].dwHeight);
+    }
     Context::SetD3dDevice(d3dDevice);
     return true;
 }
@@ -194,9 +198,12 @@ bool InitD3D()
 //-----------------------------------------------------------------------------
 VOID Render()
 {
-    // Clear the backbuffer to dark gray
-    g_pd3dDevice->Clear( 0, nullptr, D3DCLEAR_TARGET|D3DCLEAR_ZBUFFER, 
+    // Clear the backbuffer to dark gray (D3DCLEAR_STENCIL set for 32-bit depth perf)
+    g_pd3dDevice->Clear( 0, nullptr, D3DCLEAR_TARGET|D3DCLEAR_ZBUFFER|D3DCLEAR_STENCIL,
                         D3DCOLOR_XRGB(33,33,33), 1.0f, 0 );
+
+    D3DVIEWPORT8 vp = { 0, 0, (DWORD)Context::GetActualScreenWidth(), (DWORD)Context::GetActualScreenHeight(), 0.0f, 1.0f };
+    g_pd3dDevice->SetViewport(&vp);
 
     // Begin the scene
     if( SUCCEEDED( g_pd3dDevice->BeginScene() ) )

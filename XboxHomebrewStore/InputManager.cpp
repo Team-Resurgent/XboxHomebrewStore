@@ -216,8 +216,9 @@ void InputManager::ProcessController()
         const float dx = mControllerFiilterX[i] * base_speed * boost * precision * dt;
         const float dy = mControllerFiilterY[i] * base_speed * boost * precision * dt;
 
-        mMousePosition.X = Math::ClampFloat(mMousePosition.X + dx, 0.0f, (float)Context::GetScreenHeight());
-        mMousePosition.Y = Math::ClampFloat(mMousePosition.Y + dy, 0.0f, (float)Context::GetScreenHeight());
+        const float sx = Context::GetScaleX(), sy = Context::GetScaleY();
+        mMousePosition.X = Math::ClampFloat(mMousePosition.X + dx / sx, 0.0f, Context::GetScreenWidth());
+        mMousePosition.Y = Math::ClampFloat(mMousePosition.Y + dy / sy, 0.0f, Context::GetScreenHeight());
 
         mControllerStatesCurrent[i].ThumbLeftDx = dx;
         mControllerStatesCurrent[i].ThumbLeftDy = dy;
@@ -349,8 +350,9 @@ void InputManager::ProcessMouse()
             mMouseStatesCurrent[i].Buttons[MouseMiddle] = (mouseInputState.DebugMouse.bButtons & XINPUT_DEBUG_MOUSE_MIDDLE_BUTTON) != 0;
             mMouseStatesCurrent[i].Buttons[MouseExtra1] = (mouseInputState.DebugMouse.bButtons & XINPUT_DEBUG_MOUSE_XBUTTON1) != 0;
             mMouseStatesCurrent[i].Buttons[MouseExtra2] = (mouseInputState.DebugMouse.bButtons & XINPUT_DEBUG_MOUSE_XBUTTON2) != 0;
-            mMousePosition.X = Math::ClampFloat(mMousePosition.X + mMouseStatesCurrent[i].Dx, 0, (float)Context::GetScreenWidth());
-            mMousePosition.Y = Math::ClampFloat(mMousePosition.Y + mMouseStatesCurrent[i].Dy, 0, (float)Context::GetScreenHeight());
+            const float sx = Context::GetScaleX(), sy = Context::GetScaleY();
+            mMousePosition.X = Math::ClampFloat(mMousePosition.X + mMouseStatesCurrent[i].Dx / sx, 0.0f, Context::GetScreenWidth());
+            mMousePosition.Y = Math::ClampFloat(mMousePosition.Y + mMouseStatesCurrent[i].Dy / sy, 0.0f, Context::GetScreenHeight());
             mMouseLastPacketNumber[i] = mouseInputState.dwPacketNumber;
         }
     }

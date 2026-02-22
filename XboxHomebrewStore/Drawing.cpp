@@ -280,9 +280,10 @@ bool Drawing::TryGenerateBitmapFont(void* context, const std::string fontName, i
 
 void Drawing::DrawFont(BitmapFont* font, const std::string& message, uint32_t color, float x, float y)
 {
+    const float sx = Context::GetScaleX(), sy = Context::GetScaleY();
+    x *= sx; y *= sy;
     static TEXVERTEX batchBuf[DRAW_BATCH_MAX_VERTS];
     UINT vertexCount = 0;
-
     float xPos = x;
     float yPos = y;
     const float invW = 1.0f / (float)font->image.width;
@@ -320,8 +321,8 @@ void Drawing::DrawFont(BitmapFont* font, const std::string& message, uint32_t co
 
         float px = xPos - 0.5f;
         float py = yPos - 0.5f;
-        float fw = (float)rect.width;
-        float fh = (float)rect.height;
+        float fw = (float)rect.width * sx;
+        float fh = (float)rect.height * sy;
 
         TEXVERTEX* v = &batchBuf[vertexCount];
         v[0].x = px + fw; v[0].y = py;     v[0].z = 0.5f; v[0].rhw = 1.0f; v[0].diffuse = color; v[0].u = u1; v[0].v = v0;
@@ -332,7 +333,7 @@ void Drawing::DrawFont(BitmapFont* font, const std::string& message, uint32_t co
         v[5].x = px;      v[5].y = py;     v[5].z = 0.5f; v[5].rhw = 1.0f; v[5].diffuse = color; v[5].u = u0; v[5].v = v0;
 
         vertexCount += 6;
-        xPos += rect.width + font->spacing;
+        xPos += (float)(rect.width + font->spacing) * sx;
     }
 
     if (vertexCount > 0) {
@@ -344,9 +345,10 @@ void Drawing::DrawFont(BitmapFont* font, const std::string& message, uint32_t co
 
 void Drawing::DrawFontWrapped(BitmapFont* font, const std::string& message, uint32_t color, float x, float y, float maxWidth)
 {
+    const float sx = Context::GetScaleX(), sy = Context::GetScaleY();
+    x *= sx; y *= sy; maxWidth *= sx;
     static TEXVERTEX batchBuf[DRAW_BATCH_MAX_VERTS];
     UINT vertexCount = 0;
-
     float xPos = x;
     float yPos = y;
     float lineWidth = 0;
@@ -367,7 +369,7 @@ void Drawing::DrawFontWrapped(BitmapFont* font, const std::string& message, uint
         if (unicode == '\n')
         {
             xPos = x;
-            yPos += (float)font->line_height;
+            yPos += (float)font->line_height * sy;
             lineWidth = 0;
             continue;
         }
@@ -378,16 +380,16 @@ void Drawing::DrawFontWrapped(BitmapFont* font, const std::string& message, uint
         }
 
         const Rect& rect = it->second;
-        float charWidth = (float)rect.width + (lineWidth > 0 ? (float)font->spacing : 0);
+        float charWidth = ((float)rect.width + (lineWidth > 0 ? (float)font->spacing : 0)) * sx;
 
         if (unicode == ' ')
         {
             const char* nextWordStart = p;
-            float nextWordW = MeasureWordWidth(font, nextWordStart, &nextWordStart);
-            if (lineWidth > 0 && lineWidth + (float)font->spacing + (float)rect.width + nextWordW > maxWidth)
+            float nextWordW = MeasureWordWidth(font, nextWordStart, &nextWordStart) * sx;
+            if (lineWidth > 0 && lineWidth + (float)font->spacing * sx + (float)rect.width * sx + nextWordW > maxWidth)
             {
                 xPos = x;
-                yPos += (float)font->line_height;
+                yPos += (float)font->line_height * sy;
                 lineWidth = 0;
                 continue;
             }
@@ -395,9 +397,9 @@ void Drawing::DrawFontWrapped(BitmapFont* font, const std::string& message, uint
         else if (lineWidth > 0 && lineWidth + charWidth > maxWidth)
         {
             xPos = x;
-            yPos += (float)font->line_height;
+            yPos += (float)font->line_height * sy;
             lineWidth = 0;
-            charWidth = (float)rect.width;
+            charWidth = (float)rect.width * sx;
         }
 
         if (vertexCount + 6 > (UINT)DRAW_BATCH_MAX_VERTS)
@@ -414,8 +416,8 @@ void Drawing::DrawFontWrapped(BitmapFont* font, const std::string& message, uint
 
         float px = xPos - 0.5f;
         float py = yPos - 0.5f;
-        float fw = (float)rect.width;
-        float fh = (float)rect.height;
+        float fw = (float)rect.width * sx;
+        float fh = (float)rect.height * sy;
 
         TEXVERTEX* v = &batchBuf[vertexCount];
         v[0].x = px + fw; v[0].y = py;     v[0].z = 0.5f; v[0].rhw = 1.0f; v[0].diffuse = color; v[0].u = u1; v[0].v = v0;
@@ -426,7 +428,7 @@ void Drawing::DrawFontWrapped(BitmapFont* font, const std::string& message, uint
         v[5].x = px;      v[5].y = py;     v[5].z = 0.5f; v[5].rhw = 1.0f; v[5].diffuse = color; v[5].u = u0; v[5].v = v0;
 
         vertexCount += 6;
-        xPos += (float)rect.width + (lineWidth > 0 ? (float)font->spacing : 0);
+        xPos += ((float)rect.width + (lineWidth > 0 ? (float)font->spacing : 0)) * sx;
         lineWidth += charWidth;
     }
 
@@ -439,12 +441,10 @@ void Drawing::DrawFontWrapped(BitmapFont* font, const std::string& message, uint
 
 void Drawing::DrawFilledRect(uint32_t color, float x, float y, float width, float height)
 {
+    const float sx = Context::GetScaleX(), sy = Context::GetScaleY();
+    x *= sx; y *= sy; width *= sx; height *= sy;
     VERTEX vertices[4];
-
-    float px = x;
-    float py = y;
-    float fw = width;
-    float fh = height;
+    float px = x, py = y, fw = width, fh = height;
 
     vertices[0].x = px;      vertices[0].y = py;      vertices[0].z = 0.5f; vertices[0].rhw = 1.0f; vertices[0].diffuse = color;
     vertices[1].x = px + fw; vertices[1].y = py;      vertices[1].z = 0.5f; vertices[1].rhw = 1.0f; vertices[1].diffuse = color;
@@ -460,12 +460,10 @@ void Drawing::DrawFilledRect(uint32_t color, float x, float y, float width, floa
 
 void Drawing::DrawTexturedRect(D3DTexture* texture, uint32_t diffuse, float x, float y, float width, float height)
 {
+    const float sx = Context::GetScaleX(), sy = Context::GetScaleY();
+    x *= sx; y *= sy; width *= sx; height *= sy;
     TEXVERTEX vertices[4];
-
-    float px = x;
-    float py = y;
-    float fw = width;
-    float fh = height;
+    float px = x, py = y, fw = width, fh = height;
 
     vertices[0].x = px;      vertices[0].y = py;      vertices[0].z = 0.5f; vertices[0].rhw = 1.0f; vertices[0].diffuse = diffuse; vertices[0].u = 0.0f; vertices[0].v = 0.0f;
     vertices[1].x = px + fw; vertices[1].y = py;      vertices[1].z = 0.5f; vertices[1].rhw = 1.0f; vertices[1].diffuse = diffuse; vertices[1].u = 1.0f; vertices[1].v = 0.0f;
@@ -484,11 +482,13 @@ void Drawing::DrawTexturedRect(D3DTexture* texture, uint32_t diffuse, float x, f
 
 void Drawing::DrawNinePatch(D3DTexture* texture, uint32_t diffuse, float x, float y, float width, float height, float cornerWidthPx, float cornerHeightPx, float contentWidthPx, float contentHeightPx)
 {
+    const float sx = Context::GetScaleX(), sy = Context::GetScaleY();
+    x *= sx; y *= sy; width *= sx; height *= sy;
+    cornerWidthPx *= sx; cornerHeightPx *= sy;
     D3DSURFACE_DESC desc;
     if (FAILED(texture->GetLevelDesc(0, &desc))) {
         return;
     }
-
     const float surfaceW = (float)desc.Width;
     const float surfaceH = (float)desc.Height;
     const float contentW = contentWidthPx > 0 ? contentWidthPx : (float)(int32_t)surfaceW;
@@ -605,6 +605,8 @@ void Drawing::DrawNinePatch(D3DTexture* texture, uint32_t diffuse, float x, floa
 
 void Drawing::BeginStencil(float x, float y, float w, float h)
 {
+    const float sx = Context::GetScaleX(), sy = Context::GetScaleY();
+    x *= sx; y *= sy; w *= sx; h *= sy;
     SaveRenderState();
 
     Context::GetD3dDevice()->SetRenderState(D3DRS_STENCILENABLE, TRUE);

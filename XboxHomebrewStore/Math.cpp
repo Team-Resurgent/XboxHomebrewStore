@@ -24,3 +24,11 @@ float Math::CopySign(float a, float b)
 {
     return (b >= 0.0f) ? fabsf(a) : -fabsf(a);
 }
+
+int32_t Math::AspectScaleWidth(int32_t originalWidth, int32_t originalHeight, int32_t targetHeight)
+{
+    if (originalHeight <= 0) {
+        return originalWidth;
+    }
+    return (int32_t)(originalWidth * ((float)targetHeight / (float)originalHeight));
+}
