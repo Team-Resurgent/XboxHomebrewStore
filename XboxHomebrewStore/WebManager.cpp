@@ -279,7 +279,7 @@ bool WebManager::TryDownload(const std::string& url, const std::string& filePath
     return true;
 }
 
-bool WebManager::TryGetApps(AppsResponse& result, uint32_t offset, uint32_t count, const std::string& category, const std::string& name)
+bool WebManager::TryGetApps(AppsResponse& result, int32_t offset, int32_t count, const std::string& category, const std::string& name)
 {
     result.items.clear();
     std::string url = store_api_url + store_app_controller + String::Format("?offset=%u&count=%u", offset, count);
@@ -372,7 +372,7 @@ bool WebManager::TryGetVersions(const std::string& id, VersionsResponse& result)
     return ParseVersionsResponse(raw, result);
 }
 
-bool WebManager::TryDownloadCover(const std::string& id, uint32_t width, uint32_t height, const std::string& filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
+bool WebManager::TryDownloadCover(const std::string& id, int32_t width, int32_t height, const std::string& filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
 {
     if (id.empty())
     {
@@ -382,7 +382,7 @@ bool WebManager::TryDownloadCover(const std::string& id, uint32_t width, uint32_
     return TryDownload(url, filePath, progressFn, progressUserData, pCancelRequested);
 }
 
-bool WebManager::TryDownloadScreenshot(const std::string& id, uint32_t width, uint32_t height, const std::string& filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
+bool WebManager::TryDownloadScreenshot(const std::string& id, int32_t width, int32_t height, const std::string& filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
 {
     if (id.empty())
     {

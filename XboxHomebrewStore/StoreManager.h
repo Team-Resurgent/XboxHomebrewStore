@@ -21,7 +21,7 @@ typedef struct
 {
     std::string name;
     ScrollState nameScrollState;
-    uint32_t count;
+    int32_t count;
 } StoreCategory;
 
 typedef struct
@@ -50,22 +50,22 @@ class StoreManager
 {
 public:
     static bool Init();
-    static uint32_t GetCategoryCount();
-    static uint32_t GetCategoryIndex();
-    static void SetCategoryIndex(uint32_t categoryIndex);
-    static StoreCategory* GetStoreCategory(uint32_t categoryIndex);
-    static uint32_t GetSelectedCategoryTotal();
+    static int32_t GetCategoryCount();
+    static int32_t GetCategoryIndex();
+    static void SetCategoryIndex(int32_t categoryIndex);
+    static StoreCategory* GetStoreCategory(int32_t categoryIndex);
+    static int32_t GetSelectedCategoryTotal();
     static std::string GetSelectedCategoryName();
-    static uint32_t GetWindowStoreItemOffset();
-    static uint32_t GetWindowStoreItemCount();
-    static StoreItem* GetWindowStoreItem(uint32_t storeItemIndex);
+    static int32_t GetWindowStoreItemOffset();
+    static int32_t GetWindowStoreItemCount();
+    static StoreItem* GetWindowStoreItem(int32_t storeItemIndex);
     static bool HasPrevious();
     static bool HasNext();
     static bool LoadPrevious();
     static bool LoadNext();
-    static bool TryGetStoreVersions(uint32_t storeItemIndex, StoreVersions* storeVersions);
+    static bool TryGetStoreVersions(int32_t storeItemIndex, StoreVersions* storeVersions);
 private:
     static bool LoadCategories();
-    static bool LoadApplications(void* dest, uint32_t offset, uint32_t count, uint32_t* loadedCount);
+    static bool LoadApplications(void* dest, int32_t offset, int32_t count, int32_t* loadedCount);
     static bool RefreshApplications();
 };

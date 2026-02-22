@@ -52,17 +52,17 @@ void VersionScene::RenderVersionSidebar()
 
     Font::DrawText(FONT_NORMAL, "Versions...", COLOR_WHITE, 16, ASSET_SIDEBAR_Y + 16);
 
-    uint32_t versionCount = mStoreVersions.versions.size();
+    int32_t versionCount = mStoreVersions.versions.size();
 
-    uint32_t maxItems = (sidebarHeight - 64) / 44;
-    uint32_t start = 0;
+    int32_t maxItems = (sidebarHeight - 64) / 44;
+    int32_t start = 0;
     if (versionCount >= maxItems) {
         start = Math::ClampInt32(mHighlightedVersionIndex - (maxItems / 2), 0, versionCount - maxItems);
     }
 
-    uint32_t itemCount = Math::MinUint32(start + maxItems, versionCount) - start;
+    int32_t itemCount = Math::MinInt32(start + maxItems, versionCount) - start;
 
-    for (uint32_t pass = 0; pass < 2; pass++) 
+    for (int32_t pass = 0; pass < 2; pass++) 
     {
         int32_t y = ASSET_SIDEBAR_Y + 64;
 
@@ -70,9 +70,9 @@ void VersionScene::RenderVersionSidebar()
             Drawing::BeginStencil(16, (float)ASSET_SIDEBAR_Y, ASSET_SIDEBAR_WIDTH - 32.0f, (float)sidebarHeight);
         }
 
-        for (uint32_t i = 0; i < itemCount; i++)
+        for (int32_t i = 0; i < itemCount; i++)
         {
-            uint32_t index = start + i;
+            int32_t index = start + i;
 
             StoreVersion* storeVersion = &mStoreVersions.versions[index];
 

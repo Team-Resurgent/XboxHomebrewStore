@@ -45,6 +45,6 @@ private:
     StoreVersions mStoreVersions;
 
     bool mSideBarFocused;
-    uint32_t mHighlightedVersionIndex;
-    uint32_t mVersionIndex;
+    int32_t mHighlightedVersionIndex;
+    int32_t mVersionIndex;
 };

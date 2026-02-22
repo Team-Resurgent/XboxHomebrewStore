@@ -8,10 +8,10 @@
 #include "ImageDownloader.h"
 
 namespace {
-    uint32_t mCategoryIndex;
+    int32_t mCategoryIndex;
     std::vector<StoreCategory> mCategories;
-    uint32_t mWindowStoreItemOffset;
-    uint32_t mWindowStoreItemCount;
+    int32_t mWindowStoreItemOffset;
+    int32_t mWindowStoreItemCount;
     StoreItem* mWindowStoreItems;
     StoreItem* mTempStoreItems;
 }
@@ -35,28 +35,28 @@ bool StoreManager::Init()
     return RefreshApplications();;
 }
 
-uint32_t StoreManager::GetCategoryCount() 
+int32_t StoreManager::GetCategoryCount() 
 { 
     return mCategories.size(); 
 }
 
-uint32_t StoreManager::GetCategoryIndex()
+int32_t StoreManager::GetCategoryIndex()
 {
     return mCategoryIndex;
 }
 
-void StoreManager::SetCategoryIndex(uint32_t categoryIndex)
+void StoreManager::SetCategoryIndex(int32_t categoryIndex)
 {
     mCategoryIndex = categoryIndex;
     RefreshApplications();
 }
 
-StoreCategory* StoreManager::GetStoreCategory(uint32_t categoryIndex) 
+StoreCategory* StoreManager::GetStoreCategory(int32_t categoryIndex) 
 { 
     return &mCategories[categoryIndex]; 
 }
 
-uint32_t StoreManager::GetSelectedCategoryTotal() 
+int32_t StoreManager::GetSelectedCategoryTotal() 
 { 
     return mCategories[mCategoryIndex].count; 
 }
@@ -66,17 +66,17 @@ std::string StoreManager::GetSelectedCategoryName()
     return mCategories[mCategoryIndex].name; 
 }
 
-uint32_t StoreManager::GetWindowStoreItemOffset()
+int32_t StoreManager::GetWindowStoreItemOffset()
 {
     return mWindowStoreItemOffset;
 }
 
-uint32_t StoreManager::GetWindowStoreItemCount()
+int32_t StoreManager::GetWindowStoreItemCount()
 {
     return mWindowStoreItemCount;
 }
 
-StoreItem* StoreManager::GetWindowStoreItem(uint32_t storeItemIndex)
+StoreItem* StoreManager::GetWindowStoreItem(int32_t storeItemIndex)
 {
     return &mWindowStoreItems[storeItemIndex]; 
 }
@@ -88,8 +88,8 @@ bool StoreManager::HasPrevious()
 
 bool StoreManager::HasNext()
 {
-    uint32_t categoryItemCount = mCategories[mCategoryIndex].count;
-    uint32_t windowStoreItemEndOffset = mWindowStoreItemOffset + mWindowStoreItemCount;
+    int32_t categoryItemCount = mCategories[mCategoryIndex].count;
+    int32_t windowStoreItemEndOffset = mWindowStoreItemOffset + mWindowStoreItemCount;
     return windowStoreItemEndOffset < categoryItemCount;
 }
 
@@ -100,17 +100,17 @@ bool StoreManager::LoadPrevious()
         return false;
     }
 
-    uint32_t newWindowStoreItemOffset = mWindowStoreItemOffset - Context::GetGridCols();
+    int32_t newWindowStoreItemOffset = mWindowStoreItemOffset - Context::GetGridCols();
 
-    uint32_t loadedCount = 0;
+    int32_t loadedCount = 0;
     if (LoadApplications(mTempStoreItems, newWindowStoreItemOffset, Context::GetGridCols(), &loadedCount) == false)
     {
         return false;
     }
 
-    uint32_t itemsToRemove = Math::MinInt32(Context::GetGridCols(), mWindowStoreItemCount);
+    int32_t itemsToRemove = Math::MinInt32(Context::GetGridCols(), mWindowStoreItemCount);
 
-    for (uint32_t i = 0; i < itemsToRemove; i++)
+    for (int32_t i = 0; i < itemsToRemove; i++)
     {
         StoreItem& storeItem = mWindowStoreItems[mWindowStoreItemCount - 1 - i];
         if (storeItem.cover != NULL) {
@@ -118,7 +118,7 @@ bool StoreManager::LoadPrevious()
         }
     }
 
-    for (uint32_t i = mWindowStoreItemCount - itemsToRemove; i > 0; i--)
+    for (int32_t i = mWindowStoreItemCount - itemsToRemove; i > 0; i--)
     {
         StoreItem& src = mWindowStoreItems[i - 1];
         StoreItem& dst = mWindowStoreItems[i - 1 + loadedCount];
@@ -132,7 +132,7 @@ bool StoreManager::LoadPrevious()
         dst.cover = src.cover;
     }
 
-    for (uint32_t i = 0; i < loadedCount; i++)
+    for (int32_t i = 0; i < loadedCount; i++)
     {
         StoreItem& dst = mWindowStoreItems[i];
         StoreItem& src = mTempStoreItems[i];
@@ -158,16 +158,16 @@ bool StoreManager::LoadNext()
         return false;
     }
 
-    uint32_t newWindowStoreItemOffset = mWindowStoreItemOffset + Context::GetGridCols();
+    int32_t newWindowStoreItemOffset = mWindowStoreItemOffset + Context::GetGridCols();
 
-    uint32_t loadedCount = 0;
+    int32_t loadedCount = 0;
     if (LoadApplications(mTempStoreItems, newWindowStoreItemOffset + Context::GetGridCols(), Context::GetGridCols(), &loadedCount) == false)
     {
         return false;
     }
 
-    uint32_t itemsToRemove = Math::MinInt32(Context::GetGridCols(), mWindowStoreItemCount);
-    for (uint32_t i = 0; i < itemsToRemove; i++)
+    int32_t itemsToRemove = Math::MinInt32(Context::GetGridCols(), mWindowStoreItemCount);
+    for (int32_t i = 0; i < itemsToRemove; i++)
     {
         StoreItem& storeItem = mWindowStoreItems[i];
         if (storeItem.cover != NULL) {
@@ -175,7 +175,7 @@ bool StoreManager::LoadNext()
         }
     }
 
-    for (uint32_t i = itemsToRemove; i < mWindowStoreItemCount; i++)
+    for (int32_t i = itemsToRemove; i < mWindowStoreItemCount; i++)
     {
         StoreItem& src = mWindowStoreItems[i];
         StoreItem& dst = mWindowStoreItems[i - itemsToRemove];
@@ -190,7 +190,7 @@ bool StoreManager::LoadNext()
         dst.cover = src.cover;
     }
 
-    for (uint32_t i = 0; i < loadedCount; i++)
+    for (int32_t i = 0; i < loadedCount; i++)
     {
         StoreItem& dst = mWindowStoreItems[mWindowStoreItemCount - itemsToRemove + i];
         StoreItem& src = mTempStoreItems[i];
@@ -210,7 +210,7 @@ bool StoreManager::LoadNext()
     return true;
 }
 
-bool StoreManager::TryGetStoreVersions(uint32_t storeItemIndex, StoreVersions* storeVersions)
+bool StoreManager::TryGetStoreVersions(int32_t storeItemIndex, StoreVersions* storeVersions)
 {
     StoreItem* storeItem = GetWindowStoreItem(storeItemIndex);
 
@@ -226,7 +226,7 @@ bool StoreManager::TryGetStoreVersions(uint32_t storeItemIndex, StoreVersions* s
     storeVersions->author = storeItem->author;
     storeVersions->description = storeItem->description;
 
-    for (uint32_t i = 0; i < versionsResponse.size(); i++)
+    for (int32_t i = 0; i < versionsResponse.size(); i++)
     {
         VersionItem* versionItem = &versionsResponse[i];
 
@@ -261,7 +261,7 @@ bool StoreManager::LoadCategories()
     allApps.name = "All Apps";
     allApps.count = 0;
 
-    for (uint32_t i = 0; i < categoriesResponse.size(); i++)
+    for (int32_t i = 0; i < categoriesResponse.size(); i++)
     {
         StoreCategory storeCategory;
         memset(&storeCategory, 0, sizeof(StoreCategory));
@@ -276,7 +276,7 @@ bool StoreManager::LoadCategories()
     return true;
 }
 
-bool StoreManager::LoadApplications(void* dest, uint32_t offset, uint32_t count, uint32_t* loadedCount)
+bool StoreManager::LoadApplications(void* dest, int32_t offset, int32_t count, int32_t* loadedCount)
 {
     std::string categoryFilter = mCategoryIndex == 0 ? "" : mCategories[mCategoryIndex].name;
 
@@ -289,7 +289,7 @@ bool StoreManager::LoadApplications(void* dest, uint32_t offset, uint32_t count,
     *loadedCount = response.items.size();
 
     StoreItem* storeItems = (StoreItem*)dest;
-    for (uint32_t i = 0; i < response.items.size(); i++ )
+    for (int32_t i = 0; i < response.items.size(); i++ )
     {
         memset(&storeItems[i], 0, sizeof(StoreItem)); 
 
@@ -307,7 +307,7 @@ bool StoreManager::LoadApplications(void* dest, uint32_t offset, uint32_t count,
 
 bool StoreManager::RefreshApplications()
 {
-    for (uint32_t i = 0; i < mWindowStoreItemCount; i++)
+    for (int32_t i = 0; i < mWindowStoreItemCount; i++)
     {
         StoreItem& storeItem = mWindowStoreItems[i];
         if (storeItem.cover != NULL) {
@@ -318,7 +318,7 @@ bool StoreManager::RefreshApplications()
     mWindowStoreItemOffset = 0;
     mWindowStoreItemCount = 0;
 
-    uint32_t loadedCount = 0;
+    int32_t loadedCount = 0;
     if (LoadApplications(mWindowStoreItems, 0, Context::GetGridCells(), &loadedCount) == false)
     {
         return false;

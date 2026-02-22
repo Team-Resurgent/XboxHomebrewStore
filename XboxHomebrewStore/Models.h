@@ -10,7 +10,7 @@ typedef struct
     std::string author;
     std::string category;
     std::string description;
-    uint32_t state;
+    int32_t state;
 } AppItem;
 
 typedef struct
@@ -33,7 +33,7 @@ typedef std::vector<VersionItem> VersionsResponse;
 
 typedef struct {
     std::string name;
-    uint32_t count;
+    int32_t count;
 } CategoryItem;
 
 typedef std::vector<CategoryItem> CategoriesResponse;

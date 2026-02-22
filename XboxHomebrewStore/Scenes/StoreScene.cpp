@@ -48,17 +48,17 @@ void StoreScene::RenderCategorySidebar()
 
     Font::DrawText(FONT_NORMAL, "Categories...", COLOR_WHITE, 16, ASSET_SIDEBAR_Y + 16);
 
-    uint32_t categoryCount = StoreManager::GetCategoryCount();
+    int32_t categoryCount = StoreManager::GetCategoryCount();
 
-    uint32_t maxItems = (sidebarHeight - 64) / 44;
-    uint32_t start = 0;
+    int32_t maxItems = (sidebarHeight - 64) / 44;
+    int32_t start = 0;
     if (categoryCount >= maxItems) {
         start = Math::ClampInt32(mHighlightedCategoryIndex - (maxItems / 2), 0, categoryCount - maxItems);
     }
 
-    uint32_t itemCount = Math::MinUint32(start + maxItems, categoryCount) - start;
+    int32_t itemCount = Math::MinInt32(start + maxItems, categoryCount) - start;
 
-    for (uint32_t pass = 0; pass < 2; pass++) 
+    for (int32_t pass = 0; pass < 2; pass++) 
     {
         int32_t y = ASSET_SIDEBAR_Y + 64;
 
@@ -66,9 +66,9 @@ void StoreScene::RenderCategorySidebar()
             Drawing::BeginStencil(48.0f, (float)ASSET_SIDEBAR_Y, ASSET_SIDEBAR_WIDTH - 64.0f, (float)sidebarHeight);
         }
 
-        for (uint32_t i = 0; i < itemCount; i++)
+        for (int32_t i = 0; i < itemCount; i++)
         {
-            uint32_t index = start + i;
+            int32_t index = start + i;
 
             StoreCategory* storeCategory = StoreManager::GetStoreCategory(index);
 
@@ -194,10 +194,10 @@ void StoreScene::RenderMainGrid()
     int cardY = gridY + ((gridHeight - storeItemsHeight) / 2);;
 
 
-    uint32_t totalSlots = Context::GetGridCells();
-    uint32_t windowCount = StoreManager::GetWindowStoreItemCount();
-    uint32_t slotsInView = Math::MinInt32(totalSlots, windowCount);
-    for (uint32_t currentSlot = 0; currentSlot < slotsInView; currentSlot++ )
+    int32_t totalSlots = Context::GetGridCells();
+    int32_t windowCount = StoreManager::GetWindowStoreItemCount();
+    int32_t slotsInView = Math::MinInt32(totalSlots, windowCount);
+    for (int32_t currentSlot = 0; currentSlot < slotsInView; currentSlot++ )
     {
         int row = currentSlot / Context::GetGridCols();
         int col = currentSlot % Context::GetGridCols();
@@ -278,9 +278,7 @@ void StoreScene::Update()
         }
         else if (InputManager::ControllerPressed(ControllerDpadDown, -1))
         {
-            int32_t offset = (int32_t)StoreManager::GetWindowStoreItemOffset();
-            int32_t count = (int32_t)StoreManager::GetWindowStoreItemCount();
-            if (mStoreIndex < (offset + count - Context::GetGridCols()))
+            if (mStoreIndex < (StoreManager::GetWindowStoreItemOffset() + StoreManager::GetWindowStoreItemCount() - Context::GetGridCols()))
             {
                 mStoreIndex += Context::GetGridCols();
             }
@@ -288,7 +286,7 @@ void StoreScene::Update()
             {
                 mImageDownloader->CancelAll();
                 StoreManager::LoadNext();
-                mStoreIndex = Math::MinUint32(mStoreIndex + Context::GetGridCols(), StoreManager::GetSelectedCategoryTotal() - 1);
+                mStoreIndex = Math::MinInt32(mStoreIndex + Context::GetGridCols(), StoreManager::GetSelectedCategoryTotal() - 1);
             }
         }
         else if (InputManager::ControllerPressed(ControllerA, -1))
