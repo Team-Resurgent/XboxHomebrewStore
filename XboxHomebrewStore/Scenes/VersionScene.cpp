@@ -1,5 +1,4 @@
 #include "VersionScene.h"
-#include "VersionDetailsScene.h"
 #include "SceneManager.h"
 
 #include "..\Context.h"
@@ -17,6 +16,19 @@ VersionScene::VersionScene(const StoreVersions& storeVersions)
     mSideBarFocused = true;
     mHighlightedVersionIndex = 0;
     mVersionIndex = 0;
+    mListViewScrollOffset = 0.0f;
+    mListViewContentHeight = 0.0f;
+    mDescriptionHeight = 0.0f;
+    mChangeLogHeight = 0.0f;
+    mLastMeasuredVersionIndex = -1;
+
+    const float infoXPos = 350.0f;
+    float descMaxWidth = (float)Context::GetScreenWidth() - infoXPos - 20.0f;
+    Font::MeasureTextWrapped(FONT_NORMAL, mStoreVersions.description, descMaxWidth, NULL, &mDescriptionHeight);
+    if (!mStoreVersions.versions.empty()) {
+        Font::MeasureTextWrapped(FONT_NORMAL, mStoreVersions.versions[0].changeLog, descMaxWidth, NULL, &mChangeLogHeight);
+        mLastMeasuredVersionIndex = 0;
+    }
 }
 
 void VersionScene::Render()
@@ -106,61 +118,100 @@ void VersionScene::RenderVersionSidebar()
 
 void VersionScene::RenderListView()
 {
+    const float titleXPos = 200.0f;
+    const float infoXPos = 350.0f;
+
+    StoreVersion* storeVersion = &mStoreVersions.versions[mHighlightedVersionIndex];
+    float descMaxWidth = (float)Context::GetScreenWidth() - infoXPos - 20.0f;
+    float changeLogMaxWidth = (float)Context::GetScreenWidth() - infoXPos - 20.0f;
+
+    if (mHighlightedVersionIndex != mLastMeasuredVersionIndex) {
+        Font::MeasureTextWrapped(FONT_NORMAL, storeVersion->changeLog, changeLogMaxWidth, NULL, &mChangeLogHeight);
+        mLastMeasuredVersionIndex = mHighlightedVersionIndex;
+    }
+
+    mListViewContentHeight = (float)ASSET_SCREENSHOT_HEIGHT + 16.0f + 30.0f + 30.0f + mDescriptionHeight + 8.0f
+        + 30.0f * 5.0f + mChangeLogHeight + 8.0f + 30.0f;
+    float listVisibleHeight = (float)(Context::GetScreenHeight() - ASSET_SIDEBAR_Y - ASSET_FOOTER_HEIGHT);
+    float maxScroll = mListViewContentHeight - listVisibleHeight;
+    if (maxScroll < 0.0f) {
+        maxScroll = 0.0f;
+    }
+    if (mListViewScrollOffset > maxScroll) {
+        mListViewScrollOffset = maxScroll;
+    }
+    if (mListViewScrollOffset < 0.0f) {
+        mListViewScrollOffset = 0.0f;
+    }
+
     float gridX = ASSET_SIDEBAR_WIDTH;
-    float gridY = ASSET_SIDEBAR_Y;
+    float gridY = (float)ASSET_SIDEBAR_Y - mListViewScrollOffset;
+
+    Drawing::BeginStencil((float)ASSET_SIDEBAR_WIDTH, (float)ASSET_SIDEBAR_Y, (float)(Context::GetScreenWidth() - ASSET_SIDEBAR_WIDTH), listVisibleHeight);
 
     if (mStoreVersions.screenshot ) {
-        Drawing::DrawTexturedRect(mStoreVersions.screenshot, 0xFFFFFFFF, (int)200, gridY, ASSET_SCREENSHOT_WIDTH, ASSET_SCREENSHOT_HEIGHT);
+        Drawing::DrawTexturedRect(mStoreVersions.screenshot, 0xFFFFFFFF, titleXPos, gridY, ASSET_SCREENSHOT_WIDTH, ASSET_SCREENSHOT_HEIGHT);
     } else {
-        Drawing::DrawTexturedRect(TextureHelper::GetScreenshotRef(), 0xFFFFFFFF, (int)200, gridY, ASSET_SCREENSHOT_WIDTH, ASSET_SCREENSHOT_HEIGHT);
+        Drawing::DrawTexturedRect(TextureHelper::GetScreenshotRef(), 0xFFFFFFFF, titleXPos, gridY, ASSET_SCREENSHOT_WIDTH, ASSET_SCREENSHOT_HEIGHT);
     }
 
     Drawing::DrawTexturedRect(TextureHelper::GetCoverRef(), 0xFFFFFFFF, 216 + ASSET_SCREENSHOT_WIDTH, gridY, 144, 204);
 
     gridY += ASSET_SCREENSHOT_HEIGHT + 16;
 
-    Font::DrawText(FONT_NORMAL, "Name:", COLOR_WHITE, 200.0f, gridY);
-    Font::DrawText(FONT_NORMAL, mStoreVersions.name, COLOR_TEXT_GRAY, 350.0f, gridY);
+    Font::DrawText(FONT_NORMAL, "Name:", COLOR_WHITE, titleXPos, gridY);
+    Font::DrawText(FONT_NORMAL, mStoreVersions.name, COLOR_TEXT_GRAY, infoXPos, gridY);
     gridY += 30;
-    Font::DrawText(FONT_NORMAL, "Author:", COLOR_WHITE, 200.0f, gridY);
-    Font::DrawText(FONT_NORMAL, mStoreVersions.author, COLOR_TEXT_GRAY, 350.0f, gridY);
+    Font::DrawText(FONT_NORMAL, "Author:", COLOR_WHITE, titleXPos, gridY);
+    Font::DrawText(FONT_NORMAL, mStoreVersions.author, COLOR_TEXT_GRAY, infoXPos, gridY);
     gridY += 30;
-    Font::DrawText(FONT_NORMAL, "Description:", COLOR_WHITE, 200.0f, gridY);
-    Font::DrawText(FONT_NORMAL, mStoreVersions.description, COLOR_TEXT_GRAY, 350.0f, gridY);
-    gridY += 30;
+    Font::DrawText(FONT_NORMAL, "Description:", COLOR_WHITE, titleXPos, gridY);
+    Font::DrawTextWrapped(FONT_NORMAL, mStoreVersions.description, COLOR_TEXT_GRAY, infoXPos, gridY, descMaxWidth);
+    gridY += mDescriptionHeight + 8.0f;
 
-    StoreVersion* storeVersion = &mStoreVersions.versions[mHighlightedVersionIndex];
+    Font::DrawText(FONT_NORMAL, "Version:", COLOR_WHITE, titleXPos, gridY);
+    Font::DrawText(FONT_NORMAL, storeVersion->version, COLOR_TEXT_GRAY, infoXPos, gridY);
+    gridY += 30;
+    Font::DrawText(FONT_NORMAL, "Title ID:", COLOR_WHITE, titleXPos, gridY);
+    Font::DrawText(FONT_NORMAL, storeVersion->titleId, COLOR_TEXT_GRAY, infoXPos, gridY);
+    gridY += 30;
+    Font::DrawText(FONT_NORMAL, "Release Date:", COLOR_WHITE, titleXPos, gridY);
+    Font::DrawText(FONT_NORMAL, storeVersion->releaseDate, COLOR_TEXT_GRAY, infoXPos, gridY);
+    gridY += 30;
+    Font::DrawText(FONT_NORMAL, "Region:", COLOR_WHITE, titleXPos, gridY);
+    Font::DrawText(FONT_NORMAL, storeVersion->region, COLOR_TEXT_GRAY, infoXPos, gridY);
+    gridY += 30;
+    Font::DrawText(FONT_NORMAL, "Change Log:", COLOR_WHITE, titleXPos, gridY);
+    Font::DrawTextWrapped(FONT_NORMAL, storeVersion->changeLog, COLOR_TEXT_GRAY, infoXPos, gridY, changeLogMaxWidth);
+    gridY += mChangeLogHeight + 8.0f;
+    Font::DrawText(FONT_NORMAL, "Size:", COLOR_WHITE, titleXPos, gridY);
+    Font::DrawText(FONT_NORMAL, String::FormatSize(storeVersion->size), COLOR_TEXT_GRAY, infoXPos, gridY);
 
-    Font::DrawText(FONT_NORMAL, "Version:", COLOR_WHITE, 200.0f, gridY);
-    Font::DrawText(FONT_NORMAL, storeVersion->version, COLOR_TEXT_GRAY, 350.0f, gridY);
-    gridY += 30;
-    Font::DrawText(FONT_NORMAL, "Title ID:", COLOR_WHITE, 200.0f, gridY);
-    Font::DrawText(FONT_NORMAL, storeVersion->titleId, COLOR_TEXT_GRAY, 350.0f, gridY);
-    gridY += 30;
-    Font::DrawText(FONT_NORMAL, "Release Date:", COLOR_WHITE, 200.0f, gridY);
-    Font::DrawText(FONT_NORMAL, storeVersion->releaseDate, COLOR_TEXT_GRAY, 350.0f, gridY);
-    gridY += 30;
-    Font::DrawText(FONT_NORMAL, "Region:", COLOR_WHITE, 200.0f, gridY);
-    Font::DrawText(FONT_NORMAL, storeVersion->region, COLOR_TEXT_GRAY, 350.0f, gridY);
-    gridY += 30;
-    Font::DrawText(FONT_NORMAL, "Change Log:", COLOR_WHITE, 200.0f, gridY);
-    Font::DrawText(FONT_NORMAL, storeVersion->changeLog, COLOR_TEXT_GRAY, 350.0f, gridY);
-    gridY += 30;
-    Font::DrawText(FONT_NORMAL, "Size:", COLOR_WHITE, 200.0f, gridY);
-    Font::DrawText(FONT_NORMAL, String::FormatSize(storeVersion->size), COLOR_TEXT_GRAY, 350.0f, gridY);
+    Drawing::EndStencil();
 }
 
 void VersionScene::Update()
 {
+    const float listScrollStep = 44.0f;
+    float listVisibleHeight = (float)(Context::GetScreenHeight() - ASSET_SIDEBAR_Y - ASSET_FOOTER_HEIGHT);
+    float listMaxScroll = mListViewContentHeight - listVisibleHeight;
+    if (listMaxScroll < 0.0f) {
+        listMaxScroll = 0.0f;
+    }
+
     if (mSideBarFocused)
     {
         if (InputManager::ControllerPressed(ControllerDpadUp, -1))
         {
-            mHighlightedVersionIndex = mHighlightedVersionIndex > 0 ? mHighlightedVersionIndex - 1 : StoreManager::GetCategoryCount() - 1;
+            mHighlightedVersionIndex = mHighlightedVersionIndex > 0 ? mHighlightedVersionIndex - 1 : (int32_t)mStoreVersions.versions.size() - 1;
         }
         else if (InputManager::ControllerPressed(ControllerDpadDown, -1))
         {
-            mHighlightedVersionIndex = mHighlightedVersionIndex < StoreManager::GetCategoryCount() - 1 ? mHighlightedVersionIndex + 1 : 0;
+            mHighlightedVersionIndex = mHighlightedVersionIndex < (int32_t)mStoreVersions.versions.size() - 1 ? mHighlightedVersionIndex + 1 : 0;
+        }
+        else if (InputManager::ControllerPressed(ControllerDpadRight, -1) && listMaxScroll > 0.0f)
+        {
+            mSideBarFocused = false;
         }
         else if (InputManager::ControllerPressed(ControllerA, -1))
         {
@@ -175,9 +226,31 @@ void VersionScene::Update()
             SceneManager* sceneManager = Context::GetSceneManager();
             sceneManager->PopScene();
         }
-        else if (InputManager::ControllerPressed(ControllerDpadRight, -1))
+    }
+    else
+    {
+        if (InputManager::ControllerPressed(ControllerDpadLeft, -1))
         {
-            //mSideBarFocused = false;
+            mSideBarFocused = true;
+        }
+        else if (InputManager::ControllerPressed(ControllerDpadUp, -1))
+        {
+            mListViewScrollOffset -= listScrollStep;
+            if (mListViewScrollOffset < 0.0f) {
+                mListViewScrollOffset = 0.0f;
+            }
+        }
+        else if (InputManager::ControllerPressed(ControllerDpadDown, -1))
+        {
+            mListViewScrollOffset += listScrollStep;
+            if (mListViewScrollOffset > listMaxScroll) {
+                mListViewScrollOffset = listMaxScroll;
+            }
+        }
+        else if (InputManager::ControllerPressed(ControllerB, -1))
+        {
+            SceneManager* sceneManager = Context::GetSceneManager();
+            sceneManager->PopScene();
         }
     }
 }

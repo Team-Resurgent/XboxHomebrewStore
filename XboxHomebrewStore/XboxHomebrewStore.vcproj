@@ -499,9 +499,6 @@
 					RelativePath=".\Scenes\StoreScene.cpp">
 				</File>
 				<File
-					RelativePath=".\Scenes\VersionDetailsScene.cpp">
-				</File>
-				<File
 					RelativePath=".\Scenes\VersionScene.cpp">
 				</File>
 			</Filter>
@@ -615,9 +612,6 @@
 				</File>
 				<File
 					RelativePath=".\Scenes\StoreScene.h">
-				</File>
-				<File
-					RelativePath=".\Scenes\VersionDetailsScene.h">
 				</File>
 				<File
 					RelativePath=".\Scenes\VersionScene.h">

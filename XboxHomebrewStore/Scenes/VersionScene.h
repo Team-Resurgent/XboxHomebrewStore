@@ -47,4 +47,11 @@ private:
     bool mSideBarFocused;
     int32_t mHighlightedVersionIndex;
     int32_t mVersionIndex;
+
+    float mListViewScrollOffset;
+    float mListViewContentHeight;
+
+    float mDescriptionHeight;
+    float mChangeLogHeight;
+    int32_t mLastMeasuredVersionIndex;
 };

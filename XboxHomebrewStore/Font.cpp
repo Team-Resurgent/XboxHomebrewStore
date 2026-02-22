@@ -206,6 +206,11 @@ void Font::DrawText(const FontType font, const std::string message, uint32_t col
     Drawing::DrawFont(GetBitmapFont(font), message, color, x, y);
 }
 
+void Font::DrawTextWrapped(const FontType font, const std::string& message, uint32_t color, float x, float y, float maxWidth)
+{
+    Drawing::DrawFontWrapped(GetBitmapFont(font), message, color, x, y, maxWidth);
+}
+
 void Font::DrawTextScrolling(const FontType font, const std::string& message, uint32_t color, float x, float y, float maxWidth, ScrollState* scrollState)
 {
     BitmapFont* bitmapFont = GetBitmapFont(font);

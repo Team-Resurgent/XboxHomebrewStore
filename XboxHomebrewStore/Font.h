@@ -25,5 +25,6 @@ public:
     static void MeasureTextWrapped(const FontType font, const std::string& message, float maxWidth, float* outWidth, float* outHeight);
     static std::string TruncateText(const FontType font, const std::string& message, float maxWidth);
     static void DrawText(const FontType font, const std::string message, uint32_t color, float x, float y);
+    static void DrawTextWrapped(const FontType font, const std::string& message, uint32_t color, float x, float y, float maxWidth);
     static void DrawTextScrolling(const FontType font, const std::string& message, uint32_t color, float x, float y, float maxWidth, ScrollState* scrollState);
 };
