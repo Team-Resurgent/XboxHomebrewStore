@@ -292,6 +292,8 @@ void Drawing::DrawFont(BitmapFont* font, const std::string& message, uint32_t co
     SaveRenderState();
     Context::GetD3dDevice()->SetVertexShader(D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1);
     Context::GetD3dDevice()->SetTexture(0, font->image.texture);
+    Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_MINFILTER, D3DTEXF_LINEAR);
+    Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_MAGFILTER, D3DTEXF_LINEAR);
 
     const char* p = message.c_str();
     while (*p)
@@ -304,7 +306,7 @@ void Drawing::DrawFont(BitmapFont* font, const std::string& message, uint32_t co
         if (it == font->charmap.end()) {
             continue;
         }
-        
+
         const Rect& rect = it->second;
 
         if (vertexCount + 6 > (UINT)DRAW_BATCH_MAX_VERTS)
@@ -358,6 +360,8 @@ void Drawing::DrawFontWrapped(BitmapFont* font, const std::string& message, uint
     SaveRenderState();
     Context::GetD3dDevice()->SetVertexShader(D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1);
     Context::GetD3dDevice()->SetTexture(0, font->image.texture);
+    Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_MINFILTER, D3DTEXF_LINEAR);
+    Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_MAGFILTER, D3DTEXF_LINEAR);
 
     const char* p = message.c_str();
     while (*p)
@@ -473,6 +477,8 @@ void Drawing::DrawTexturedRect(D3DTexture* texture, uint32_t diffuse, float x, f
     SaveRenderState();
     Context::GetD3dDevice()->SetVertexShader(D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1);
     Context::GetD3dDevice()->SetTexture(0, texture);
+    Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_MINFILTER, D3DTEXF_LINEAR);
+    Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_MAGFILTER, D3DTEXF_LINEAR);
     Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
     Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
     Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
@@ -596,6 +602,8 @@ void Drawing::DrawNinePatch(D3DTexture* texture, uint32_t diffuse, float x, floa
     SaveRenderState();
     Context::GetD3dDevice()->SetVertexShader(D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1);
     Context::GetD3dDevice()->SetTexture(0, texture);
+    Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_MINFILTER, D3DTEXF_LINEAR);
+    Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_MAGFILTER, D3DTEXF_LINEAR);
     Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
     Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
     Context::GetD3dDevice()->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);

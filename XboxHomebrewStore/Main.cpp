@@ -28,76 +28,63 @@ LPDIRECT3D8             g_pD3D          = nullptr;
 LPDIRECT3DDEVICE8       g_pd3dDevice    = nullptr;
 SceneManager*           g_pSceneManager = nullptr;
 
-
 typedef struct {
     DWORD dwWidth;
     DWORD dwHeight;
-    BOOL fProgressive;
-    BOOL fWideScreen;
+    bool  fProgressive;
+    bool  fWideScreen;
     DWORD dwFreq;
 } DISPLAY_MODE;
 
 DISPLAY_MODE displayModes[] = {
-    //{   720,    480,    TRUE,   TRUE,  60 },         // 720x480 progressive 16x9
-    //{   720,    480,    TRUE,   FALSE, 60 },         // 720x480 progressive 4x3
-    //{   720,    480,    FALSE,  TRUE,  50 },         // 720x480 interlaced 16x9 50Hz
-    //{   720,    480,    FALSE,  FALSE, 50 },         // 720x480 interlaced 4x3  50Hz
-    //{   720,    480,    FALSE,  TRUE,  60 },         // 720x480 interlaced 16x9
-    //{   720,    480,    FALSE,  FALSE, 60 },         // 720x480 interlaced 4x3
-
-    // Width  Height Progressive Widescreen
+    // HDTV Interlaced Modes
+    {  1920,   1080,    false,  true,  60 },         // 1920x1080 interlaced 16x9
 
     // HDTV Progressive Modes
-    //{1280, 720, TRUE, TRUE, 60}, // 1280x720 progressive 16x9
+    {  1280,    720,    true,   true,  60 },         // 1280x720 progressive 16x9
 
     // EDTV Progressive Modes
-    {720, 480, TRUE, TRUE, 60}, // 720x480 progressive 16x9
-    {640, 480, TRUE, TRUE, 60}, // 640x480 progressive 16x9
-    {720, 480, TRUE, FALSE, 60}, // 720x480 progressive 4x3
-    {640, 480, TRUE, FALSE, 60}, // 640x480 progressive 4x3
-
-    // HDTV Interlaced Modes
-    //    {  1920,   1080,    FALSE,  TRUE,  60 },         // 1920x1080 interlaced 16x9
+    {   720,    480,    true,   true,  60 },         // 720x480 progressive 16x9
+    {   640,    480,    true,   true,  60 },         // 640x480 progressive 16x9
+    {   720,    480,    true,   false, 60 },         // 720x480 progressive 4x3
+    {   640,    480,    true,   false, 60 },         // 640x480 progressive 4x3
 
     // SDTV PAL-50 Interlaced Modes
-    {720, 480, FALSE, TRUE, 50}, // 720x480 interlaced 16x9 50Hz
-    {640, 480, FALSE, TRUE, 50}, // 640x480 interlaced 16x9 50Hz
-    {720, 480, FALSE, FALSE, 50}, // 720x480 interlaced 4x3  50Hz
-    {640, 480, FALSE, FALSE, 50}, // 640x480 interlaced 4x3  50Hz
+    {   720,    480,    false,  true,  50 },         // 720x480 interlaced 16x9 50Hz
+    {   640,    480,    false,  true,  50 },         // 640x480 interlaced 16x9 50Hz
+    {   720,    480,    false,  false, 50 },         // 720x480 interlaced 4x3  50Hz
+    {   640,    480,    false,  false, 50 },         // 640x480 interlaced 4x3  50Hz
 
     // SDTV NTSC / PAL-60 Interlaced Modes
-    {720, 480, FALSE, TRUE, 60}, // 720x480 interlaced 16x9
-    {640, 480, FALSE, TRUE, 60}, // 640x480 interlaced 16x9
-    {720, 480, FALSE, FALSE, 60}, // 720x480 interlaced 4x3
-    {640, 480, FALSE, FALSE, 60}, // 640x480 interlaced 4x3
+    {   720,    480,    false,  true,  60 },         // 720x480 interlaced 16x9
+    {   640,    480,    false,  true,  60 },         // 640x480 interlaced 16x9
+    {   720,    480,    false,  false, 60 },         // 720x480 interlaced 4x3
+    {   640,    480,    false,  false, 60 },         // 640x480 interlaced 4x3
 };
 
 #define NUM_MODES (sizeof(displayModes) / sizeof(displayModes[0]))
 
 bool SupportsMode(DISPLAY_MODE mode, DWORD dwVideoStandard, DWORD dwVideoFlags) {
-    if (mode.dwFreq == 60 && !(dwVideoFlags & XC_VIDEO_FLAGS_PAL_60Hz) &&
-        (dwVideoStandard == XC_VIDEO_STANDARD_PAL_I)) {
+    if (mode.dwFreq == 60 && !(dwVideoFlags & XC_VIDEO_FLAGS_PAL_60Hz) && (dwVideoStandard == XC_VIDEO_STANDARD_PAL_I))
         return false;
-    }
-    if (mode.dwFreq == 50 && (dwVideoStandard != XC_VIDEO_STANDARD_PAL_I)) {
+
+    if (mode.dwFreq == 50 && (dwVideoStandard != XC_VIDEO_STANDARD_PAL_I))
         return false;
-    }
-    if (mode.dwHeight == 480 && mode.fWideScreen && !(dwVideoFlags & XC_VIDEO_FLAGS_WIDESCREEN)) {
+
+    if (mode.dwHeight == 480 && mode.fWideScreen && !(dwVideoFlags & XC_VIDEO_FLAGS_WIDESCREEN ))
         return false;
-    }
-    if (mode.dwHeight == 480 && mode.fProgressive && !(dwVideoFlags & XC_VIDEO_FLAGS_HDTV_480p)) {
+
+    if (mode.dwHeight == 480 && mode.fProgressive && !(dwVideoFlags & XC_VIDEO_FLAGS_HDTV_480p))
         return false;
-    }
-    if (mode.dwHeight == 720 && !(dwVideoFlags & XC_VIDEO_FLAGS_HDTV_720p)) {
+
+    if (mode.dwHeight == 720 && !(dwVideoFlags & XC_VIDEO_FLAGS_HDTV_720p))
         return false;
-    }
-    if (mode.dwHeight == 1080 && !(dwVideoFlags & XC_VIDEO_FLAGS_HDTV_1080i)) {
+
+    if (mode.dwHeight == 1080 && !(dwVideoFlags & XC_VIDEO_FLAGS_HDTV_1080i))
         return false;
-    }
+
     return true;
 }
-
-
 
 //-----------------------------------------------------------------------------
 // DeleteImageCache() - Remove all files in T:\Cache\Covers and T:\Cache\Screenshots
@@ -181,13 +168,15 @@ bool InitD3D()
     d3dDevice->SetRenderState( D3DRS_ALPHABLENDENABLE, TRUE );
     d3dDevice->SetRenderState( D3DRS_SRCBLEND, D3DBLEND_SRCALPHA );
     d3dDevice->SetRenderState( D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA );
+    d3dDevice->SetRenderState( D3DRS_EDGEANTIALIAS, TRUE );
     
     Context::SetActualSize(displayModes[currentMode].dwWidth, displayModes[currentMode].dwHeight);
     if (displayModes[currentMode].dwHeight < 720) {
-        Context::SetLogicalSize(Math::AspectScaleWidth((float)displayModes[currentMode].dwWidth, displayModes[currentMode].dwHeight, 720), 720);
+        Context::SetLogicalSize(Math::AspectScaleWidth(displayModes[currentMode].dwWidth, displayModes[currentMode].dwHeight, 720), 720);
     } else {
         Context::SetLogicalSize(displayModes[currentMode].dwWidth, displayModes[currentMode].dwHeight);
     }
+
     Context::SetD3dDevice(d3dDevice);
     return true;
 }
