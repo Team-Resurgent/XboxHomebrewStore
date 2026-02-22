@@ -1,6 +1,6 @@
 #include "Debug.h"
 
-void Debug::Print(const std::string& format, ...)
+void Debug::Print(const std::string format, ...)
 {
     va_list args;
     va_start(args, format);

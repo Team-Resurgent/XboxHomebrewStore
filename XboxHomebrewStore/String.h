@@ -5,6 +5,6 @@
 class String
 {
 public:
-    static std::string Format(const char* format, ...);
+    static std::string Format(const std::string format, ...);
     static std::string FormatSize(uint32_t size) ;
 };

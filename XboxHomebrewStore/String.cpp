@@ -1,26 +1,21 @@
 #include "String.h"
 
-std::string String::Format(const char* format, ...)
+std::string String::Format(const std::string format, ...)
 {
     va_list args;
     va_start(args, format);
-    int length = _vscprintf(format, args);
+    int length = _vsnprintf(nullptr, 0, format.c_str(), args);
     if (length < 0)
     {
         va_end(args);
-        return std::string();
+        return "";
     }
-    char* buf = (char*)malloc(length + 1);
-    if (buf == nullptr)
-    {
-        va_end(args);
-        return std::string();
-    }
-    _vsnprintf(buf, length + 1, format, args);
+    char* message = (char*)malloc(length + 1);
+    _vsnprintf(message, length, format.c_str(), args);
+    message[length] = 0;
     va_end(args);
-    buf[length] = '\0';
-    std::string result(buf);
-    free(buf);
+    std::string result(message);
+    free(message);
     return result;
 }
 
