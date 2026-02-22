@@ -35,13 +35,13 @@ void LoadingScene::Update()
 
     switch (mProgress)
     {
-    case 0: InputManager::Init();       break;
-    case 1: Network::Init();            break;
-    case 2: WebManager::Init();         break;
-    case 3: WebManager::TrySyncTime();  break;
-    case 4: TextureHelper::Init();      break;
-    case 5: StoreManager::Init();       break;
-    case 6: DriveMount::Init();         break;
+    case 0: DriveMount::Init();         break;
+    case 1: InputManager::Init();       break;
+    case 2: Network::Init();            break;
+    case 3: WebManager::Init();         break;
+    case 4: WebManager::TrySyncTime();  break;
+    case 5: TextureHelper::Init();      break;
+    case 6: StoreManager::Init();       break;
     default: break;
     }
     mProgress++;
