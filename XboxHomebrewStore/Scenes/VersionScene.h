@@ -42,7 +42,6 @@ private:
     void RenderVersionSidebar();
     void RenderListView();
 
-    uint32_t mSelectedIndex;
     StoreVersions mStoreVersions;
 
     bool mSideBarFocused;

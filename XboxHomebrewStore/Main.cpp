@@ -27,6 +27,77 @@ LPDIRECT3D8             g_pD3D          = NULL;
 LPDIRECT3DDEVICE8       g_pd3dDevice    = NULL;
 SceneManager*           g_pSceneManager = NULL;
 
+
+typedef struct {
+    DWORD dwWidth;
+    DWORD dwHeight;
+    BOOL fProgressive;
+    BOOL fWideScreen;
+    DWORD dwFreq;
+} DISPLAY_MODE;
+
+DISPLAY_MODE displayModes[] = {
+    //{   720,    480,    TRUE,   TRUE,  60 },         // 720x480 progressive 16x9
+    //{   720,    480,    TRUE,   FALSE, 60 },         // 720x480 progressive 4x3
+    //{   720,    480,    FALSE,  TRUE,  50 },         // 720x480 interlaced 16x9 50Hz
+    //{   720,    480,    FALSE,  FALSE, 50 },         // 720x480 interlaced 4x3  50Hz
+    //{   720,    480,    FALSE,  TRUE,  60 },         // 720x480 interlaced 16x9
+    //{   720,    480,    FALSE,  FALSE, 60 },         // 720x480 interlaced 4x3
+
+    // Width  Height Progressive Widescreen
+
+    // HDTV Progressive Modes
+    {1280, 720, TRUE, TRUE, 60}, // 1280x720 progressive 16x9
+
+    // EDTV Progressive Modes
+    {720, 480, TRUE, TRUE, 60}, // 720x480 progressive 16x9
+    {640, 480, TRUE, TRUE, 60}, // 640x480 progressive 16x9
+    {720, 480, TRUE, FALSE, 60}, // 720x480 progressive 4x3
+    {640, 480, TRUE, FALSE, 60}, // 640x480 progressive 4x3
+
+    // HDTV Interlaced Modes
+    //    {  1920,   1080,    FALSE,  TRUE,  60 },         // 1920x1080 interlaced 16x9
+
+    // SDTV PAL-50 Interlaced Modes
+    {720, 480, FALSE, TRUE, 50}, // 720x480 interlaced 16x9 50Hz
+    {640, 480, FALSE, TRUE, 50}, // 640x480 interlaced 16x9 50Hz
+    {720, 480, FALSE, FALSE, 50}, // 720x480 interlaced 4x3  50Hz
+    {640, 480, FALSE, FALSE, 50}, // 640x480 interlaced 4x3  50Hz
+
+    // SDTV NTSC / PAL-60 Interlaced Modes
+    {720, 480, FALSE, TRUE, 60}, // 720x480 interlaced 16x9
+    {640, 480, FALSE, TRUE, 60}, // 640x480 interlaced 16x9
+    {720, 480, FALSE, FALSE, 60}, // 720x480 interlaced 4x3
+    {640, 480, FALSE, FALSE, 60}, // 640x480 interlaced 4x3
+};
+
+#define NUM_MODES (sizeof(displayModes) / sizeof(displayModes[0]))
+
+bool SupportsMode(DISPLAY_MODE mode, DWORD dwVideoStandard, DWORD dwVideoFlags) {
+    if (mode.dwFreq == 60 && !(dwVideoFlags & XC_VIDEO_FLAGS_PAL_60Hz) &&
+        (dwVideoStandard == XC_VIDEO_STANDARD_PAL_I)) {
+        return false;
+    }
+    if (mode.dwFreq == 50 && (dwVideoStandard != XC_VIDEO_STANDARD_PAL_I)) {
+        return false;
+    }
+    if (mode.dwHeight == 480 && mode.fWideScreen && !(dwVideoFlags & XC_VIDEO_FLAGS_WIDESCREEN)) {
+        return false;
+    }
+    if (mode.dwHeight == 480 && mode.fProgressive && !(dwVideoFlags & XC_VIDEO_FLAGS_HDTV_480p)) {
+        return false;
+    }
+    if (mode.dwHeight == 720 && !(dwVideoFlags & XC_VIDEO_FLAGS_HDTV_720p)) {
+        return false;
+    }
+    if (mode.dwHeight == 1080 && !(dwVideoFlags & XC_VIDEO_FLAGS_HDTV_1080i)) {
+        return false;
+    }
+    return true;
+}
+
+
+
 //-----------------------------------------------------------------------------
 // DeleteImageCache() - Remove all files in T:\Cache\Covers and T:\Cache\Screenshots
 // Uncomment the call in main() to clear cache on startup (e.g. for testing).
@@ -66,64 +137,53 @@ static void DeleteImageCache()
     }
 }
 
-//-----------------------------------------------------------------------------
-// Name: InitD3D()
-// Desc: Initializes Direct3D
-//-----------------------------------------------------------------------------
-HRESULT InitD3D()
+bool InitD3D()
 {
-    // Create the D3D object
-    if( NULL == ( g_pD3D = Direct3DCreate8( D3D_SDK_VERSION ) ) )
-        return E_FAIL;
-
-    // Set up the structure used to create the D3DDevice
-    D3DPRESENT_PARAMETERS d3dpp;
-ZeroMemory(&d3dpp, sizeof(d3dpp));
-
-d3dpp.BackBufferWidth  = 1280;
-d3dpp.BackBufferHeight = 720;
-
-/*
-IMPORTANT:
-Use LINEAR backbuffer if you use XFONT text rendering
-(Swizzled surfaces break font rendering)
-*/
-d3dpp.BackBufferFormat = D3DFMT_LIN_X8R8G8B8;
-
-d3dpp.BackBufferCount  = 1;
-d3dpp.EnableAutoDepthStencil = TRUE;
-d3dpp.AutoDepthStencilFormat = D3DFMT_D24S8;
-d3dpp.SwapEffect       = D3DSWAPEFFECT_DISCARD;
-
-/*
-Tell Xbox to use 720p HDTV mode
-*/
-d3dpp.Flags = D3DPRESENTFLAG_PROGRESSIVE | D3DPRESENTFLAG_WIDESCREEN;
-
-d3dpp.FullScreen_RefreshRateInHz = D3DPRESENT_RATE_DEFAULT;
-d3dpp.FullScreen_PresentationInterval = D3DPRESENT_INTERVAL_ONE;
-
-
-    // Create the Direct3D device
-    if( FAILED( g_pD3D->CreateDevice( 0, D3DDEVTYPE_HAL, NULL,
-                                      D3DCREATE_HARDWARE_VERTEXPROCESSING,
-                                      &d3dpp, &g_pd3dDevice ) ) )
-    {
-        return E_FAIL;
+    uint32_t videoFlags = XGetVideoFlags();
+    uint32_t videoStandard = XGetVideoStandard();
+    uint32_t currentMode;
+    for (currentMode = 0; currentMode < NUM_MODES - 1; currentMode++) {
+        if (SupportsMode(displayModes[currentMode], videoStandard, videoFlags)) {
+            break;
+        }
     }
 
-    // Device state setup
-    g_pd3dDevice->SetRenderState( D3DRS_LIGHTING, FALSE );
-    g_pd3dDevice->SetRenderState( D3DRS_CULLMODE, D3DCULL_NONE );
-    g_pd3dDevice->SetRenderState( D3DRS_ZENABLE, TRUE );
-    g_pd3dDevice->SetRenderState( D3DRS_ALPHABLENDENABLE, TRUE );
-    g_pd3dDevice->SetRenderState( D3DRS_SRCBLEND, D3DBLEND_SRCALPHA );
-    g_pd3dDevice->SetRenderState( D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA );
+    LPDIRECT3D8 d3d = Direct3DCreate8(D3D_SDK_VERSION);
+    if (d3d == NULL) {
+        Debug::Print("Failed to create d3d\n");
+        return false;
+    }
 
-    Context::SetScreenSize(1280, 720);
-    Context::SetD3dDevice(g_pd3dDevice);
+    D3DPRESENT_PARAMETERS params;
+    ZeroMemory(&params, sizeof(params));
+    params.BackBufferWidth = displayModes[currentMode].dwWidth;
+    params.BackBufferHeight = displayModes[currentMode].dwHeight;
+    params.Flags = displayModes[currentMode].fProgressive ? D3DPRESENTFLAG_PROGRESSIVE : D3DPRESENTFLAG_INTERLACED;
+    params.Flags |= displayModes[currentMode].fWideScreen ? D3DPRESENTFLAG_WIDESCREEN : 0;
+    params.FullScreen_RefreshRateInHz = displayModes[currentMode].dwFreq;
+    params.BackBufferFormat = D3DFMT_X8R8G8B8;
+    params.BackBufferCount = 1;
+    params.EnableAutoDepthStencil = TRUE;
+    params.AutoDepthStencilFormat = D3DFMT_D24S8;
+    params.SwapEffect = D3DSWAPEFFECT_DISCARD;
+    params.FullScreen_PresentationInterval = D3DPRESENT_INTERVAL_DEFAULT;
 
-    return S_OK;
+    LPDIRECT3DDEVICE8 d3dDevice;
+    if (FAILED(d3d->CreateDevice(0, D3DDEVTYPE_HAL, NULL, D3DCREATE_HARDWARE_VERTEXPROCESSING, &params, &d3dDevice))) {
+        Debug::Print("Failed to create device\n");
+        return false;
+    }
+
+    d3dDevice->SetRenderState( D3DRS_LIGHTING, FALSE );
+    d3dDevice->SetRenderState( D3DRS_CULLMODE, D3DCULL_NONE );
+    d3dDevice->SetRenderState( D3DRS_ZENABLE, TRUE );
+    d3dDevice->SetRenderState( D3DRS_ALPHABLENDENABLE, TRUE );
+    d3dDevice->SetRenderState( D3DRS_SRCBLEND, D3DBLEND_SRCALPHA );
+    d3dDevice->SetRenderState( D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA );
+    
+    Context::SetScreenSize(displayModes[currentMode].dwWidth, displayModes[currentMode].dwHeight);
+    Context::SetD3dDevice(d3dDevice);
+    return true;
 }
 
 //-----------------------------------------------------------------------------
@@ -156,7 +216,7 @@ VOID Render()
 VOID __cdecl main()
 {
     // Initialize Direct3D
-    if( FAILED( InitD3D() ) )
+    if (InitD3D() == false)
     {
         OutputDebugString( "Failed to initialize Direct3D!\n" );
         return;
