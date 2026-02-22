@@ -11,7 +11,7 @@
 #include "Context.h"
 #include "Math.h"
 #include "Scenes/SceneManager.h"
-#include "Scenes/StoreScene.h"
+#include "Scenes/LoadingScene.h"
 
 static void CoverDownloadProgress(uint32_t dlNow, uint32_t dlTotal, void* userData)
 {
@@ -232,52 +232,16 @@ VOID __cdecl main()
     {
         OutputDebugString( "Could not create T:\\Cache\\Screenshots\n" );
     }
+    
     //DeleteImageCache();  // Uncomment to clear image cache on startup
 
-    InputManager::Init();
-    Network::Init();
-    WebManager::Init();
-    WebManager::TrySyncTime();
-
-    TextureHelper::Init();
     Drawing::Init();
     Font::Init();
-
-    StoreManager::Init();
-    
-
-    /*AppsResponse appsResp;
-    if (WebManager::TryGetApps(appsResp, 1, 20))
-    {
-        Debug::Print(String::Format("Apps: %u items, page %u/%u", (unsigned)appsResp.items.size(), appsResp.page, appsResp.totalPages));
-    }
-
-    {
-        const std::string coverPath = "D:\\Media\\next-dashboard-cover.png";
-        if (WebManager::TryDownloadCover("next-dashboard-t0h4", 256, 256, coverPath, CoverDownloadProgress, nullptr, nullptr))
-        {
-            Debug::Print(std::string("Cover saved to %s\n"), coverPath.c_str());
-        }
-        else
-        {
-            Debug::Print(std::string("Cover download failed\n"));
-        }
-    }*/
-
- 
 
     g_pSceneManager = new SceneManager();
     Context::SetSceneManager( g_pSceneManager );
 
-    // Initialize the store
-    //g_pStore = new Store();
-    //if( FAILED( g_pStore->Initialize() ) )
-    //{
-    //    OutputDebugString( "Failed to initialize Store!\n" );
-    //    return;
-    //}
-
-    g_pSceneManager->PushScene( new StoreScene( ) );
+    g_pSceneManager->PushScene( new LoadingScene( ) );
 
     OutputDebugString( "Xbox Homebrew Store initialized successfully!\n" );
 

@@ -31,3 +31,13 @@ std::string String::FormatSize(uint32_t size)
         return Format("%luMB", size / MB);
     }
 }
+
+std::string String::ToUpper(const std::string s)
+{
+    std::string r = s;
+    for (size_t i = 0; i < r.length(); i++)
+    {
+        r[i] = (char)toupper((unsigned char)r[i]);
+    }
+    return r;
+}

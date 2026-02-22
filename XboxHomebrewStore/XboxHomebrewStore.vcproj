@@ -312,6 +312,9 @@
 				RelativePath=".\Drawing.cpp">
 			</File>
 			<File
+				RelativePath=".\DriveMount.cpp">
+			</File>
+			<File
 				RelativePath=".\Font.cpp">
 			</File>
 			<File
@@ -493,6 +496,9 @@
 				Name="Scenes"
 				Filter="">
 				<File
+					RelativePath=".\Scenes\LoadingScene.cpp">
+				</File>
+				<File
 					RelativePath=".\Scenes\SceneManager.cpp">
 				</File>
 				<File
@@ -518,6 +524,9 @@
 			</File>
 			<File
 				RelativePath=".\Drawing.h">
+			</File>
+			<File
+				RelativePath=".\DriveMount.h">
 			</File>
 			<File
 				RelativePath=".\Font.h">
@@ -604,6 +613,9 @@
 			<Filter
 				Name="Scenes"
 				Filter="">
+				<File
+					RelativePath=".\Scenes\LoadingScene.h">
+				</File>
 				<File
 					RelativePath=".\Scenes\Scene.h">
 				</File>

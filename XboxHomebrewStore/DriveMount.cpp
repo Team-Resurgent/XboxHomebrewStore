@@ -187,6 +187,16 @@ static bool DoMount(DriveEntry* ent)
     return GetDiskFreeSpaceExA(path.c_str(), nullptr, &totalBytes, nullptr) ? true : false;
 }
 
+bool DriveMount::Init()
+{
+    DriveMap& drives = GetDrives();
+    for (DriveMap::iterator it = drives.begin(); it != drives.end(); ++it)
+    {
+        DoMount(&it->second);
+    }
+    return true;
+}
+
 bool DriveMount::Mount(std::string driveName)
 {
     DriveEntry* ent = FindDrive(driveName);
