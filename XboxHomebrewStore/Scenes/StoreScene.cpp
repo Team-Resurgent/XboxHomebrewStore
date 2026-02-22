@@ -46,51 +46,67 @@ void StoreScene::RenderCategorySidebar()
     int32_t sidebarHeight = (Context::GetScreenHeight() - ASSET_SIDEBAR_Y) - ASSET_FOOTER_HEIGHT;
     Drawing::DrawTexturedRect(TextureHelper::GetSidebar(), 0xffffffff, 0, ASSET_SIDEBAR_Y, ASSET_SIDEBAR_WIDTH, sidebarHeight);
 
-    int32_t y = ASSET_SIDEBAR_Y + 30;
+    Font::DrawText(FONT_NORMAL, "Categories...", COLOR_WHITE, 16, ASSET_SIDEBAR_Y + 16);
+
     uint32_t categoryCount = StoreManager::GetCategoryCount();
 
-    Drawing::BeginStencil(48.0f, (float)ASSET_SIDEBAR_Y, ASSET_SIDEBAR_WIDTH - 64.0f, (float)sidebarHeight);
-    for (uint32_t i = 0; i < categoryCount; i++)
-    {
-        StoreCategory* storeCategory = StoreManager::GetStoreCategory(i);
-
-        bool highlighted = i == mHighlightedCategoryIndex;
-        bool focused = mSideBarFocused && highlighted;
-
-        if (focused == true) {
-            Font::DrawTextScrolling(FONT_NORMAL, storeCategory->name, COLOR_WHITE, 48, y, ASSET_SIDEBAR_WIDTH - 64, &storeCategory->nameScrollState);
-        } else {
-            Font::DrawText(FONT_NORMAL, storeCategory->name, COLOR_WHITE, 48, y);
-        }
-
-        y += 44;
+    uint32_t maxItems = (sidebarHeight - 64) / 44;
+    uint32_t start = 0;
+    if (categoryCount >= maxItems) {
+        start = Math::ClampInt32(mHighlightedCategoryIndex - (maxItems / 2), 0, categoryCount - maxItems);
     }
-    Drawing::EndStencil();
 
-    y = ASSET_SIDEBAR_Y + 30;
+    uint32_t itemCount = Math::MinUint32(start + maxItems, categoryCount) - start;
 
-    for (uint32_t i = 0; i < categoryCount; i++)
+    for (uint32_t pass = 0; pass < 2; pass++) 
     {
-        StoreCategory* storeCategory = StoreManager::GetStoreCategory(i);
+        int32_t y = ASSET_SIDEBAR_Y + 64;
 
-        bool highlighted = i == mHighlightedCategoryIndex;
-        bool focused = mSideBarFocused && highlighted;
-        if (highlighted || focused)
-        {
-            Drawing::DrawTexturedRect(TextureHelper::GetCategoryHighlight(), focused ? COLOR_FOCUS_HIGHLIGHT : COLOR_HIGHLIGHT, 0, y - 32, ASSET_SIDEBAR_HIGHLIGHT_WIDTH, ASSET_SIDEBAR_HIGHLIGHT_HEIGHT);
+        if (pass == 1) {
+            Drawing::BeginStencil(48.0f, (float)ASSET_SIDEBAR_Y, ASSET_SIDEBAR_WIDTH - 64.0f, (float)sidebarHeight);
         }
 
-        bool activated = i == StoreManager::GetCategoryIndex();
-        if (mSideBarFocused == true)
+        for (uint32_t i = 0; i < itemCount; i++)
         {
-            Drawing::DrawTexturedRect(TextureHelper::GetCategoryIcon(storeCategory->name), activated ? COLOR_FOCUS_HIGHLIGHT : 0xffffffff, 16, y - 2, ASSET_CATEGORY_ICON_WIDTH, ASSET_CATEGORY_ICON_HEIGHT);
-        }
-        else
-        {
-            Drawing::DrawTexturedRect(TextureHelper::GetCategoryIcon(storeCategory->name), activated ? COLOR_HIGHLIGHT : 0xffffffff, 16, y - 2, ASSET_CATEGORY_ICON_WIDTH, ASSET_CATEGORY_ICON_HEIGHT);
+            uint32_t index = start + i;
+
+            StoreCategory* storeCategory = StoreManager::GetStoreCategory(index);
+
+            bool highlighted = index == mHighlightedCategoryIndex;
+            bool focused = mSideBarFocused && highlighted;
+
+            if (pass == 0)
+            {
+                if (highlighted || focused)
+                {
+                    Drawing::DrawTexturedRect(TextureHelper::GetCategoryHighlight(), focused ? COLOR_FOCUS_HIGHLIGHT : COLOR_HIGHLIGHT, 0, y - 32, ASSET_SIDEBAR_HIGHLIGHT_WIDTH, ASSET_SIDEBAR_HIGHLIGHT_HEIGHT);
+                }
+
+                bool activated = index == StoreManager::GetCategoryIndex();
+                if (mSideBarFocused == true)
+                {
+                    Drawing::DrawTexturedRect(TextureHelper::GetCategoryIcon(storeCategory->name), activated ? COLOR_FOCUS_HIGHLIGHT : 0xffffffff, 16, y - 2, ASSET_CATEGORY_ICON_WIDTH, ASSET_CATEGORY_ICON_HEIGHT);
+                }
+                else
+                {
+                    Drawing::DrawTexturedRect(TextureHelper::GetCategoryIcon(storeCategory->name), activated ? COLOR_HIGHLIGHT : 0xffffffff, 16, y - 2, ASSET_CATEGORY_ICON_WIDTH, ASSET_CATEGORY_ICON_HEIGHT);
+                }
+            }
+            else
+            {
+                if (focused == true) {
+                    Font::DrawTextScrolling(FONT_NORMAL, storeCategory->name, COLOR_WHITE, 48, y, ASSET_SIDEBAR_WIDTH - 64, &storeCategory->nameScrollState);
+                } else {
+                    Font::DrawText(FONT_NORMAL, storeCategory->name, COLOR_WHITE, 48, y);
+                }
+            }
+
+            y += 44;
         }
 
-        y += 44;
+        if (pass == 1) {
+            Drawing::EndStencil();
+        }
     }
 }
 
@@ -109,19 +125,18 @@ void StoreScene::DrawStoreItem(StoreItem* storeItem, int x, int y, bool selected
     int iconX = x + 9;
     int iconY = y + 9;
 
-    Drawing::DrawFilledRect(COLOR_SECONDARY, iconX, iconY, iconW, iconH);
     D3DTexture* cover = storeItem->cover;
     if (cover == NULL) 
     {
-        if (ImageDownloader::IsCoverCached(storeItem->id) == true)
+        if (ImageDownloader::IsCoverCached(storeItem->appId) == true)
         {
-            storeItem->cover = TextureHelper::LoadFromFile(ImageDownloader::GetCoverCachePath(storeItem->id));
+            storeItem->cover = TextureHelper::LoadFromFile(ImageDownloader::GetCoverCachePath(storeItem->appId));
             cover = storeItem->cover;
         }
         else
         {
             cover = TextureHelper::GetCoverRef();
-            mImageDownloader->Queue(&storeItem->cover, storeItem->id, IMAGE_COVER);
+            mImageDownloader->Queue(&storeItem->cover, storeItem->appId, IMAGE_COVER);
         }
     }
     Drawing::DrawTexturedRect(cover, 0xFFFFFFFF, iconX, iconY, iconW, iconH);
@@ -199,6 +214,7 @@ void StoreScene::RenderMainGrid()
 void StoreScene::Render()
 {
     Drawing::DrawTexturedRect(TextureHelper::GetBackground(), 0xFFFFFFFF, 0, 0, Context::GetScreenWidth(), Context::GetScreenHeight());
+    
     RenderHeader();
     RenderFooter();
     RenderCategorySidebar();
@@ -271,6 +287,15 @@ void StoreScene::Update()
                 mImageDownloader->CancelAll();
                 StoreManager::LoadNext();
                 mStoreIndex = Math::MinUint32(mStoreIndex + STORE_GRID_COLS, StoreManager::GetSelectedCategoryTotal() - 1);
+            }
+        }
+        else if (InputManager::ControllerPressed(ControllerA, -1))
+        {
+            StoreVersions storeVersions;
+            if (StoreManager::TryGetStoreVersions(mStoreIndex - StoreManager::GetWindowStoreItemOffset(), &storeVersions))
+            {
+                SceneManager* sceneManager = Context::GetSceneManager();
+                sceneManager->PushScene(new VersionScene(storeVersions));
             }
         }
     }

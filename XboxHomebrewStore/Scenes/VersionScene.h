@@ -1,9 +1,9 @@
 #pragma once
 
-#include "..\Main.h"
 #include "Scene.h"
-#include <string>
-#include <vector>
+
+#include "..\Main.h"
+#include "..\StoreManager.h"
 
 /** Per-version info (no Store types). */
 struct VersionInfo
@@ -32,13 +32,20 @@ struct SelectedAppInfo
 class VersionScene : public Scene
 {
 public:
-    explicit VersionScene( const SelectedAppInfo& info );
+    explicit VersionScene(const StoreVersions& storeVersions);
     virtual void Render();
     virtual void Update();
 
 private:
+    void RenderHeader();
+    void RenderFooter();
+    void RenderVersionSidebar();
     void RenderListView();
 
-    SelectedAppInfo m_info;
-    int             m_selectedIndex;
+    uint32_t mSelectedIndex;
+    StoreVersions mStoreVersions;
+
+    bool mSideBarFocused;
+    uint32_t mHighlightedVersionIndex;
+    uint32_t mVersionIndex;
 };

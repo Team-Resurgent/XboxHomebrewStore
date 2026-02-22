@@ -115,16 +115,13 @@ bool StoreManager::LoadPrevious()
         if (storeItem.cover != NULL) {
             storeItem.cover->Release();
         }
-        if (storeItem.screenshot != NULL) {
-            storeItem.screenshot->Release();
-        }
     }
 
     for (uint32_t i = mWindowStoreItemCount - itemsToRemove; i > 0; i--)
     {
         StoreItem& src = mWindowStoreItems[i - 1];
         StoreItem& dst = mWindowStoreItems[i - 1 + loadedCount];
-        dst.id = src.id;
+        dst.appId = src.appId;
         dst.name = src.name;
         dst.nameScrollState = src.nameScrollState;
         dst.author = src.author;
@@ -132,14 +129,13 @@ bool StoreManager::LoadPrevious()
         dst.description = src.description;
         dst.state = src.state;
         dst.cover = src.cover;
-        dst.screenshot = src.screenshot;
     }
 
     for (uint32_t i = 0; i < loadedCount; i++)
     {
         StoreItem& dst = mWindowStoreItems[i];
         StoreItem& src = mTempStoreItems[i];
-        dst.id = src.id;
+        dst.appId = src.appId;
         dst.name = src.name;
         dst.nameScrollState = src.nameScrollState;
         dst.author = src.author;
@@ -147,7 +143,6 @@ bool StoreManager::LoadPrevious()
         dst.description = src.description;
         dst.state = src.state;
         dst.cover = src.cover;
-        dst.screenshot = src.screenshot;
     }
 
     mWindowStoreItemOffset = newWindowStoreItemOffset;
@@ -177,16 +172,13 @@ bool StoreManager::LoadNext()
         if (storeItem.cover != NULL) {
             storeItem.cover->Release();
         }
-        if (storeItem.screenshot != NULL) {
-            storeItem.screenshot->Release();
-        }
     }
 
     for (uint32_t i = itemsToRemove; i < mWindowStoreItemCount; i++)
     {
         StoreItem& src = mWindowStoreItems[i];
         StoreItem& dst = mWindowStoreItems[i - itemsToRemove];
-        dst.id = src.id;
+        dst.appId = src.appId;
         dst.name = src.name;
         dst.nameScrollState = src.nameScrollState;
         dst.author = src.author;
@@ -195,14 +187,13 @@ bool StoreManager::LoadNext()
         dst.description = src.description;
         dst.state = src.state;
         dst.cover = src.cover;
-        dst.screenshot = src.screenshot;
     }
 
     for (uint32_t i = 0; i < loadedCount; i++)
     {
         StoreItem& dst = mWindowStoreItems[mWindowStoreItemCount - itemsToRemove + i];
         StoreItem& src = mTempStoreItems[i];
-        dst.id = src.id;
+        dst.appId = src.appId;
         dst.name = src.name;
         dst.nameScrollState = src.nameScrollState;
         dst.author = src.author;
@@ -211,11 +202,45 @@ bool StoreManager::LoadNext()
         dst.description = src.description;
         dst.state = src.state;
         dst.cover = src.cover;
-        dst.screenshot = src.screenshot;
     }
 
     mWindowStoreItemOffset = newWindowStoreItemOffset;
     mWindowStoreItemCount = mWindowStoreItemCount - itemsToRemove + loadedCount;
+    return true;
+}
+
+bool StoreManager::TryGetStoreVersions(uint32_t storeItemIndex, StoreVersions* storeVersions)
+{
+    StoreItem* storeItem = GetWindowStoreItem(storeItemIndex);
+
+    VersionsResponse versionsResponse;
+    if (WebManager::TryGetVersions(storeItem->appId, versionsResponse) == false)
+    {
+        return false;
+    }
+
+    memset(storeVersions, 0, sizeof(StoreVersions));
+    storeVersions->appId = storeItem->appId;
+    storeVersions->name = storeItem->name;
+    storeVersions->author = storeItem->author;
+    storeVersions->description = storeItem->description;
+
+    for (uint32_t i = 0; i < versionsResponse.size(); i++)
+    {
+        VersionItem* versionItem = &versionsResponse[i];
+
+        StoreVersion storeVersion;
+        storeVersion.versionId = versionItem->id;
+        storeVersion.version = versionItem->version;
+        storeVersion.size = versionItem->size;
+        storeVersion.releaseDate = versionItem->releaseDate;
+        storeVersion.changeLog = versionItem->changeLog;
+        storeVersion.titleId = versionItem->titleId;
+        storeVersion.region = versionItem->region;
+
+        storeVersions->versions.push_back(storeVersion);
+    }
+
     return true;
 }
 
@@ -268,7 +293,7 @@ bool StoreManager::LoadApplications(void* dest, uint32_t offset, uint32_t count,
         memset(&storeItems[i], 0, sizeof(StoreItem)); 
 
         AppItem* appItem = &response.items[i];
-        storeItems[i].id = appItem->id;
+        storeItems[i].appId = appItem->id;
         storeItems[i].name = appItem->name;
         storeItems[i].author = appItem->author;
         storeItems[i].category = appItem->category;
@@ -286,9 +311,6 @@ bool StoreManager::RefreshApplications()
         StoreItem& storeItem = mWindowStoreItems[i];
         if (storeItem.cover != NULL) {
             storeItem.cover->Release();
-        }
-        if (storeItem.screenshot != NULL) {
-            storeItem.screenshot->Release();
         }
     }
 

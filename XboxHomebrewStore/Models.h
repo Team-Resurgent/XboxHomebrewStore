@@ -27,8 +27,6 @@ typedef struct
     std::string changeLog;
     std::string titleId;
     std::string region;
-    //uint32_t state;
-    //std::string install_path;  // Local install path (from user state)
 } VersionItem;
 
 typedef std::vector<VersionItem> VersionsResponse;
