@@ -24,6 +24,6 @@ private:
 
     ImageDownloader* mImageDownloader;
     bool mSideBarFocused;
-    uint32_t mHighlightedCategoryIndex;
-    uint32_t mStoreIndex;
+    int32_t mHighlightedCategoryIndex;
+    int32_t mStoreIndex;
 };

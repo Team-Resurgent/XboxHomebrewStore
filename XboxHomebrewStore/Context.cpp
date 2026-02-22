@@ -3,6 +3,7 @@
 //=============================================================================
 
 #include "Context.h"
+#include "Defines.h"
 #include "Scenes/SceneManager.h"
 
 namespace {
@@ -46,4 +47,21 @@ int Context::GetScreenWidth()
 int Context::GetScreenHeight()
 {
     return s_nScreenHeight;
+}
+
+int Context::GetGridCols()
+{
+    int gridWidth = GetScreenWidth() - ASSET_SIDEBAR_WIDTH; 
+    return (gridWidth + CARD_GAP) / (ASSET_CARD_WIDTH + CARD_GAP);
+}
+
+int Context::GetGridRows()
+{
+    int gridHeight = GetScreenHeight() - (ASSET_HEADER_HEIGHT + ASSET_FOOTER_HEIGHT);
+    return (gridHeight + CARD_GAP) / (ASSET_CARD_HEIGHT + CARD_GAP);
+}
+
+int Context::GetGridCells()
+{
+    return GetGridCols() * GetGridRows();
 }

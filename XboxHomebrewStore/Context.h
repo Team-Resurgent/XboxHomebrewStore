@@ -16,4 +16,7 @@ public:
     static SceneManager* GetSceneManager();
     static int GetScreenWidth();
     static int GetScreenHeight();
+    static int GetGridCols();
+    static int GetGridRows();
+    static int GetGridCells();
 };

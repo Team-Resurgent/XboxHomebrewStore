@@ -3,6 +3,7 @@
 #include "Models.h"
 #include "Math.h"
 #include "Defines.h"
+#include "Context.h"
 #include "TextureHelper.h"
 #include "ImageDownloader.h"
 
@@ -21,10 +22,10 @@ bool StoreManager::Init()
     mWindowStoreItemOffset = 0;
     mWindowStoreItemCount = 0;
     
-    mWindowStoreItems = (StoreItem*)malloc(sizeof(StoreItem) * STORE_GRID_CELLS);
-    memset(mWindowStoreItems, 0, sizeof(StoreItem) * STORE_GRID_CELLS);
-    mTempStoreItems = (StoreItem*)malloc(sizeof(StoreItem) * STORE_GRID_COLS);
-    memset(mTempStoreItems, 0, sizeof(StoreItem) * STORE_GRID_COLS);
+    mWindowStoreItems = (StoreItem*)malloc(sizeof(StoreItem) * Context::GetGridCells());
+    memset(mWindowStoreItems, 0, sizeof(StoreItem) * Context::GetGridCells());
+    mTempStoreItems = (StoreItem*)malloc(sizeof(StoreItem) * Context::GetGridCols());
+    memset(mTempStoreItems, 0, sizeof(StoreItem) * Context::GetGridCols());
 
     if (LoadCategories() == false)
     {
@@ -82,7 +83,7 @@ StoreItem* StoreManager::GetWindowStoreItem(uint32_t storeItemIndex)
 
 bool StoreManager::HasPrevious()
 {
-    return mWindowStoreItemOffset >= STORE_GRID_COLS;
+    return mWindowStoreItemOffset >= Context::GetGridCols();
 }
 
 bool StoreManager::HasNext()
@@ -99,15 +100,15 @@ bool StoreManager::LoadPrevious()
         return false;
     }
 
-    uint32_t newWindowStoreItemOffset = mWindowStoreItemOffset - STORE_GRID_COLS;
+    uint32_t newWindowStoreItemOffset = mWindowStoreItemOffset - Context::GetGridCols();
 
     uint32_t loadedCount = 0;
-    if (LoadApplications(mTempStoreItems, newWindowStoreItemOffset, STORE_GRID_COLS, &loadedCount) == false)
+    if (LoadApplications(mTempStoreItems, newWindowStoreItemOffset, Context::GetGridCols(), &loadedCount) == false)
     {
         return false;
     }
 
-    uint32_t itemsToRemove = Math::MinInt32(STORE_GRID_COLS, mWindowStoreItemCount);
+    uint32_t itemsToRemove = Math::MinInt32(Context::GetGridCols(), mWindowStoreItemCount);
 
     for (uint32_t i = 0; i < itemsToRemove; i++)
     {
@@ -157,15 +158,15 @@ bool StoreManager::LoadNext()
         return false;
     }
 
-    uint32_t newWindowStoreItemOffset = mWindowStoreItemOffset + STORE_GRID_COLS;
+    uint32_t newWindowStoreItemOffset = mWindowStoreItemOffset + Context::GetGridCols();
 
     uint32_t loadedCount = 0;
-    if (LoadApplications(mTempStoreItems, newWindowStoreItemOffset + STORE_GRID_COLS, STORE_GRID_COLS, &loadedCount) == false)
+    if (LoadApplications(mTempStoreItems, newWindowStoreItemOffset + Context::GetGridCols(), Context::GetGridCols(), &loadedCount) == false)
     {
         return false;
     }
 
-    uint32_t itemsToRemove = Math::MinInt32(STORE_GRID_COLS, mWindowStoreItemCount);
+    uint32_t itemsToRemove = Math::MinInt32(Context::GetGridCols(), mWindowStoreItemCount);
     for (uint32_t i = 0; i < itemsToRemove; i++)
     {
         StoreItem& storeItem = mWindowStoreItems[i];
@@ -318,7 +319,7 @@ bool StoreManager::RefreshApplications()
     mWindowStoreItemCount = 0;
 
     uint32_t loadedCount = 0;
-    if (LoadApplications(mWindowStoreItems, 0, STORE_GRID_CELLS, &loadedCount) == false)
+    if (LoadApplications(mWindowStoreItems, 0, Context::GetGridCells(), &loadedCount) == false)
     {
         return false;
     }

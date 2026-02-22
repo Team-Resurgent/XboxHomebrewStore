@@ -187,20 +187,20 @@ void StoreScene::RenderMainGrid()
   
     int cardWidth = ASSET_CARD_WIDTH;
     int cardHeight = ASSET_CARD_HEIGHT;
-    int storeItemsWidth = (STORE_GRID_COLS * (cardWidth + CARD_GAP)) - CARD_GAP;
-    int storeItemsHeight = (STORE_GRID_ROWS * (cardHeight + CARD_GAP)) - CARD_GAP;
+    int storeItemsWidth = (Context::GetGridCols() * (cardWidth + CARD_GAP)) - CARD_GAP;
+    int storeItemsHeight = (Context::GetGridRows() * (cardHeight + CARD_GAP)) - CARD_GAP;
 
     int cardX = gridX + ((gridWidth - storeItemsWidth) / 2);
     int cardY = gridY + ((gridHeight - storeItemsHeight) / 2);;
 
 
-    uint32_t totalSlots = STORE_GRID_COLS * STORE_GRID_ROWS;
+    uint32_t totalSlots = Context::GetGridCells();
     uint32_t windowCount = StoreManager::GetWindowStoreItemCount();
     uint32_t slotsInView = Math::MinInt32(totalSlots, windowCount);
     for (uint32_t currentSlot = 0; currentSlot < slotsInView; currentSlot++ )
     {
-        int row = currentSlot / STORE_GRID_COLS;
-        int col = currentSlot % STORE_GRID_COLS;
+        int row = currentSlot / Context::GetGridCols();
+        int col = currentSlot % Context::GetGridCols();
         int x = cardX + col * ( cardWidth + CARD_GAP);
         int y = cardY + row * ( cardHeight + CARD_GAP);
         StoreItem* storeItem = StoreManager::GetWindowStoreItem(currentSlot);
@@ -248,8 +248,8 @@ void StoreScene::Update()
     }
     else
     {
-        int col = mStoreIndex % STORE_GRID_COLS;
-        int row = mStoreIndex / STORE_GRID_COLS;
+        int col = mStoreIndex % Context::GetGridCols();
+        int row = mStoreIndex / Context::GetGridCols();
         if (InputManager::ControllerPressed(ControllerDpadLeft, -1))
         {
             if (col == 0) {
@@ -260,33 +260,35 @@ void StoreScene::Update()
         }
         else if (InputManager::ControllerPressed(ControllerDpadRight, -1))
         {
-            if (col < (STORE_GRID_COLS - 1) && mStoreIndex < (StoreManager::GetSelectedCategoryTotal() - 1)) {
+            if (col < (Context::GetGridCols() - 1) && mStoreIndex < (StoreManager::GetSelectedCategoryTotal() - 1)) {
                 mStoreIndex++;
             }
         }
         else if (InputManager::ControllerPressed(ControllerDpadUp, -1))
         {
-            if ((mStoreIndex - StoreManager::GetWindowStoreItemOffset()) >= STORE_GRID_COLS)
+            if ((mStoreIndex - StoreManager::GetWindowStoreItemOffset()) >= Context::GetGridCols())
             {
-                mStoreIndex -= STORE_GRID_COLS;
+                mStoreIndex -= Context::GetGridCols();
             }
             else if (StoreManager::HasPrevious())
             {
                 StoreManager::LoadPrevious();
-                mStoreIndex = mStoreIndex >= STORE_GRID_COLS ? mStoreIndex - STORE_GRID_COLS : 0;
+                mStoreIndex = mStoreIndex >= Context::GetGridCols() ? mStoreIndex - Context::GetGridCols() : 0;
             }
         }
         else if (InputManager::ControllerPressed(ControllerDpadDown, -1))
         {
-            if (mStoreIndex < (StoreManager::GetWindowStoreItemOffset() + StoreManager::GetWindowStoreItemCount() - STORE_GRID_COLS))
+            int32_t offset = (int32_t)StoreManager::GetWindowStoreItemOffset();
+            int32_t count = (int32_t)StoreManager::GetWindowStoreItemCount();
+            if (mStoreIndex < (offset + count - Context::GetGridCols()))
             {
-                mStoreIndex += STORE_GRID_COLS;
+                mStoreIndex += Context::GetGridCols();
             }
             else if (StoreManager::HasNext())
             {
                 mImageDownloader->CancelAll();
                 StoreManager::LoadNext();
-                mStoreIndex = Math::MinUint32(mStoreIndex + STORE_GRID_COLS, StoreManager::GetSelectedCategoryTotal() - 1);
+                mStoreIndex = Math::MinUint32(mStoreIndex + Context::GetGridCols(), StoreManager::GetSelectedCategoryTotal() - 1);
             }
         }
         else if (InputManager::ControllerPressed(ControllerA, -1))
