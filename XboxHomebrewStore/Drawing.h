@@ -49,6 +49,7 @@ public:
     static bool LoadFont(const std::string filePath, void* context);
     static bool TryGenerateBitmapFont(void* context, const std::string fontName, int fontStyle, int fontSize, int lineHeight, int spacing, int textureDimension, BitmapFont* bitmapFont);
     static void DrawFont(BitmapFont* font, const std::string message, uint32_t color, float x, float y);
+    static void DrawFontWrapped(BitmapFont* font, const std::string message, uint32_t color, float x, float y, float maxWidth);
     static void DrawFilledRect(uint32_t color, float x, float y, float width, float height);
     static void DrawTexturedRect(D3DTexture* texture, uint32_t diffuse, float x, float y, float width, float height);
     static void DrawNinePatch(D3DTexture* texture, uint32_t diffuse, float x, float y, float width, float height, float cornerWidthPx = 0, float cornerHeightPx = 0, float contentWidthPx = 0, float contentHeightPx = 0);

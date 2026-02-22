@@ -16,6 +16,32 @@ namespace
 {
     uint32_t mSavedStateIndex;
     uint32_t mSavedState[4 * SAVE_STATE_COUNT];
+
+    float MeasureWordWidth(BitmapFont* font, const char* p, const char** outEnd)
+    {
+        float width = 0;
+        bool first = true;
+        while (*p)
+        {
+            char* cursor = (char*)p;
+            uint32_t unicode = ssfn_utf8(&cursor);
+            if (unicode == ' ' || unicode == '\n' || unicode == '\t') {
+                break;
+            }
+            std::map<uint32_t, Rect>::const_iterator it = font->charmap.find(unicode);
+            if (it != font->charmap.end())
+            {
+                if (!first) {
+                    width += (float)font->spacing;
+                }
+                width += (float)it->second.width;
+                first = false;
+            }
+            p = cursor;
+        }
+        *outEnd = p;
+        return width;
+    }
 }
 
 void Drawing::Init()
@@ -316,6 +342,101 @@ void Drawing::DrawFont(BitmapFont* font, const std::string message, uint32_t col
     RestoreRenderState();
 }
 
+void Drawing::DrawFontWrapped(BitmapFont* font, const std::string message, uint32_t color, float x, float y, float maxWidth)
+{
+    static TEXVERTEX batchBuf[DRAW_BATCH_MAX_VERTS];
+    UINT vertexCount = 0;
+
+    float xPos = x;
+    float yPos = y;
+    float lineWidth = 0;
+    const float invW = 1.0f / (float)font->image.width;
+    const float invH = 1.0f / (float)font->image.height;
+
+    SaveRenderState();
+    Context::GetD3dDevice()->SetVertexShader(D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1);
+    Context::GetD3dDevice()->SetTexture(0, font->image.texture);
+
+    const char* p = message.c_str();
+    while (*p)
+    {
+        char* cursor = (char*)p;
+        uint32_t unicode = ssfn_utf8(&cursor);
+        p = cursor;
+
+        if (unicode == '\n')
+        {
+            xPos = x;
+            yPos += (float)font->line_height;
+            lineWidth = 0;
+            continue;
+        }
+
+        std::map<uint32_t, Rect>::const_iterator it = font->charmap.find(unicode);
+        if (it == font->charmap.end()) {
+            continue;
+        }
+
+        const Rect& rect = it->second;
+        float charWidth = (float)rect.width + (lineWidth > 0 ? (float)font->spacing : 0);
+
+        if (unicode == ' ')
+        {
+            const char* nextWordStart = p;
+            float nextWordW = MeasureWordWidth(font, nextWordStart, &nextWordStart);
+            if (lineWidth > 0 && lineWidth + (float)font->spacing + (float)rect.width + nextWordW > maxWidth)
+            {
+                xPos = x;
+                yPos += (float)font->line_height;
+                lineWidth = 0;
+                continue;
+            }
+        }
+        else if (lineWidth > 0 && lineWidth + charWidth > maxWidth)
+        {
+            xPos = x;
+            yPos += (float)font->line_height;
+            lineWidth = 0;
+            charWidth = (float)rect.width;
+        }
+
+        if (vertexCount + 6 > (UINT)DRAW_BATCH_MAX_VERTS)
+        {
+            Context::GetD3dDevice()->DrawPrimitiveUP(D3DPT_TRIANGLELIST, vertexCount / 3, batchBuf, sizeof(TEXVERTEX));
+            vertexCount = 0;
+        }
+
+        float uvX = rect.x * invW;
+        float uvY = rect.y * invH;
+        float uvW = rect.width * invW;
+        float uvH = rect.height * invH;
+        float u0 = uvX, v0 = uvY, u1 = uvX + uvW, v1 = uvY + uvH;
+
+        float px = xPos - 0.5f;
+        float py = yPos - 0.5f;
+        float fw = (float)rect.width;
+        float fh = (float)rect.height;
+
+        TEXVERTEX* v = &batchBuf[vertexCount];
+        v[0].x = px + fw; v[0].y = py;     v[0].z = 0.5f; v[0].rhw = 1.0f; v[0].diffuse = color; v[0].u = u1; v[0].v = v0;
+        v[1].x = px + fw; v[1].y = py+fh; v[1].z = 0.5f; v[1].rhw = 1.0f; v[1].diffuse = color; v[1].u = u1; v[1].v = v1;
+        v[2].x = px;      v[2].y = py+fh; v[2].z = 0.5f; v[2].rhw = 1.0f; v[2].diffuse = color; v[2].u = u0; v[2].v = v1;
+        v[3].x = px + fw; v[3].y = py;     v[3].z = 0.5f; v[3].rhw = 1.0f; v[3].diffuse = color; v[3].u = u1; v[3].v = v0;
+        v[4].x = px;      v[4].y = py+fh; v[4].z = 0.5f; v[4].rhw = 1.0f; v[4].diffuse = color; v[4].u = u0; v[4].v = v1;
+        v[5].x = px;      v[5].y = py;     v[5].z = 0.5f; v[5].rhw = 1.0f; v[5].diffuse = color; v[5].u = u0; v[5].v = v0;
+
+        vertexCount += 6;
+        xPos += (float)rect.width + (lineWidth > 0 ? (float)font->spacing : 0);
+        lineWidth += charWidth;
+    }
+
+    if (vertexCount > 0) {
+        Context::GetD3dDevice()->DrawPrimitiveUP(D3DPT_TRIANGLELIST, vertexCount / 3, batchBuf, sizeof(TEXVERTEX));
+    }
+
+    RestoreRenderState();
+}
+
 void Drawing::DrawFilledRect(uint32_t color, float x, float y, float width, float height)
 {
     VERTEX vertices[4];
@@ -364,7 +485,9 @@ void Drawing::DrawTexturedRect(D3DTexture* texture, uint32_t diffuse, float x, f
 void Drawing::DrawNinePatch(D3DTexture* texture, uint32_t diffuse, float x, float y, float width, float height, float cornerWidthPx, float cornerHeightPx, float contentWidthPx, float contentHeightPx)
 {
     D3DSURFACE_DESC desc;
-    if (FAILED(texture->GetLevelDesc(0, &desc))) return;
+    if (FAILED(texture->GetLevelDesc(0, &desc))) {
+        return;
+    }
 
     const float surfaceW = (float)desc.Width;
     const float surfaceH = (float)desc.Height;
@@ -373,10 +496,18 @@ void Drawing::DrawNinePatch(D3DTexture* texture, uint32_t diffuse, float x, floa
 
     float cw = cornerWidthPx;
     float ch = cornerHeightPx;
-    if (cw > contentW / 2) cw = contentW / 2;
-    if (ch > contentH / 2) ch = contentH / 2;
-    if (cw > width / 2) cw = width / 2;
-    if (ch > height / 2) ch = height / 2;
+    if (cw > contentW / 2) {
+        cw = contentW / 2;
+    }
+    if (ch > contentH / 2) {
+        ch = contentH / 2;
+    }
+    if (cw > width / 2) {
+        cw = width / 2;
+    }
+    if (ch > height / 2) {
+        ch = height / 2;
+    }
 
     const float u0 = 0.0f;
     const float u1 = (float)cw / surfaceW;

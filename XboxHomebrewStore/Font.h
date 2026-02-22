@@ -21,7 +21,8 @@ class Font
 {
 public:
     static void Init();
-    static float MeasureText(const FontType font, const std::string& message);
+    static void MeasureText(const FontType font, const std::string& message, float* outWidth);
+    static void MeasureTextWrapped(const FontType font, const std::string& message, float maxWidth, float* outWidth, float* outHeight);
     static std::string TruncateText(const FontType font, const std::string& message, float maxWidth);
     static void DrawText(const FontType font, const std::string message, uint32_t color, float x, float y);
     static void DrawTextScrolling(const FontType font, const std::string& message, uint32_t color, float x, float y, float maxWidth, ScrollState* scrollState);

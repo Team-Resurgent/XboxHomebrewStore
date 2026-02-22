@@ -17,7 +17,7 @@ namespace
         return (font == FONT_NORMAL) ? &mNormalMainFont : &mLargeMainFont;
     }
 
-    float MeasureInternal(BitmapFont* bitmapFont, const std::string& message)
+    void MeasureInternal(BitmapFont* bitmapFont, const std::string& message, float* outWidth)
     {
         float width = 0;
         const char* p = message.c_str();
@@ -28,14 +28,114 @@ namespace
             uint32_t unicode = ssfn_utf8(&cursor);
             p = cursor;
             std::map<uint32_t, Rect>::const_iterator it = bitmapFont->charmap.find(unicode);
-            if (it == bitmapFont->charmap.end())
+            if (it == bitmapFont->charmap.end()) {
                 continue;
-            if (!first)
+            }
+            if (!first) {
                 width += bitmapFont->spacing;
+            }
             width += it->second.width;
             first = false;
         }
+        if (outWidth) {
+            *outWidth = width;
+        }
+    }
+
+    float MeasureWordWidth(BitmapFont* font, const char* p, const char** outEnd)
+    {
+        float width = 0;
+        bool first = true;
+        while (*p)
+        {
+            char* cursor = (char*)p;
+            uint32_t unicode = ssfn_utf8(&cursor);
+            if (unicode == ' ' || unicode == '\n' || unicode == '\t') {
+                break;
+            }
+            std::map<uint32_t, Rect>::const_iterator it = font->charmap.find(unicode);
+            if (it != font->charmap.end())
+            {
+                if (!first) {
+                    width += (float)font->spacing;
+                }
+                width += (float)it->second.width;
+                first = false;
+            }
+            p = cursor;
+        }
+        *outEnd = p;
         return width;
+    }
+
+    void MeasureTextWrappedInternal(BitmapFont* font, const std::string& message, float maxWidth, float* outWidth, float* outHeight)
+    {
+        float lineWidth = 0;
+        float maxLineWidth = 0;
+        float maxHeight = (float)font->line_height;
+        const char* p = message.c_str();
+        while (*p)
+        {
+            char* cursor = (char*)p;
+            uint32_t unicode = ssfn_utf8(&cursor);
+            p = cursor;
+
+            if (unicode == '\n')
+            {
+                if (lineWidth > maxLineWidth) {
+                    maxLineWidth = lineWidth;
+                }
+                lineWidth = 0;
+                maxHeight += (float)font->line_height;
+                continue;
+            }
+
+            std::map<uint32_t, Rect>::const_iterator it = font->charmap.find(unicode);
+            if (it == font->charmap.end()) {
+                continue;
+            }
+
+            const Rect& rect = it->second;
+            float charWidth = (float)rect.width + (lineWidth > 0 ? (float)font->spacing : 0);
+
+            if (unicode == ' ')
+            {
+                const char* nextWordStart = p;
+                float nextWordW = MeasureWordWidth(font, nextWordStart, &nextWordStart);
+                if (lineWidth > 0 && lineWidth + (float)font->spacing + (float)rect.width + nextWordW > maxWidth)
+                {
+                    if (lineWidth > maxLineWidth) {
+                        maxLineWidth = lineWidth;
+                    }
+                    lineWidth = 0;
+                    maxHeight += (float)font->line_height;
+                    continue;
+                }
+                lineWidth += (lineWidth > 0 ? (float)font->spacing : 0) + (float)rect.width;
+            }
+            else
+            {
+                if (lineWidth > 0 && lineWidth + charWidth > maxWidth)
+                {
+                    if (lineWidth > maxLineWidth) {
+                        maxLineWidth = lineWidth;
+                    }
+                    lineWidth = 0;
+                    maxHeight += (float)font->line_height;
+                    charWidth = (float)rect.width;
+                }
+                lineWidth += charWidth;
+            }
+        }
+        if (lineWidth > maxLineWidth) {
+            maxLineWidth = lineWidth;
+        }
+        if (outWidth) {
+            *outWidth = maxLineWidth;
+        }
+        if (outHeight) {
+            *outHeight = maxHeight;
+        }
     }
 
 }
@@ -49,21 +149,29 @@ void Font::Init()
     }
 }
 
-float Font::MeasureText(const FontType font, const std::string& message)
+void Font::MeasureText(const FontType font, const std::string& message, float* outWidth)
 {
-    return MeasureInternal(GetBitmapFont(font), message);
+    MeasureInternal(GetBitmapFont(font), message, outWidth);
+}
+
+void Font::MeasureTextWrapped(const FontType font, const std::string& message, float maxWidth, float* outWidth, float* outHeight)
+{
+    MeasureTextWrappedInternal(GetBitmapFont(font), message, maxWidth, outWidth, outHeight);
 }
 
 std::string Font::TruncateText(const FontType font, const std::string& message, float maxWidth)
 {
     BitmapFont* bitmapFont = GetBitmapFont(font);
 
-    if (MeasureInternal(bitmapFont, message) <= maxWidth) {
+    float textWidth;
+    MeasureInternal(bitmapFont, message, &textWidth);
+    if (textWidth <= maxWidth) {
         return message;
     }
 
     const std::string ellipsis = "...";
-    float ellipsisWidth = MeasureInternal(bitmapFont, ellipsis);
+    float ellipsisWidth;
+    MeasureInternal(bitmapFont, ellipsis, &ellipsisWidth);
     float budget = maxWidth - ellipsisWidth;
 
     std::string truncated;
@@ -104,7 +212,7 @@ void Font::DrawTextScrolling(const FontType font, const std::string& message, ui
 
     if (!scrollState->active)
     {
-        scrollState->textWidth  = MeasureInternal(bitmapFont, message);
+        MeasureInternal(bitmapFont, message, &scrollState->textWidth);
         scrollState->offset     = 0.0f;
         scrollState->lastTick   = GetTickCount();
         scrollState->pauseTimer = SCROLL_PAUSE;
@@ -119,7 +227,9 @@ void Font::DrawTextScrolling(const FontType font, const std::string& message, ui
 
     DWORD now = GetTickCount();
     float dt = (float)(now - scrollState->lastTick) / 1000.0f;
-    if (dt > 0.1f) dt = 0.1f;
+    if (dt > 0.1f) {
+        dt = 0.1f;
+    }
     scrollState->lastTick = now;
 
     if (scrollState->pauseTimer > 0.0f)
