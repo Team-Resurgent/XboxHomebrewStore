@@ -95,7 +95,7 @@ static void DeleteImageCache()
     WIN32_FIND_DATAA fd;
     HANDLE h;
     std::string pattern;
-    pattern = "HDD0-E:\\TDATA\\Cache\\Covers\\*";
+    pattern = "T:\\Cache\\Covers\\*";
     h = FindFirstFileA( pattern.c_str(), &fd );
     if( h != INVALID_HANDLE_VALUE )
     {
@@ -103,13 +103,13 @@ static void DeleteImageCache()
         {
             if( !(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) )
             {
-                std::string path = "HDD0-E:\\TDATA\\Cache\\Covers\\" + std::string( fd.cFileName );
+                std::string path = "T:\\Cache\\Covers\\" + std::string( fd.cFileName );
                 DeleteFileA( path.c_str() );
             }
         } while( FindNextFileA( h, &fd ) );
         FindClose( h );
     }
-    pattern = "HDD0-E:\\TDATA\\Cache\\Screenshots\\*";
+    pattern = "T:\\Cache\\Screenshots\\*";
     h = FindFirstFileA( pattern.c_str(), &fd );
     if( h != INVALID_HANDLE_VALUE )
     {
@@ -117,7 +117,7 @@ static void DeleteImageCache()
         {
             if( !(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) )
             {
-                std::string path = "HDD0-E:\\TDATA\\Cache\\Screenshots\\" + std::string( fd.cFileName );
+                std::string path = "T:\\Cache\\Screenshots\\" + std::string( fd.cFileName );
                 DeleteFileA( path.c_str() );
             }
         } while( FindNextFileA( h, &fd ) );

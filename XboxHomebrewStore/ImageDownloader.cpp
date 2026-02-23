@@ -34,9 +34,9 @@ static std::string CachePathFor( const std::string appId, ImageDownloadType type
 {
     uint32_t crc = CRC32( appId.c_str(), appId.size() );
     if( type == IMAGE_COVER ) {
-        return String::Format( "HDD0-E:\\TDATA\\Cache\\Covers\\%08X.jpg", crc );
+        return String::Format( "T:\\Cache\\Covers\\%08X.jpg", crc );
     }
-    return String::Format( "HDD0-E:\\TDATA\\Cache\\Screenshots\\%08X.jpg", crc );
+    return String::Format( "T:\\Cache\\Screenshots\\%08X.jpg", crc );
 }
 
 static bool FileExists( const char* path )
@@ -87,16 +87,16 @@ static void CollectFileWithTime( const char* dir, std::vector<std::pair<std::str
 static int32_t CountCacheFiles()
 {
     std::vector<std::pair<std::string, ULONGLONG> > files;
-    CollectFileWithTime( "HDD0-E:\\TDATA\\Cache\\Covers", &files );
-    CollectFileWithTime( "HDD0-E:\\TDATA\\Cache\\Screenshots", &files );
+    CollectFileWithTime( "T:\\Cache\\Covers", &files );
+    CollectFileWithTime( "T:\\Cache\\Screenshots", &files );
     return (int32_t)files.size();
 }
 
 static std::string FindOldestCacheFile()
 {
     std::vector<std::pair<std::string, ULONGLONG> > files;
-    CollectFileWithTime( "HDD0-E:\\TDATA\\Cache\\Covers", &files );
-    CollectFileWithTime( "HDD0-E:\\TDATA\\Cache\\Screenshots", &files );
+    CollectFileWithTime( "HDD0-E:\\TDAT\\54520099A\\Cache\\Covers", &files );
+    CollectFileWithTime( "T:\\Cache\\Screenshots", &files );
     if( files.empty() ) return std::string();
     size_t oldest = 0;
     for( size_t i = 1; i < files.size(); i++ ) {

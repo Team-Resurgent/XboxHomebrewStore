@@ -28,21 +28,17 @@ void LoadingScene::Update()
 {
     if (mProgress >= 8)
     {
-        if (FileSystem::DirectoryCreate("HDD0-E:\\TDATA") == false)
+        if (FileSystem::DirectoryCreate("T:\\Cache") == false)
         {
-            OutputDebugString("Could not create HDD0-E:\\TDATA\n");
+            OutputDebugString("Could not create T:\\Cache\n");
         }
-        if (FileSystem::DirectoryCreate("HDD0-E:\\TDATA\\Cache") == false)
+        if (FileSystem::DirectoryCreate("T:\\Cache\\Covers") == false)
         {
-            OutputDebugString("Could not create HDD0-E:\\TDATA\\Cache\n");
+            OutputDebugString("Could not create T:\\Cache\\Covers\n");
         }
-        if (FileSystem::DirectoryCreate("HDD0-E:\\TDATA\\Cache\\Covers") == false)
+        if (FileSystem::DirectoryCreate("T:\\Cache\\Screenshots") == false)
         {
-            OutputDebugString("Could not create HDD0-E:\\TDATA\\Cache\\Covers\n");
-        }
-        if (FileSystem::DirectoryCreate("HDD0-E:\\TDATA\\Cache\\Screenshots") == false)
-        {
-            OutputDebugString( "Could not create HDD0-E:\\TDATA\\Cache\\Screenshots\n" );
+            OutputDebugString( "Could not create T:\\Cache\\Screenshots\n" );
         }
 
         if (FileSystem::DirectoryCreate("HDD0-E:\\Homebrew") == false)
