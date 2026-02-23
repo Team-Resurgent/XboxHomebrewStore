@@ -223,6 +223,14 @@ void InputManager::ProcessController()
         mControllerStatesCurrent[i].ThumbLeftDx = dx;
         mControllerStatesCurrent[i].ThumbLeftDy = dy;
 
+        const float raw_rx =  controllerInputState.Gamepad.sThumbRX / 32768.0f;
+        const float raw_ry = -controllerInputState.Gamepad.sThumbRY / 32768.0f;
+        float rx = (fabsf(raw_rx) < deadzone) ? 0.0f : (raw_rx - Math::CopySign(deadzone, raw_rx)) / (1.0f - deadzone);
+        float ry = (fabsf(raw_ry) < deadzone) ? 0.0f : (raw_ry - Math::CopySign(deadzone, raw_ry)) / (1.0f - deadzone);
+        const float right_stick_scroll_speed = 500.0f;
+        mControllerStatesCurrent[i].ThumbRightDx = rx * right_stick_scroll_speed * dt;
+        mControllerStatesCurrent[i].ThumbRightDy = ry * right_stick_scroll_speed * dt;
+
         mControllerLastPacketNumber[i] = controllerInputState.dwPacketNumber;
     }
 }

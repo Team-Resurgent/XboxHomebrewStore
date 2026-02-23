@@ -331,10 +331,6 @@ void VersionScene::Update()
         {
             mHighlightedVersionIndex = mHighlightedVersionIndex < (int32_t)mStoreVersions.versions.size() - 1 ? mHighlightedVersionIndex + 1 : 0;
         }
-        else if (InputManager::ControllerPressed(ControllerDpadRight, -1) && listMaxScroll > 0.0f)
-        {
-            mSideBarFocused = false;
-        }
         else if (InputManager::ControllerPressed(ControllerA, -1))
         {
             StartDownload();
@@ -344,31 +340,13 @@ void VersionScene::Update()
             SceneManager* sceneManager = Context::GetSceneManager();
             sceneManager->PopScene();
         }
-    }
-    else
-    {
-        if (InputManager::ControllerPressed(ControllerDpadLeft, -1))
+
+        ControllerState state;
+        if (InputManager::TryGetControllerState(-1, &state) && listMaxScroll > 0.0f)
         {
-            mSideBarFocused = true;
-        }
-        else if (InputManager::ControllerPressed(ControllerDpadUp, -1))
-        {
-            mListViewScrollOffset -= listScrollStep;
-            if (mListViewScrollOffset < 0.0f) {
-                mListViewScrollOffset = 0.0f;
-            }
-        }
-        else if (InputManager::ControllerPressed(ControllerDpadDown, -1))
-        {
-            mListViewScrollOffset += listScrollStep;
-            if (mListViewScrollOffset > listMaxScroll) {
-                mListViewScrollOffset = listMaxScroll;
-            }
-        }
-        else if (InputManager::ControllerPressed(ControllerB, -1))
-        {
-            SceneManager* sceneManager = Context::GetSceneManager();
-            sceneManager->PopScene();
+            mListViewScrollOffset -= state.ThumbRightDy;
+            if (mListViewScrollOffset < 0.0f) mListViewScrollOffset = 0.0f;
+            if (mListViewScrollOffset > listMaxScroll) mListViewScrollOffset = listMaxScroll;
         }
     }
 }

@@ -41,7 +41,7 @@ DISPLAY_MODE displayModes[] = {
     //{  1920,   1080,    false,  true,  60 },         // 1920x1080 interlaced 16x9
 
     // HDTV Progressive Modes
-    {  1280,    720,    true,   true,  60 },         // 1280x720 progressive 16x9
+    //{  1280,    720,    true,   true,  60 },         // 1280x720 progressive 16x9
 
     // EDTV Progressive Modes
     {   720,    480,    true,   true,  60 },         // 720x480 progressive 16x9
@@ -171,11 +171,11 @@ bool InitD3D()
     d3dDevice->SetRenderState( D3DRS_EDGEANTIALIAS, FALSE );
     
     Context::SetActualSize(displayModes[currentMode].dwWidth, displayModes[currentMode].dwHeight);
-    if (displayModes[currentMode].dwHeight < 720) {
-        Context::SetLogicalSize(Math::AspectScaleWidth(displayModes[currentMode].dwWidth, displayModes[currentMode].dwHeight, 720), 720);
-    } else {
+    //if (displayModes[currentMode].dwHeight < 720) {
+    //    Context::SetLogicalSize(Math::AspectScaleWidth(displayModes[currentMode].dwWidth, displayModes[currentMode].dwHeight, 720), 720);
+    //} else {
         Context::SetLogicalSize(displayModes[currentMode].dwWidth, displayModes[currentMode].dwHeight);
-    }
+    //}
 
     Context::SetD3dDevice(d3dDevice);
     return true;
