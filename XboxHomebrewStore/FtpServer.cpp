@@ -194,7 +194,7 @@ bool WINAPI FtpServer::ConnectionThread(uint64_t sCmd) {
         }
 
         {
-            std::string line(cmdBuffer, dw);
+            std::string line(cmdBuffer);
             size_t sp = line.find(' ');
             szCmd = (sp != std::string::npos) ? line.substr(0, sp) : line;
             pszParam = (sp != std::string::npos) ? line.substr(sp + 1) : "";

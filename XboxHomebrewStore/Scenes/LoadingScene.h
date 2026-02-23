@@ -12,5 +12,5 @@ public:
     virtual void Update();
 
 private:
-    int mProgress;  // 0..6: number of init steps completed
+    int mProgress;  // 0..7: number of init steps completed
 };
