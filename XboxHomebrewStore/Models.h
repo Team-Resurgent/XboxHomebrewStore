@@ -26,6 +26,7 @@ typedef struct
     std::string changeLog;
     std::string titleId;
     std::string region;
+    std::string downloadFile;
 } VersionItem;
 
 typedef std::vector<VersionItem> VersionsResponse;

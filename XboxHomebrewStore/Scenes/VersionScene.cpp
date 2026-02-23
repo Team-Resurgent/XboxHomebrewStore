@@ -269,7 +269,7 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
 
     StoreVersion* ver = &scene->mStoreVersions.versions[scene->mHighlightedVersionIndex];
     std::string versionId = ver->versionId;
-    std::string filePath = "HDD0-E:\\Homebrew\\Downloads\\download.tmp";
+    std::string filePath = "HDD0-E:\\Homebrew\\Downloads\\" + ver->downloadFile;
 
     bool ok = WebManager::TryDownloadApp(
         versionId,

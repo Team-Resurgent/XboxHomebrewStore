@@ -6,29 +6,29 @@
 #include "..\StoreManager.h"
 #include "..\WebManager.h"
 
-/** Per-version info (no Store types). */
-struct VersionInfo
-{
-    std::string id;
-    std::string version;
-    uint32_t    size;
-    std::string releaseDate;
-    std::string changeLog;
-    std::string titleId;
-    std::string region;
-    int32_t     state;  // STATE_* for display
-};
-
-/** Selected app data passed when opening VersionScene. */
-struct SelectedAppInfo
-{
-    std::string              appId;
-    std::string              appName;
-    std::string              author;
-    std::string              description;
-    std::vector<VersionInfo> versions;
-    void*                    pScreenshot;  // D3DTexture* for display (not owned)
-};
+///** Per-version info (no Store types). */
+//struct VersionInfo
+//{
+//    std::string id;
+//    std::string version;
+//    uint32_t    size;
+//    std::string releaseDate;
+//    std::string changeLog;
+//    std::string titleId;
+//    std::string region;
+//    int32_t     state;  // STATE_* for display
+//};
+//
+///** Selected app data passed when opening VersionScene. */
+//struct SelectedAppInfo
+//{
+//    std::string              appId;
+//    std::string              appName;
+//    std::string              author;
+//    std::string              description;
+//    std::vector<VersionInfo> versions;
+//    void*                    pScreenshot;  // D3DTexture* for display (not owned)
+//};
 
 class VersionScene : public Scene
 {
