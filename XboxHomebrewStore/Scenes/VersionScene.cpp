@@ -128,6 +128,7 @@ void VersionScene::RenderVersionSidebar()
                 if (focused == true) {
                     Font::DrawTextScrolling(FONT_NORMAL, storeVersion->version, COLOR_WHITE, 16.0f, y, ASSET_SIDEBAR_WIDTH - 64.0f, storeVersion->versionScrollState);
                 } else {
+                    storeVersion->versionScrollState.active = false;
                     Font::DrawText(FONT_NORMAL, storeVersion->version, COLOR_WHITE, 16, y);
                 }
             }

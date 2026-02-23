@@ -97,6 +97,7 @@ void StoreScene::RenderCategorySidebar()
                 if (focused == true) {
                     Font::DrawTextScrolling(FONT_NORMAL, storeCategory->name, COLOR_WHITE, 48, y, ASSET_SIDEBAR_WIDTH - 64, storeCategory->nameScrollState);
                 } else {
+                    storeCategory->nameScrollState.active = false;
                     Font::DrawText(FONT_NORMAL, storeCategory->name, COLOR_WHITE, 48, y);
                 }
             }
@@ -155,6 +156,8 @@ void StoreScene::DrawStoreItem(StoreItem* storeItem, float x, float y, bool sele
     }
     else
     {
+        storeItem->nameScrollState.active = false;
+        storeItem->authorScrollState.active = false;
         Font::DrawText(FONT_NORMAL, storeItem->name, COLOR_WHITE, textX, nameY);
         Font::DrawText(FONT_NORMAL, storeItem->author, COLOR_TEXT_GRAY, textX, authorY);
     }
