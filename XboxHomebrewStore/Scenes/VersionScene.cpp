@@ -279,6 +279,12 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
         (volatile bool*)&scene->mDownloadCancelRequested
     );
 
+    if (ok) {
+        size_t lastSlash = filePath.find_last_of("\\/");
+        std::string destFolder = (lastSlash != std::string::npos) ? filePath.substr(0, lastSlash + 1) : "HDD0-E:\\Homebrew\\Downloads\\";
+        xunzipFromFile(filePath.c_str(), destFolder.c_str(), true, true);
+    }
+
     scene->mDownloadSuccess = ok;
     scene->mDownloading = false;
     return 0;
