@@ -38,7 +38,7 @@ typedef struct {
 
 DISPLAY_MODE displayModes[] = {
     // HDTV Interlaced Modes
-    {  1920,   1080,    false,  true,  60 },         // 1920x1080 interlaced 16x9
+    //{  1920,   1080,    false,  true,  60 },         // 1920x1080 interlaced 16x9
 
     // HDTV Progressive Modes
     {  1280,    720,    true,   true,  60 },         // 1280x720 progressive 16x9
