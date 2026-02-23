@@ -169,37 +169,6 @@ void ImageDownloader::CancelAll()
     LeaveCriticalSection( &m_queueLock );
 }
 
-//void ImageDownloader::ProcessCompleted()
-//{
-//    std::deque<Completed> done;
-//    EnterCriticalSection( &m_completedLock );
-//    done.swap( m_completed );
-//    LeaveCriticalSection( &m_completedLock );
-//    for( size_t i = 0; i < done.size(); i++ )
-//    {
-//        Completed& c = done[i];
-//        if( !c.pOutTexture ) continue;
-//        if( *c.pOutTexture )
-//        {
-//            (*c.pOutTexture)->Release();
-//            *c.pOutTexture = nullptr;
-//        }
-//        D3DTexture* pTex = TextureHelper::LoadFromFile( c.filePath );
-//        if( pTex )
-//        {
-//            if( m_completionCallback )
-//            {
-//                if( !m_completionCallback( m_completionCtx, c.pOutTexture, c.filePath, c.appId, pTex ) )
-//                    pTex->Release();
-//                else
-//                    *c.pOutTexture = pTex;
-//            }
-//            else
-//                *c.pOutTexture = pTex;
-//        }
-//    }
-//}
-
 DWORD WINAPI ImageDownloader::ThreadProc( LPVOID param )
 {
     ImageDownloader* p = (ImageDownloader*)param;
@@ -256,8 +225,5 @@ void ImageDownloader::WorkerLoop()
                 continue;
             }
         }
-
-        //D3DTexture* pTex = TextureHelper::LoadFromFile( path );
-        //*req.pOutTexture = pTex;
     }
 }

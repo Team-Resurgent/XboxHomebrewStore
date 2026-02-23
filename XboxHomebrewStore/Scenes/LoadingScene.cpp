@@ -28,28 +28,28 @@ void LoadingScene::Update()
 {
     if (mProgress >= 8)
     {
-        if( !CreateDirectory( "HDD0-E:\\TDATA", nullptr ) && GetLastError() != ERROR_ALREADY_EXISTS )
+        if (FileSystem::DirectoryCreate("HDD0-E:\\TDATA") == false)
         {
-            OutputDebugString( "Could not create HDD0-E:\\TDATA\n" );
+            OutputDebugString("Could not create HDD0-E:\\TDATA\n");
         }
-        if( !CreateDirectory( "HDD0-E:\\TDATA\\Cache", nullptr ) && GetLastError() != ERROR_ALREADY_EXISTS )
+        if (FileSystem::DirectoryCreate("HDD0-E:\\TDATA\\Cache") == false)
         {
-            OutputDebugString( "Could not create HDD0-E:\\TDATA\\Cache\n" );
+            OutputDebugString("Could not create HDD0-E:\\TDATA\\Cache\n");
         }
-        if( !CreateDirectory( "HDD0-E:\\TDATA\\Cache\\Covers", nullptr ) && GetLastError() != ERROR_ALREADY_EXISTS )
+        if (FileSystem::DirectoryCreate("HDD0-E:\\TDATA\\Cache\\Covers") == false)
         {
-            OutputDebugString( "Could not create HDD0-E:\\TDATA\\Cache\\Covers\n" );
+            OutputDebugString("Could not create HDD0-E:\\TDATA\\Cache\\Covers\n");
         }
-        if( !CreateDirectory( "HDD0-E:\\TDATA\\Cache\\Screenshots", nullptr ) && GetLastError() != ERROR_ALREADY_EXISTS )
+        if (FileSystem::DirectoryCreate("HDD0-E:\\TDATA\\Cache\\Screenshots") == false)
         {
             OutputDebugString( "Could not create HDD0-E:\\TDATA\\Cache\\Screenshots\n" );
         }
 
-        if( !CreateDirectory( "HDD0-E:\\Homebrew", nullptr ) && GetLastError() != ERROR_ALREADY_EXISTS )
+        if (FileSystem::DirectoryCreate("HDD0-E:\\Homebrew") == false)
         {
             OutputDebugString( "Could not create HDD0-E:\\Homebrew\n" );
         }
-        if( !CreateDirectory( "HDD0-E:\\Homebrew\\Downloads", nullptr ) && GetLastError() != ERROR_ALREADY_EXISTS )
+        if (FileSystem::DirectoryCreate("HDD0-E:\\Homebrew\\Downloads") == false)
         {
             OutputDebugString( "Could not create HDD0-E:\\Homebrew\\Downloads\n" );
         }
