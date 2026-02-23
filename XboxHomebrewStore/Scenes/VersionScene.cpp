@@ -216,8 +216,8 @@ void VersionScene::RenderListView()
 
 void VersionScene::RenderDownloadOverlay()
 {
-    const int32_t w = Context::GetScreenWidth();
-    const int32_t h = Context::GetScreenHeight();
+    const float w = Context::GetScreenWidth();
+    const float h = Context::GetScreenHeight();
 
     Drawing::DrawFilledRect(0xCC000000, 0.0f, 0.0f, (float)w, (float)h);
 
@@ -228,7 +228,7 @@ void VersionScene::RenderDownloadOverlay()
 
     Drawing::DrawFilledRect(COLOR_CARD_BG, panelX, panelY, panelWidth, panelHeight);
 
-    Font::DrawText(FONT_NORMAL, "Downloading...", COLOR_WHITE, (int32_t)(panelX + 20.0f), (int32_t)(panelY + 16.0f));
+    Font::DrawText(FONT_NORMAL, "Downloading...", COLOR_WHITE, panelX + 20.0f, panelY + 16.0f);
 
     const float barY = panelY + 50.0f;
     const float barH = 24.0f;
@@ -248,9 +248,9 @@ void VersionScene::RenderDownloadOverlay()
     std::string progressStr = total > 0
         ? String::Format("%s / %s", String::FormatSize(mDownloadNow).c_str(), String::FormatSize(total).c_str())
         : "Connecting...";
-    Font::DrawText(FONT_NORMAL, progressStr, COLOR_TEXT_GRAY, (int32_t)(panelX + 20.0f), (int32_t)(barY + barH + 8.0f));
+    Font::DrawText(FONT_NORMAL, progressStr, COLOR_TEXT_GRAY, panelX + 20.0f, barY + barH + 8.0f);
 
-    Font::DrawText(FONT_NORMAL, "B: Cancel", COLOR_WHITE, (int32_t)(panelX + 20.0f), (int32_t)(panelY + panelHeight - 28.0f));
+    Font::DrawText(FONT_NORMAL, "B: Cancel", COLOR_WHITE, panelX + 20.0f, panelY + panelHeight - 28.0f);
 }
 
 void VersionScene::DownloadProgressCb(uint32_t dlNow, uint32_t dlTotal, void* userData)
@@ -269,7 +269,7 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
 
     StoreVersion* ver = &scene->mStoreVersions.versions[scene->mHighlightedVersionIndex];
     std::string versionId = ver->versionId;
-    std::string filePath = "HDD0-E:\\" + versionId + ".zip";
+    std::string filePath = "HDD0-E:\\Homebrew\\Downloads\\download.tmp";
 
     bool ok = WebManager::TryDownloadApp(
         versionId,

@@ -28,6 +28,10 @@ void LoadingScene::Update()
 {
     if (mProgress >= 8)
     {
+        if( !CreateDirectory( "HDD0-E:\\TDATA", nullptr ) && GetLastError() != ERROR_ALREADY_EXISTS )
+        {
+            OutputDebugString( "Could not create HDD0-E:\\TDATA\n" );
+        }
         if( !CreateDirectory( "HDD0-E:\\TDATA\\Cache", nullptr ) && GetLastError() != ERROR_ALREADY_EXISTS )
         {
             OutputDebugString( "Could not create HDD0-E:\\TDATA\\Cache\n" );
@@ -39,6 +43,15 @@ void LoadingScene::Update()
         if( !CreateDirectory( "HDD0-E:\\TDATA\\Cache\\Screenshots", nullptr ) && GetLastError() != ERROR_ALREADY_EXISTS )
         {
             OutputDebugString( "Could not create HDD0-E:\\TDATA\\Cache\\Screenshots\n" );
+        }
+
+        if( !CreateDirectory( "HDD0-E:\\Homebrew", nullptr ) && GetLastError() != ERROR_ALREADY_EXISTS )
+        {
+            OutputDebugString( "Could not create HDD0-E:\\Homebrew\n" );
+        }
+        if( !CreateDirectory( "HDD0-E:\\Homebrew\\Downloads", nullptr ) && GetLastError() != ERROR_ALREADY_EXISTS )
+        {
+            OutputDebugString( "Could not create HDD0-E:\\Homebrew\\Downloads\n" );
         }
 
         //DeleteImageCache();  // Uncomment to clear image cache on startup

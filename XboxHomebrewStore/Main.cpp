@@ -168,7 +168,7 @@ bool InitD3D()
     d3dDevice->SetRenderState( D3DRS_ALPHABLENDENABLE, TRUE );
     d3dDevice->SetRenderState( D3DRS_SRCBLEND, D3DBLEND_SRCALPHA );
     d3dDevice->SetRenderState( D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA );
-    d3dDevice->SetRenderState( D3DRS_EDGEANTIALIAS, TRUE );
+    d3dDevice->SetRenderState( D3DRS_EDGEANTIALIAS, FALSE );
     
     Context::SetActualSize(displayModes[currentMode].dwWidth, displayModes[currentMode].dwHeight);
     if (displayModes[currentMode].dwHeight < 720) {
