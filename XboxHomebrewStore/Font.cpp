@@ -14,7 +14,7 @@ namespace
         return (font == FONT_NORMAL) ? &mNormalMainFont : &mLargeMainFont;
     }
 
-    void MeasureInternal(BitmapFont* bitmapFont, const std::string& message, float* outWidth)
+    void MeasureInternal(BitmapFont* bitmapFont, const std::string message, float* outWidth)
     {
         float width = 0;
         const char* p = message.c_str();
@@ -65,7 +65,7 @@ namespace
         return width;
     }
 
-    void MeasureTextWrappedInternal(BitmapFont* font, const std::string& message, float maxWidth, float* outWidth, float* outHeight)
+    void MeasureTextWrappedInternal(BitmapFont* font, const std::string message, float maxWidth, float* outWidth, float* outHeight)
     {
         float lineWidth = 0;
         float maxLineWidth = 0;
@@ -146,17 +146,17 @@ void Font::Init()
     }
 }
 
-void Font::MeasureText(const FontType font, const std::string& message, float* outWidth)
+void Font::MeasureText(const FontType font, const std::string message, float* outWidth)
 {
     MeasureInternal(GetBitmapFont(font), message, outWidth);
 }
 
-void Font::MeasureTextWrapped(const FontType font, const std::string& message, float maxWidth, float* outWidth, float* outHeight)
+void Font::MeasureTextWrapped(const FontType font, const std::string message, float maxWidth, float* outWidth, float* outHeight)
 {
     MeasureTextWrappedInternal(GetBitmapFont(font), message, maxWidth, outWidth, outHeight);
 }
 
-std::string Font::TruncateText(const FontType font, const std::string& message, float maxWidth)
+std::string Font::TruncateText(const FontType font, const std::string message, float maxWidth)
 {
     BitmapFont* bitmapFont = GetBitmapFont(font);
 
@@ -198,17 +198,17 @@ std::string Font::TruncateText(const FontType font, const std::string& message, 
     return truncated + ellipsis;
 }
 
-void Font::DrawText(const FontType font, const std::string& message, uint32_t color, float x, float y)
+void Font::DrawText(const FontType font, const std::string message, uint32_t color, float x, float y)
 {
     Drawing::DrawFont(GetBitmapFont(font), message, color, x, y);
 }
 
-void Font::DrawTextWrapped(const FontType font, const std::string& message, uint32_t color, float x, float y, float maxWidth)
+void Font::DrawTextWrapped(const FontType font, const std::string message, uint32_t color, float x, float y, float maxWidth)
 {
     Drawing::DrawFontWrapped(GetBitmapFont(font), message, color, x, y, maxWidth);
 }
 
-void Font::DrawTextScrolling(const FontType font, const std::string& message, uint32_t color, float x, float y, float maxWidth, ScrollState& scrollState)
+void Font::DrawTextScrolling(const FontType font, const std::string message, uint32_t color, float x, float y, float maxWidth, ScrollState& scrollState)
 {
     BitmapFont* bitmapFont = GetBitmapFont(font);
 

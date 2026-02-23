@@ -278,7 +278,7 @@ bool Drawing::TryGenerateBitmapFont(void* context, const std::string fontName, i
     return result;
 }
 
-void Drawing::DrawFont(BitmapFont* font, const std::string& message, uint32_t color, float x, float y)
+void Drawing::DrawFont(BitmapFont* font, const std::string message, uint32_t color, float x, float y)
 {
     const float sx = Context::GetScaleX(), sy = Context::GetScaleY();
     x *= sx; y *= sy;
@@ -345,7 +345,7 @@ void Drawing::DrawFont(BitmapFont* font, const std::string& message, uint32_t co
     RestoreRenderState();
 }
 
-void Drawing::DrawFontWrapped(BitmapFont* font, const std::string& message, uint32_t color, float x, float y, float maxWidth)
+void Drawing::DrawFontWrapped(BitmapFont* font, const std::string message, uint32_t color, float x, float y, float maxWidth)
 {
     const float sx = Context::GetScaleX(), sy = Context::GetScaleY();
     x *= sx; y *= sy; maxWidth *= sx;

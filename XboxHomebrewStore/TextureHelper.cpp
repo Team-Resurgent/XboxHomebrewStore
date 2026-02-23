@@ -190,7 +190,7 @@ D3DTexture* TextureHelper::GetUpdateBadge()
     return mUpdateBadge;
 }
 
-D3DTexture* TextureHelper::GetCategoryIcon(const std::string& name)
+D3DTexture* TextureHelper::GetCategoryIcon(const std::string name)
 {
     std::string key = name;
     for (size_t i = 0; i < key.size(); i++) {
@@ -207,7 +207,7 @@ D3DTexture* TextureHelper::GetCategoryIcon(const std::string& name)
     return mCategoryIcons.empty() ? nullptr : mCategoryIcons.begin()->second;
 }
 
-D3DTexture* TextureHelper::GetControllerIcon(const std::string& name)
+D3DTexture* TextureHelper::GetControllerIcon(const std::string name)
 {
     std::string key = name;
     for (size_t i = 0; i < key.size(); i++)

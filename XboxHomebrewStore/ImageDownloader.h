@@ -18,12 +18,12 @@ public:
     ImageDownloader();
     ~ImageDownloader();
 
-    void Queue(D3DTexture** pOutTexture, const std::string& appId, ImageDownloadType type);
+    void Queue(D3DTexture** pOutTexture, const std::string appId, ImageDownloadType type);
     void CancelAll();
 
 
-    static std::string GetCoverCachePath( const std::string& appId );
-    static bool IsCoverCached( const std::string& appId );
+    static std::string GetCoverCachePath( const std::string appId );
+    static bool IsCoverCached( const std::string appId );
 
 private:
 

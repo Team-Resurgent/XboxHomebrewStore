@@ -20,3 +20,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <algorithm>
+#include <cstring>
+#include <ctime>
+#include <io.h>

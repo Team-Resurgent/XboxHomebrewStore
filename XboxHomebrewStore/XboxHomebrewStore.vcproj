@@ -315,7 +315,13 @@
 				RelativePath=".\DriveMount.cpp">
 			</File>
 			<File
+				RelativePath=".\FileSystem.cpp">
+			</File>
+			<File
 				RelativePath=".\Font.cpp">
+			</File>
+			<File
+				RelativePath=".\FtpServer.cpp">
 			</File>
 			<File
 				RelativePath=".\ImageDownloader.cpp">
@@ -337,6 +343,9 @@
 			</File>
 			<File
 				RelativePath=".\parson.c">
+			</File>
+			<File
+				RelativePath=".\SocketUtility.cpp">
 			</File>
 			<File
 				RelativePath=".\StoreManager.cpp">
@@ -529,7 +538,13 @@
 				RelativePath=".\DriveMount.h">
 			</File>
 			<File
+				RelativePath=".\FileSystem.h">
+			</File>
+			<File
 				RelativePath=".\Font.h">
+			</File>
+			<File
+				RelativePath=".\FtpServer.h">
 			</File>
 			<File
 				RelativePath=".\ImageDownloader.h">
@@ -554,6 +569,9 @@
 			</File>
 			<File
 				RelativePath=".\parson.h">
+			</File>
+			<File
+				RelativePath=".\SocketUtility.h">
 			</File>
 			<File
 				RelativePath=".\ssfn.h">

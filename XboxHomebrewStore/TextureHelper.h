@@ -17,8 +17,8 @@ public:
     static D3DTexture* GetNewBadge();
     static D3DTexture* GetUpdateBadge();
     static D3DTexture* GetStore();
-    static D3DTexture* GetCategoryIcon(const std::string& name);
-    static D3DTexture* GetControllerIcon(const std::string& name);
+    static D3DTexture* GetCategoryIcon(const std::string name);
+    static D3DTexture* GetControllerIcon(const std::string name);
     static D3DTexture* GetScreenshotRef();
     static D3DTexture* GetCoverRef();
 private:

@@ -30,7 +30,7 @@ static uint32_t CRC32( const void* data, size_t size )
     return crc ^ 0xFFFFFFFFU;
 }
 
-static std::string CachePathFor( const std::string& appId, ImageDownloadType type )
+static std::string CachePathFor( const std::string appId, ImageDownloadType type )
 {
     uint32_t crc = CRC32( appId.c_str(), appId.size() );
     if( type == IMAGE_COVER ) {
@@ -51,12 +51,12 @@ static bool FileExists( const char* path )
     return true;  /* exists and is a file (not a directory) */
 }
 
-std::string ImageDownloader::GetCoverCachePath( const std::string& appId )
+std::string ImageDownloader::GetCoverCachePath( const std::string appId )
 {
     return CachePathFor( appId, IMAGE_COVER );
 }
 
-bool ImageDownloader::IsCoverCached( const std::string& appId )
+bool ImageDownloader::IsCoverCached( const std::string appId )
 {
     return FileExists( GetCoverCachePath( appId ).c_str() );
 }
@@ -140,7 +140,7 @@ ImageDownloader::~ImageDownloader()
     DeleteCriticalSection( &m_queueLock );
 }
 
-void ImageDownloader::Queue( D3DTexture** pOutTexture, const std::string& appId, ImageDownloadType type)
+void ImageDownloader::Queue( D3DTexture** pOutTexture, const std::string appId, ImageDownloadType type)
 {
     if( !pOutTexture || appId.empty() ) return;
 

@@ -72,7 +72,7 @@ static DriveMap& GetDrives()
     return s_drives;
 }
 
-static std::string NormalizeDriveName(const std::string& driveName)
+static std::string NormalizeDriveName(const std::string driveName)
 {
     std::string key = String::ToUpper(driveName);
     if (key.length() == 1 && key[0] >= 'H' && key[0] <= 'O')
@@ -82,7 +82,7 @@ static std::string NormalizeDriveName(const std::string& driveName)
     return key;
 }
 
-static DriveEntry* FindDrive(const std::string& driveName)
+static DriveEntry* FindDrive(const std::string driveName)
 {
     if (driveName.empty())
     {
@@ -215,4 +215,135 @@ bool DriveMount::Unmount(std::string driveName)
         return false;
     }
     return DoUnmount(ent);
+}
+
+static bool PathStartsWith(const std::string path, const std::string prefix)
+{
+    if (path.size() < prefix.size())
+        return false;
+    return _strnicmp(path.c_str(), prefix.c_str(), (unsigned int)prefix.size()) == 0;
+}
+
+static std::string ReplaceChar(const std::string s, char from, char to)
+{
+    std::string result = s;
+    for (size_t i = 0; i < result.size(); i++)
+    {
+        if (result[i] == from)
+            result[i] = to;
+    }
+    return result;
+}
+
+static bool IsEntryMounted(DriveEntry* ent)
+{
+    if (ent->kind == DriveKindHdd)
+        return ent->mounted;
+    if (ent->kind == DriveKindMemoryUnit)
+        return !ent->devicePath.empty() && InputManager::IsMemoryUnitMounted(ent->devicePath[0]);
+    return true;
+}
+
+std::string DriveMount::MapFtpPath(const std::string path)
+{
+    std::string tempPath = String::LeftTrim(path, '/');
+    DriveMap& drives = GetDrives();
+    for (DriveMap::iterator it = drives.begin(); it != drives.end(); ++it)
+    {
+        DriveEntry& ent = it->second;
+        const std::string mountPointAlias = ent.name;
+        if (PathStartsWith(tempPath, mountPointAlias) &&
+            (tempPath.size() == mountPointAlias.size() || tempPath[mountPointAlias.size()] == '/' || tempPath[mountPointAlias.size()] == '\\'))
+        {
+            DoMount(&ent);
+            int32_t start = (int32_t)mountPointAlias.size();
+            int32_t restLen = (int32_t)(tempPath.size() - mountPointAlias.size());
+            std::string localFolder = String::Substring(tempPath, start, restLen);
+            if (!localFolder.empty() && (localFolder[0] == '/' || localFolder[0] == '\\'))
+                localFolder = localFolder.substr(1);
+            std::string localPath = String::Format("%s:%s", ent.name.c_str(), localFolder.c_str());
+            return ReplaceChar(localPath, '/', '\\');
+        }
+    }
+    return ReplaceChar(path, '/', '\\');
+}
+
+bool DriveMount::FtpPathMounted(const std::string path)
+{
+    std::string tempPath = String::LeftTrim(path, '/');
+    DriveMap& drives = GetDrives();
+    for (DriveMap::iterator it = drives.begin(); it != drives.end(); ++it)
+    {
+        DriveEntry& ent = it->second;
+        const std::string mountPointAlias = ent.name;
+        if (PathStartsWith(tempPath, mountPointAlias) &&
+            (tempPath.size() == mountPointAlias.size() || tempPath[mountPointAlias.size()] == '/' || tempPath[mountPointAlias.size()] == '\\'))
+        {
+            DoMount(&ent);
+            return IsEntryMounted(&ent);
+        }
+    }
+    return false;
+}
+
+static std::string GetDriveNameFromMountPoint(const std::string mountPoint)
+{
+    std::string s = mountPoint;
+    size_t colon = s.find(':');
+    if (colon != std::string::npos)
+        s = s.substr(0, colon);
+    while (!s.empty() && (s[s.size() - 1] == '\\' || s[s.size() - 1] == '/'))
+        s = s.substr(0, s.size() - 1);
+    colon = s.find(':');
+    if (colon != std::string::npos)
+        s = s.substr(0, colon);
+    return s;
+}
+
+bool DriveMount::GetTotalNumberOfBytes(const std::string mountPoint, uint64_t& totalSize)
+{
+    std::string driveName = GetDriveNameFromMountPoint(mountPoint);
+    DriveEntry* ent = FindDrive(driveName);
+    if (ent == nullptr)
+        return false;
+    if (!DoMount(ent))
+        return false;
+    std::string path = String::Format("%s:\\", ent->name.c_str());
+    ULARGE_INTEGER totalBytes;
+    totalBytes.QuadPart = 0;
+    if (!GetDiskFreeSpaceExA(path.c_str(), nullptr, &totalBytes, nullptr))
+        return false;
+    totalSize = totalBytes.QuadPart;
+    return true;
+}
+
+bool DriveMount::GetTotalFreeNumberOfBytes(const std::string mountPoint, uint64_t& totalFree)
+{
+    std::string driveName = GetDriveNameFromMountPoint(mountPoint);
+    DriveEntry* ent = FindDrive(driveName);
+    if (ent == nullptr)
+        return false;
+    if (!DoMount(ent))
+        return false;
+    std::string path = String::Format("%s:\\", ent->name.c_str());
+    ULARGE_INTEGER freeBytes;
+    freeBytes.QuadPart = 0;
+    if (!GetDiskFreeSpaceExA(path.c_str(), nullptr, nullptr, &freeBytes))
+        return false;
+    totalFree = freeBytes.QuadPart;
+    return true;
+}
+
+std::vector<std::string> DriveMount::GetMountedDrives()
+{
+    DriveMount::Init();
+    std::vector<std::string> result;
+    DriveMap& drives = GetDrives();
+    for (DriveMap::iterator it = drives.begin(); it != drives.end(); ++it)
+    {
+        DriveEntry& ent = it->second;
+        if (IsEntryMounted(&ent))
+            result.push_back(ent.name);
+    }
+    return result;
 }
