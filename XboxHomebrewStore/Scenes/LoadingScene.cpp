@@ -51,14 +51,13 @@ void LoadingScene::Update()
 
     switch (mProgress)
     {
-    case 0: InputManager::Init();       break;
-    case 1: DriveMount::Init();         break;
-    case 2: Network::Init();            break;
-    case 3: WebManager::Init();         break;
-    case 4: WebManager::TrySyncTime();  break;
-    case 5: TextureHelper::Init();     break;
-    case 6: StoreManager::Init();       break;
-    case 7: FtpServer::Init();         break;
+    case 0: DriveMount::Init();         break;
+    case 1: Network::Init();            break;
+    case 2: WebManager::Init();         break;
+    case 3: WebManager::TrySyncTime();  break;
+    case 4: TextureHelper::Init();     break;
+    case 5: StoreManager::Init();       break;
+    case 6: FtpServer::Init();         break;
     default: break;
     }
     mProgress++;
@@ -70,8 +69,8 @@ void LoadingScene::Render()
     float h = Context::GetScreenHeight();
     Drawing::DrawFilledRect(COLOR_BG, 0, 0, w, h);
 
-    int step = (mProgress < 8) ? (mProgress + 1) : 8;
-    std::string progressText = String::Format("%d of 8", step);
+    int step = (mProgress < 7) ? (mProgress + 1) : 7;
+    std::string progressText = String::Format("%d of 7", step);
     float centerX = w * 0.5f;
     float centerY = h * 0.5f;
     float loadingW = 0.0f, progressW = 0.0f;

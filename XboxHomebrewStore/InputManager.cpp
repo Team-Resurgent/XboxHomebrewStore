@@ -98,6 +98,8 @@ namespace
 
 void InputManager::Init()
 {
+    XInitDevices(0, 0);
+
     memset(&mMousePosition, 0, sizeof(mMousePosition));
 
     mControllerTick = 0;

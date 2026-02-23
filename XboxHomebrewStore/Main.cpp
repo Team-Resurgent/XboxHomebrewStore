@@ -219,9 +219,9 @@ VOID __cdecl main()
         return;
     }
 
-    XInitDevices(0, 0);
     Drawing::Init();
     Font::Init();
+    InputManager::Init(); 
 
     g_pSceneManager = new SceneManager();
     Context::SetSceneManager( g_pSceneManager );
