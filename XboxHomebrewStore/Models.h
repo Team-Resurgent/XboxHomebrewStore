@@ -9,6 +9,7 @@ typedef struct
     std::string author;
     std::string category;
     std::string description;
+    std::string latestVersion;
     int32_t state;
 } AppItem;
 

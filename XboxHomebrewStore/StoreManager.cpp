@@ -128,6 +128,7 @@ bool StoreManager::LoadPrevious()
         dst.author = src.author;
         dst.category = src.category;
         dst.description = src.description;
+        dst.latestVersion = src.latestVersion;
         dst.state = src.state;
         dst.cover = src.cover;
     }
@@ -142,6 +143,7 @@ bool StoreManager::LoadPrevious()
         dst.author = src.author;
         dst.category = src.category;
         dst.description = src.description;
+        dst.latestVersion = src.latestVersion;
         dst.state = src.state;
         dst.cover = src.cover;
     }
@@ -186,6 +188,7 @@ bool StoreManager::LoadNext()
         dst.authorScrollState = src.authorScrollState;
         dst.category = src.category;
         dst.description = src.description;
+        dst.latestVersion = src.latestVersion;
         dst.state = src.state;
         dst.cover = src.cover;
     }
@@ -201,6 +204,7 @@ bool StoreManager::LoadNext()
         dst.authorScrollState = src.authorScrollState;
         dst.category = src.category;
         dst.description = src.description;
+        dst.latestVersion = src.latestVersion;
         dst.state = src.state;
         dst.cover = src.cover;
     }
@@ -301,6 +305,7 @@ bool StoreManager::LoadApplications(void* dest, int32_t offset, int32_t count, i
         storeItems[i].author = appItem->author;
         storeItems[i].category = appItem->category;
         storeItems[i].description = appItem->description;
+        storeItems[i].latestVersion = appItem->latestVersion;
         storeItems[i].state = appItem->state;
     }
 

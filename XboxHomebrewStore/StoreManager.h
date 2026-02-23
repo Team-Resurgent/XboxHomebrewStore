@@ -13,6 +13,7 @@ typedef struct
     ScrollState authorScrollState;
     std::string category;
     std::string description;
+    std::string latestVersion;
     uint32_t state;
     D3DTexture* cover;
 } StoreItem;
