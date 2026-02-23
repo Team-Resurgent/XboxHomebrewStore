@@ -95,7 +95,7 @@ static void DeleteImageCache()
     WIN32_FIND_DATAA fd;
     HANDLE h;
     std::string pattern;
-    pattern = "T:\\Cache\\Covers\\*";
+    pattern = "HDD0-E:\\TDATA\\Cache\\Covers\\*";
     h = FindFirstFileA( pattern.c_str(), &fd );
     if( h != INVALID_HANDLE_VALUE )
     {
@@ -103,13 +103,13 @@ static void DeleteImageCache()
         {
             if( !(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) )
             {
-                std::string path = "T:\\Cache\\Covers\\" + std::string( fd.cFileName );
+                std::string path = "HDD0-E:\\TDATA\\Cache\\Covers\\" + std::string( fd.cFileName );
                 DeleteFileA( path.c_str() );
             }
         } while( FindNextFileA( h, &fd ) );
         FindClose( h );
     }
-    pattern = "T:\\Cache\\Screenshots\\*";
+    pattern = "HDD0-E:\\TDATA\\Cache\\Screenshots\\*";
     h = FindFirstFileA( pattern.c_str(), &fd );
     if( h != INVALID_HANDLE_VALUE )
     {
@@ -117,7 +117,7 @@ static void DeleteImageCache()
         {
             if( !(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) )
             {
-                std::string path = "T:\\Cache\\Screenshots\\" + std::string( fd.cFileName );
+                std::string path = "HDD0-E:\\TDATA\\Cache\\Screenshots\\" + std::string( fd.cFileName );
                 DeleteFileA( path.c_str() );
             }
         } while( FindNextFileA( h, &fd ) );
@@ -213,28 +213,13 @@ VOID Render()
 //-----------------------------------------------------------------------------
 VOID __cdecl main()
 {
-    // Initialize Direct3D
     if (InitD3D() == false)
     {
         OutputDebugString( "Failed to initialize Direct3D!\n" );
         return;
     }
 
-    if( !CreateDirectory( "T:\\Cache", nullptr ) && GetLastError() != ERROR_ALREADY_EXISTS )
-    {
-        OutputDebugString( "Could not create T:\\Cache\n" );
-    }
-    if( !CreateDirectory( "T:\\Cache\\Covers", nullptr ) && GetLastError() != ERROR_ALREADY_EXISTS )
-    {
-        OutputDebugString( "Could not create T:\\Cache\\Covers\n" );
-    }
-    if( !CreateDirectory( "T:\\Cache\\Screenshots", nullptr ) && GetLastError() != ERROR_ALREADY_EXISTS )
-    {
-        OutputDebugString( "Could not create T:\\Cache\\Screenshots\n" );
-    }
-    
-    //DeleteImageCache();  // Uncomment to clear image cache on startup
-
+    XInitDevices(0, 0);
     Drawing::Init();
     Font::Init();
 

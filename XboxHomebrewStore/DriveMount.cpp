@@ -261,7 +261,7 @@ std::string DriveMount::MapFtpPath(const std::string path)
             std::string localFolder = String::Substring(tempPath, start, restLen);
             if (!localFolder.empty() && (localFolder[0] == '/' || localFolder[0] == '\\'))
                 localFolder = localFolder.substr(1);
-            std::string localPath = String::Format("%s:%s", ent.name.c_str(), localFolder.c_str());
+            std::string localPath = String::Format("%s:\\%s", ent.name.c_str(), localFolder.c_str());
             return ReplaceChar(localPath, '/', '\\');
         }
     }

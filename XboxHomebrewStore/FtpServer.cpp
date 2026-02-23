@@ -32,57 +32,97 @@ void decrementConnections() {
     _InterlockedDecrement(&activeConnections);
 }
 
+static void cleanVirtualPathSegmentBoundary(std::string& result) {
+    size_t outLen = result.size();
+    if (outLen >= 1 && result[outLen - 1] == '.') {
+        if (outLen == 1)
+            result.resize(0);
+        else if (result[outLen - 2] == '/') {
+            if (outLen == 2)
+                result.resize(1);
+            else
+                result.resize(outLen - 2);
+        } else if (outLen >= 2 && result[outLen - 2] == '.') {
+            if (outLen == 2)
+                result.resize(0);
+            else if (outLen >= 3 && result[outLen - 3] == '/') {
+                if (outLen == 3)
+                    result.resize(1);
+                else {
+                    size_t i = outLen - 3;
+                    while (i > 0 && result[i - 1] != '/')
+                        --i;
+                    result.resize(i);
+                }
+            }
+        }
+    }
+}
+
 std::string cleanVirtualPath(const std::string virtualPath) {
-    const char* in = virtualPath.c_str();
-    char* buf = new char[virtualPath.size() + 4];
-    buf[0] = '\0';
-    buf[1] = '\0';
-    buf[2] = '\0';
-    char* out = buf + 3;
-    do {
-        *out = *in;
-        if (*out == '\\')
-            *out = '/';
-        if ((*out == '\0') || (*out == '/')) {
-            if (out[-1] == '.') {
-                if (out[-2] == '\0')
-                    --out;
-                else if (out[-2] == '/') {
-                    if (out[-3] == '\0')
-                        --out;
+    if (virtualPath.empty())
+        return "";
+    std::string result;
+    result.reserve(virtualPath.size() + 1);
+    size_t pos = 0;
+    const size_t len = virtualPath.size();
+    while (pos < len) {
+        char c = virtualPath[pos];
+        if (c == '\\')
+            c = '/';
+        if (c == '\0') {
+            pos++;
+            continue;
+        }
+        if (c == '/') {
+            size_t outLen = result.size();
+            if (outLen >= 1 && result[outLen - 1] == '.') {
+                if (outLen == 1)
+                    result.resize(0);
+                else if (result[outLen - 2] == '/') {
+                    if (outLen == 2)
+                        result.resize(1);
                     else
-                        out -= 2;
-                } else if (out[-2] == '.') {
-                    if (out[-3] == '\0')
-                        out -= 2;
-                    else if (out[-3] == '/') {
-                        if (out[-4] == '\0')
-                            out -= 2;
+                        result.resize(outLen - 2);
+                } else if (outLen >= 2 && result[outLen - 2] == '.') {
+                    if (outLen == 2)
+                        result.resize(0);
+                    else if (outLen >= 3 && result[outLen - 3] == '/') {
+                        if (outLen == 3)
+                            result.resize(1);
                         else {
-                            out -= 3;
-                            while ((out[-1] != '\0') && (out[-1] != '/'))
-                                --out;
+                            size_t i = outLen - 3;
+                            while (i > 0 && result[i - 1] != '/')
+                                --i;
+                            result.resize(i);
                         }
                     }
                 } else
-                    ++in;
+                    pos++;
             } else {
-                ++in;
-                if (out[-1] != '/')
-                    ++out;
+                pos++;
+                if (outLen == 0 || result[outLen - 1] != '/')
+                    result += c;
             }
-        } else
-            ++in, ++out;
-    } while (in[-1] != '\0');
-
-    std::string result(buf + 3);
-    delete[] buf;
+        } else {
+            result += c;
+            pos++;
+        }
+    }
+    cleanVirtualPathSegmentBoundary(result);
     return result;
 }
 
 std::string resolveRelative(const std::string currentVirtual, const std::string relativeVirtual) {
     if (relativeVirtual.empty() || relativeVirtual[0] != '/') {
-        return cleanVirtualPath(String::Format("%s\\%s", currentVirtual, relativeVirtual.c_str()));
+        std::string combined = currentVirtual;
+        if (!combined.empty()) {
+            size_t last = combined.size() - 1;
+            if (combined[last] != '/' && combined[last] != '\\')
+                combined += '\\';
+        }
+        combined += relativeVirtual;
+        return cleanVirtualPath(combined);
     }
     return cleanVirtualPath(relativeVirtual);
 }
@@ -139,7 +179,7 @@ bool WINAPI FtpServer::ConnectionThread(uint64_t sCmd) {
     std::string szCmd;
     std::string pszParam;
     std::string user;
-    std::string currentVirtual;
+    std::string currentVirtual("");
     std::string rnfr;
     uint32_t dw = 0;
     uint32_t dwRestOffset = 0;
@@ -193,11 +233,23 @@ bool WINAPI FtpServer::ConnectionThread(uint64_t sCmd) {
             continue;
         }
 
+        if (dw >= 512)
+            dw = 511;
+        cmdBuffer[dw] = '\0';
+
         {
             std::string line(cmdBuffer);
+            while (line.size() > 0 && (line[0] == ' ' || line[0] == '\r' || line[0] == '\n' || (unsigned char)line[0] < 32))
+                line = line.substr(1);
+            while (line.size() > 0 && (line[line.size() - 1] == ' ' || line[line.size() - 1] == '\r' || line[line.size() - 1] == '\n' || (unsigned char)line[line.size() - 1] < 32))
+                line = line.substr(0, line.size() - 1);
             size_t sp = line.find(' ');
             szCmd = (sp != std::string::npos) ? line.substr(0, sp) : line;
             pszParam = (sp != std::string::npos) ? line.substr(sp + 1) : "";
+            while (pszParam.size() > 0 && (pszParam[0] == ' ' || pszParam[0] == '\r' || pszParam[0] == '\n' || (unsigned char)pszParam[0] < 32))
+                pszParam = pszParam.substr(1);
+            while (pszParam.size() > 0 && (pszParam[pszParam.size() - 1] == ' ' || pszParam[pszParam.size() - 1] == '\r' || pszParam[pszParam.size() - 1] == '\n' || (unsigned char)pszParam[pszParam.size() - 1] < 32))
+                pszParam = pszParam.substr(0, pszParam.size() - 1);
         }
 
         if (String::EqualsIgnoreCase(szCmd, "USER")) {

@@ -28,6 +28,21 @@ void LoadingScene::Update()
 {
     if (mProgress >= 8)
     {
+        if( !CreateDirectory( "HDD0-E:\\TDATA\\Cache", nullptr ) && GetLastError() != ERROR_ALREADY_EXISTS )
+        {
+            OutputDebugString( "Could not create HDD0-E:\\TDATA\\Cache\n" );
+        }
+        if( !CreateDirectory( "HDD0-E:\\TDATA\\Cache\\Covers", nullptr ) && GetLastError() != ERROR_ALREADY_EXISTS )
+        {
+            OutputDebugString( "Could not create HDD0-E:\\TDATA\\Cache\\Covers\n" );
+        }
+        if( !CreateDirectory( "HDD0-E:\\TDATA\\Cache\\Screenshots", nullptr ) && GetLastError() != ERROR_ALREADY_EXISTS )
+        {
+            OutputDebugString( "Could not create HDD0-E:\\TDATA\\Cache\\Screenshots\n" );
+        }
+
+        //DeleteImageCache();  // Uncomment to clear image cache on startup
+
         SceneManager* sceneManager = Context::GetSceneManager();
         sceneManager->PopScene();
         sceneManager->PushScene(new StoreScene());
@@ -36,8 +51,8 @@ void LoadingScene::Update()
 
     switch (mProgress)
     {
-    case 0: DriveMount::Init();         break;
-    case 1: InputManager::Init();       break;
+    case 0: InputManager::Init();       break;
+    case 1: DriveMount::Init();         break;
     case 2: Network::Init();            break;
     case 3: WebManager::Init();         break;
     case 4: WebManager::TrySyncTime();  break;
