@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Main.h"
+
 typedef struct
 {
     char appId[64];
@@ -11,4 +13,8 @@ typedef struct
 class UserState
 {
 public:
+    static bool TrySave(const UserSaveState* state);
+    static bool TryGetByAppId(const std::string appId, std::vector<UserSaveState>& out);
+    static bool TryGetByAppIdAndVersionId(const std::string appId, const std::string versionId, UserSaveState& out);
+    static bool PruneMissingPaths();
 };
