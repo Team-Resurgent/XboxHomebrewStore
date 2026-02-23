@@ -10,6 +10,8 @@
 #include "..\InputManager.h"
 #include "..\TextureHelper.h"
 #include "..\WebManager.h"
+#include "..\UserState.h"
+#include "..\FileSystem.h"
 
 VersionScene::VersionScene(const StoreVersions& storeVersions)
 {
@@ -270,20 +272,33 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
 
     StoreVersion* ver = &scene->mStoreVersions.versions[scene->mHighlightedVersionIndex];
     std::string versionId = ver->versionId;
-    std::string filePath = "HDD0-E:\\Homebrew\\Downloads\\" + ver->downloadFile;
+    std::string downloadPath = "HDD0-E:\\Homebrew\\Downloads\\" + ver->downloadFile;
 
     bool ok = WebManager::TryDownloadApp(
         versionId,
-        filePath,
+        downloadPath,
         DownloadProgressCb,
         scene,
         (volatile bool*)&scene->mDownloadCancelRequested
     );
 
+    std::string installPath = FileSystem::CombinePath(FileSystem::GetDirectory(downloadPath), FileSystem::GetFileNameWithoutExtension(downloadPath));
+
     if (ok) {
-        size_t lastSlash = filePath.find_last_of("\\/");
-        std::string destFolder = (lastSlash != std::string::npos) ? filePath.substr(0, lastSlash + 1) : "HDD0-E:\\Homebrew\\Downloads\\";
-        xunzipFromFile(filePath.c_str(), destFolder.c_str(), true, true);
+        size_t lastSlash = downloadPath.find_last_of("\\/");
+        if (lastSlash != std::string::npos)
+        {
+            std::string destFolder = downloadPath.substr(0, lastSlash + 1);
+            xunzipFromFile(downloadPath.c_str(), destFolder.c_str(), true, true);
+
+            UserSaveState userSaveState;
+            memset(&userSaveState, 0, sizeof(UserSaveState));
+            strcpy(userSaveState.appId, ver->appId.c_str());
+            strcpy(userSaveState.versionId, ver->appId.c_str());
+            strcpy(userSaveState.downloadPath, downloadPath.c_str());
+            strcpy(userSaveState.installPath, installPath.c_str());
+            UserState::TrySave(&userSaveState);
+        }
     }
 
     scene->mDownloadSuccess = ok;

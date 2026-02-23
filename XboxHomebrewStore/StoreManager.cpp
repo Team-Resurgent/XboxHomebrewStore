@@ -235,6 +235,7 @@ bool StoreManager::TryGetStoreVersions(int32_t storeItemIndex, StoreVersions* st
         VersionItem* versionItem = &versionsResponse[i];
 
         StoreVersion storeVersion;
+        storeVersion.appId = storeItem->appId;
         storeVersion.versionId = versionItem->id;
         storeVersion.version = versionItem->version;
         storeVersion.size = versionItem->size;

@@ -27,6 +27,7 @@ typedef struct
 
 typedef struct
 {
+    std::string appId;
     std::string versionId;
     std::string version;
     ScrollState versionScrollState;
