@@ -24,3 +24,4 @@
 #include <cstring>
 #include <ctime>
 #include <io.h>
+#include <xunzip2.h>
