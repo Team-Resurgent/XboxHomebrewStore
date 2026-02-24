@@ -224,11 +224,11 @@ bool StoreManager::TryGetStoreVersions(int32_t storeItemIndex, StoreVersions* st
         return false;
     }
 
-    memset(storeVersions, 0, sizeof(StoreVersions));
     storeVersions->appId = storeItem->appId;
     storeVersions->name = storeItem->name;
     storeVersions->author = storeItem->author;
     storeVersions->description = storeItem->description;
+    storeVersions->screenshot = nullptr;
 
     for (int32_t i = 0; i < (int32_t)versionsResponse.size(); i++)
     {
@@ -238,6 +238,7 @@ bool StoreManager::TryGetStoreVersions(int32_t storeItemIndex, StoreVersions* st
         storeVersion.appId = storeItem->appId;
         storeVersion.versionId = versionItem->id;
         storeVersion.version = versionItem->version;
+        storeVersion.versionScrollState.active = false;
         storeVersion.size = versionItem->size;
         storeVersion.releaseDate = versionItem->releaseDate;
         storeVersion.changeLog = versionItem->changeLog;
@@ -270,8 +271,8 @@ bool StoreManager::LoadCategories()
     for (int32_t i = 0; i < (int32_t)categoriesResponse.size(); i++)
     {
         StoreCategory storeCategory;
-        memset(&storeCategory, 0, sizeof(StoreCategory));
         storeCategory.name = categoriesResponse[i].name;
+        storeCategory.nameScrollState.active = false;
         storeCategory.count = categoriesResponse[i].count;
         mCategories.push_back(storeCategory);
 
@@ -298,16 +299,17 @@ bool StoreManager::LoadApplications(void* dest, int32_t offset, int32_t count, i
     StoreItem* storeItems = (StoreItem*)dest;
     for (int32_t i = 0; i < itemCount; i++ )
     {
-        memset(&storeItems[i], 0, sizeof(StoreItem)); 
-
         AppItem* appItem = &response.items[i];
         storeItems[i].appId = appItem->id;
         storeItems[i].name = appItem->name;
+        storeItems[i].nameScrollState.active = false;
         storeItems[i].author = appItem->author;
+        storeItems[i].authorScrollState.active = false;
         storeItems[i].category = appItem->category;
         storeItems[i].description = appItem->description;
         storeItems[i].latestVersion = appItem->latestVersion;
         storeItems[i].state = appItem->state;
+        storeItems[i].cover = nullptr;
     }
 
     return true;
