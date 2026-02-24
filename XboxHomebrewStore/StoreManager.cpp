@@ -6,6 +6,7 @@
 #include "Context.h"
 #include "TextureHelper.h"
 #include "ImageDownloader.h"
+#include "UserState.h"
 
 namespace {
     int32_t mCategoryIndex;
@@ -314,6 +315,26 @@ bool StoreManager::LoadApplications(void* dest, int32_t offset, int32_t count, i
         storeItems[i].latestVersion = appItem->latestVersion;
         storeItems[i].state = appItem->state;
         storeItems[i].cover = nullptr;
+
+        // override to update (2) when app is installed
+        // but the store's latest version has no UserState record (user has an older install).
+
+        std::vector<UserSaveState> userStates;
+        if (UserState::TryGetByAppId(storeItems[i].appId, userStates))
+        {
+            bool hasInstalled = false;
+            bool hasLatestVersion = false;
+            for (size_t j = 0; j < userStates.size(); j++)
+            {
+                const UserSaveState& us = userStates[j];
+                if (us.installPath[0] != '\0')
+                    hasInstalled = true;
+                if (us.versionId[0] != '\0' && storeItems[i].latestVersion == us.versionId)
+                    hasLatestVersion = true;
+            }
+            if (hasInstalled && !hasLatestVersion)
+                storeItems[i].state = 2;
+        }
     }
 
     return true;
