@@ -23,6 +23,7 @@ private:
 
     void StartDownload();
     static void DownloadProgressCb(uint32_t dlNow, uint32_t dlTotal, void* userData);
+    static bool UnpackProgressCb(int currentFile, int totalFiles, const char* currentFileName, void* userData);
     static DWORD WINAPI DownloadThreadProc(LPVOID param);
 
     StoreVersions mStoreVersions;
@@ -38,11 +39,15 @@ private:
     float mChangeLogHeight;
     int32_t mLastMeasuredVersionIndex;
 
-    /* Download to HDD0-E: drive */
+    /* Download and unpack */
     bool mDownloading;
     volatile bool mDownloadCancelRequested;
     volatile uint32_t mDownloadNow;
     volatile uint32_t mDownloadTotal;
     bool mDownloadSuccess;
     HANDLE mDownloadThread;
+    bool mUnpacking;
+    volatile bool mUnpackCancelRequested;
+    volatile int mUnpackCurrent;
+    volatile int mUnpackTotal;
 };

@@ -12,6 +12,7 @@
 #include "..\InputManager.h"
 #include "..\TextureHelper.h"
 #include "..\StoreManager.h"
+#include "..\Debug.h"
 
 StoreScene::StoreScene()
 {
@@ -23,6 +24,11 @@ StoreScene::StoreScene()
 
 StoreScene::~StoreScene()
 {
+}
+
+void StoreScene::OnResume()
+{
+    Debug::Print("StoreScene::OnResume\n");
 }
 
 void StoreScene::RenderHeader()

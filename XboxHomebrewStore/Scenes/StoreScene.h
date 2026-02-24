@@ -14,6 +14,7 @@ public:
     virtual ~StoreScene();
     virtual void Render();
     virtual void Update();
+    virtual void OnResume();
 
 private:
     void RenderHeader();

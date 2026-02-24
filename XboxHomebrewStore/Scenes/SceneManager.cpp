@@ -31,6 +31,9 @@ void SceneManager::PopScene()
     m_pStack = pNode->pNext;
     delete pNode->pScene;
     delete pNode;
+    if (m_pStack && m_pStack->pScene) {
+        m_pStack->pScene->OnResume();
+    }
 }
 
 bool SceneManager::HasScene() const

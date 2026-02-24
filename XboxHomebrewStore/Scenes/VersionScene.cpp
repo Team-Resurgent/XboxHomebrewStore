@@ -31,6 +31,10 @@ VersionScene::VersionScene(const StoreVersions& storeVersions)
     mDownloadTotal = 0;
     mDownloadSuccess = false;
     mDownloadThread = nullptr;
+    mUnpacking = false;
+    mUnpackCancelRequested = false;
+    mUnpackCurrent = 0;
+    mUnpackTotal = 0;
 
     const float infoXPos = 350.0f;
     float descMaxWidth = (float)Context::GetScreenWidth() - infoXPos - 20.0f;
@@ -78,9 +82,9 @@ void VersionScene::RenderFooter()
     Drawing::DrawTexturedRect(TextureHelper::GetFooter(), 0xffffffff, 0.0f, footerY, Context::GetScreenWidth(), ASSET_FOOTER_HEIGHT);
 
     Drawing::DrawTexturedRect(TextureHelper::GetControllerIcon("StickLeft"), 0xffffffff, 16.0f, footerY + 10, ASSET_CONTROLLER_ICON_WIDTH, ASSET_CONTROLLER_ICON_HEIGHT);
-    const char* footerText = mDownloading
-        ? "Downloading... B: Cancel"
-        : "A: Download B: Exit D-pad: Move";
+    const char* footerText = mUnpacking
+        ? "Unpacking... B: Cancel"
+        : (mDownloading ? "Downloading... B: Cancel" : "A: Download B: Exit D-pad: Move");
     Font::DrawText(FONT_NORMAL, footerText, COLOR_WHITE, 52, footerY + 12);
 }
 
@@ -231,29 +235,41 @@ void VersionScene::RenderDownloadOverlay()
 
     Drawing::DrawFilledRect(COLOR_CARD_BG, panelX, panelY, panelWidth, panelHeight);
 
-    Font::DrawText(FONT_NORMAL, "Downloading...", COLOR_WHITE, panelX + 20.0f, panelY + 16.0f);
-
     const float barY = panelY + 50.0f;
     const float barH = 24.0f;
     const float barMargin = 20.0f;
     float barW = panelWidth - barMargin * 2.0f;
     float barX = panelX + barMargin;
 
-    Drawing::DrawFilledRect(COLOR_SECONDARY, barX, barY, barW, barH);
-
-    uint32_t total = mDownloadTotal;
-    if (total > 0) {
-        float pct = (float)mDownloadNow / (float)total;
-        if (pct > 1.0f) pct = 1.0f;
-        Drawing::DrawFilledRect(COLOR_DOWNLOAD, barX, barY, barW * pct, barH);
+    if (mUnpacking) {
+        Font::DrawText(FONT_NORMAL, "Unpacking...", COLOR_WHITE, panelX + 20.0f, panelY + 16.0f);
+        Drawing::DrawFilledRect(COLOR_SECONDARY, barX, barY, barW, barH);
+        int total = mUnpackTotal;
+        if (total > 0) {
+            float pct = (float)mUnpackCurrent / (float)total;
+            if (pct > 1.0f) pct = 1.0f;
+            Drawing::DrawFilledRect(COLOR_DOWNLOAD, barX, barY, barW * pct, barH);
+        }
+        std::string progressStr = total > 0
+            ? String::Format("%d / %d files", mUnpackCurrent, total)
+            : "Preparing...";
+        Font::DrawText(FONT_NORMAL, progressStr, COLOR_TEXT_GRAY, panelX + 20.0f, barY + barH + 8.0f);
+        Font::DrawText(FONT_NORMAL, "B: Cancel", COLOR_WHITE, panelX + 20.0f, panelY + panelHeight - 28.0f);
+    } else {
+        Font::DrawText(FONT_NORMAL, "Downloading...", COLOR_WHITE, panelX + 20.0f, panelY + 16.0f);
+        Drawing::DrawFilledRect(COLOR_SECONDARY, barX, barY, barW, barH);
+        uint32_t total = mDownloadTotal;
+        if (total > 0) {
+            float pct = (float)mDownloadNow / (float)total;
+            if (pct > 1.0f) pct = 1.0f;
+            Drawing::DrawFilledRect(COLOR_DOWNLOAD, barX, barY, barW * pct, barH);
+        }
+        std::string progressStr = total > 0
+            ? String::Format("%s / %s", String::FormatSize(mDownloadNow).c_str(), String::FormatSize(total).c_str())
+            : "Connecting...";
+        Font::DrawText(FONT_NORMAL, progressStr, COLOR_TEXT_GRAY, panelX + 20.0f, barY + barH + 8.0f);
+        Font::DrawText(FONT_NORMAL, "B: Cancel", COLOR_WHITE, panelX + 20.0f, panelY + panelHeight - 28.0f);
     }
-
-    std::string progressStr = total > 0
-        ? String::Format("%s / %s", String::FormatSize(mDownloadNow).c_str(), String::FormatSize(total).c_str())
-        : "Connecting...";
-    Font::DrawText(FONT_NORMAL, progressStr, COLOR_TEXT_GRAY, panelX + 20.0f, barY + barH + 8.0f);
-
-    Font::DrawText(FONT_NORMAL, "B: Cancel", COLOR_WHITE, panelX + 20.0f, panelY + panelHeight - 28.0f);
 }
 
 void VersionScene::DownloadProgressCb(uint32_t dlNow, uint32_t dlTotal, void* userData)
@@ -263,6 +279,20 @@ void VersionScene::DownloadProgressCb(uint32_t dlNow, uint32_t dlTotal, void* us
         scene->mDownloadNow = dlNow;
         scene->mDownloadTotal = (uint32_t)dlTotal;
     }
+}
+
+bool VersionScene::UnpackProgressCb(int currentFile, int totalFiles, const char* currentFileName, void* userData)
+{
+    (void)currentFileName;
+    VersionScene* scene = (VersionScene*)userData;
+    if (scene != nullptr) {
+        if (scene->mUnpackCancelRequested) {
+            return false;
+        }
+        scene->mUnpackCurrent = currentFile;
+        scene->mUnpackTotal = totalFiles;
+    }
+    return true;
 }
 
 DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
@@ -282,22 +312,26 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
         (volatile bool*)&scene->mDownloadCancelRequested
     );
 
-    std::string installPath = FileSystem::CombinePath(FileSystem::GetDirectory(downloadPath), FileSystem::GetFileNameWithoutExtension(downloadPath));
-
     if (ok) {
+        std::string installPath = FileSystem::CombinePath(FileSystem::GetDirectory(downloadPath), FileSystem::GetFileNameWithoutExtension(downloadPath));
         size_t lastSlash = downloadPath.find_last_of("\\/");
-        if (lastSlash != std::string::npos)
-        {
+        if (lastSlash != std::string::npos) {
             std::string destFolder = downloadPath.substr(0, lastSlash + 1);
-            xunzipFromFile(downloadPath.c_str(), destFolder.c_str(), true, true);
-
-            UserSaveState userSaveState;
-            memset(&userSaveState, 0, sizeof(UserSaveState));
-            strcpy(userSaveState.appId, ver->appId.c_str());
-            strcpy(userSaveState.versionId, ver->versionId.c_str());
-            strcpy(userSaveState.downloadPath, downloadPath.c_str());
-            strcpy(userSaveState.installPath, installPath.c_str());
-            UserState::TrySave(&userSaveState);
+            scene->mUnpacking = true;
+            scene->mUnpackCancelRequested = false;
+            scene->mUnpackCurrent = 0;
+            scene->mUnpackTotal = 0;
+            bool unpackOk = xunzipFromFile(downloadPath.c_str(), destFolder.c_str(), true, true, false, UnpackProgressCb, scene);
+            scene->mUnpacking = false;
+            if (unpackOk) {
+                UserSaveState userSaveState;
+                memset(&userSaveState, 0, sizeof(UserSaveState));
+                strcpy(userSaveState.appId, ver->appId.c_str());
+                strcpy(userSaveState.versionId, ver->versionId.c_str());
+                strcpy(userSaveState.downloadPath, downloadPath.c_str());
+                strcpy(userSaveState.installPath, installPath.c_str());
+                UserState::TrySave(&userSaveState);
+            }
         }
     }
 
@@ -331,7 +365,11 @@ void VersionScene::Update()
 {
     if (mDownloading) {
         if (InputManager::ControllerPressed(ControllerB, -1)) {
-            mDownloadCancelRequested = true;
+            if (mUnpacking) {
+                mUnpackCancelRequested = true;
+            } else {
+                mDownloadCancelRequested = true;
+            }
         }
         return;
     }
