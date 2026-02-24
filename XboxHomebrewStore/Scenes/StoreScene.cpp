@@ -28,7 +28,7 @@ StoreScene::~StoreScene()
 
 void StoreScene::OnResume()
 {
-    Debug::Print("StoreScene::OnResume\n");
+    StoreManager::RefreshApplications();
 }
 
 void StoreScene::RenderHeader()
