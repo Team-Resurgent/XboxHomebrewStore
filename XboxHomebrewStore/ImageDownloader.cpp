@@ -51,6 +51,22 @@ static bool FileExists( const char* path )
     return true;  /* exists and is a file (not a directory) */
 }
 
+/** Returns true only if the file exists and does not have FILE_ATTRIBUTE_TEMPORARY (i.e. download finished and attribute cleared). */
+static bool FileExistsAndAvailable( const char* path )
+{
+    DWORD att = GetFileAttributesA( path );
+    if( att == (DWORD)-1 ) {
+        return false;
+    }
+    if( att & FILE_ATTRIBUTE_DIRECTORY ) {
+        return false;
+    }
+    if( att & FILE_ATTRIBUTE_TEMPORARY ) {
+        return false;  /* still downloading / not yet renamed with attribute cleared */
+    }
+    return true;
+}
+
 std::string ImageDownloader::GetCoverCachePath( const std::string appId )
 {
     return CachePathFor( appId, IMAGE_COVER );
@@ -58,7 +74,7 @@ std::string ImageDownloader::GetCoverCachePath( const std::string appId )
 
 bool ImageDownloader::IsCoverCached( const std::string appId )
 {
-    return FileExists( GetCoverCachePath( appId ).c_str() );
+    return FileExistsAndAvailable( GetCoverCachePath( appId ).c_str() );
 }
 
 std::string ImageDownloader::GetScreenshotCachePath( const std::string appId )
@@ -68,7 +84,7 @@ std::string ImageDownloader::GetScreenshotCachePath( const std::string appId )
 
 bool ImageDownloader::IsScreenshotCached( const std::string appId )
 {
-    return FileExists( GetScreenshotCachePath( appId ).c_str() );
+    return FileExistsAndAvailable( GetScreenshotCachePath( appId ).c_str() );
 }
 
 #define CACHE_FILE_LIMIT STORE_CACHE_FILE_LIMIT
