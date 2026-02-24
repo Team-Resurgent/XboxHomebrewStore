@@ -5,6 +5,7 @@
 #include "..\Main.h"
 #include "..\StoreManager.h"
 #include "..\WebManager.h"
+#include "..\ImageDownloader.h"
 
 class VersionScene : public Scene
 {
@@ -26,6 +27,7 @@ private:
     static bool UnpackProgressCb(int currentFile, int totalFiles, const char* currentFileName, void* userData);
     static DWORD WINAPI DownloadThreadProc(LPVOID param);
 
+    ImageDownloader* mImageDownloader;
     StoreVersions mStoreVersions;
 
     bool mSideBarFocused;

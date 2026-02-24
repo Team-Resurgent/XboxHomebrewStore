@@ -61,6 +61,16 @@ bool ImageDownloader::IsCoverCached( const std::string appId )
     return FileExists( GetCoverCachePath( appId ).c_str() );
 }
 
+std::string ImageDownloader::GetScreenshotCachePath( const std::string appId )
+{
+    return CachePathFor( appId, IMAGE_SCREENSHOT );
+}
+
+bool ImageDownloader::IsScreenshotCached( const std::string appId )
+{
+    return FileExists( GetScreenshotCachePath( appId ).c_str() );
+}
+
 #define CACHE_FILE_LIMIT STORE_CACHE_FILE_LIMIT
 
 static void CollectFileWithTime( const char* dir, std::vector<std::pair<std::string, ULONGLONG> >* out )

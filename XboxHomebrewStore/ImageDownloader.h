@@ -24,6 +24,8 @@ public:
 
     static std::string GetCoverCachePath( const std::string appId );
     static bool IsCoverCached( const std::string appId );
+    static std::string GetScreenshotCachePath( const std::string appId );
+    static bool IsScreenshotCached( const std::string appId );
 
 private:
 

@@ -46,6 +46,7 @@ typedef struct
     std::string author;
     std::string description;
     std::vector<StoreVersion> versions;
+    D3DTexture* cover;
     D3DTexture* screenshot;
 } StoreVersions;
 

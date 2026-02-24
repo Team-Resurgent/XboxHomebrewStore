@@ -228,6 +228,7 @@ bool StoreManager::TryGetStoreVersions(int32_t storeItemIndex, StoreVersions* st
     storeVersions->name = storeItem->name;
     storeVersions->author = storeItem->author;
     storeVersions->description = storeItem->description;
+    storeVersions->cover = nullptr;
     storeVersions->screenshot = nullptr;
 
     for (int32_t i = 0; i < (int32_t)versionsResponse.size(); i++)

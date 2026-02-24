@@ -15,6 +15,8 @@
 
 VersionScene::VersionScene(const StoreVersions& storeVersions)
 {
+    mImageDownloader = new ImageDownloader();
+
     mStoreVersions = storeVersions;
     mSideBarFocused = true;
     mHighlightedVersionIndex = 0;
@@ -47,6 +49,14 @@ VersionScene::VersionScene(const StoreVersions& storeVersions)
 
 VersionScene::~VersionScene()
 {
+    if (mStoreVersions.cover != nullptr)
+    {
+        mStoreVersions.cover->Release();
+    }
+    if (mStoreVersions.screenshot != nullptr)
+    {
+        mStoreVersions.screenshot->Release();
+    }
     if (mDownloadThread != nullptr) {
         mDownloadCancelRequested = true;
         WaitForSingleObject(mDownloadThread, INFINITE);
@@ -180,13 +190,37 @@ void VersionScene::RenderListView()
 
     Drawing::BeginStencil((float)ASSET_SIDEBAR_WIDTH, (float)ASSET_SIDEBAR_Y, (float)(Context::GetScreenWidth() - ASSET_SIDEBAR_WIDTH), listVisibleHeight);
 
-    if (mStoreVersions.screenshot ) {
-        Drawing::DrawTexturedRect(mStoreVersions.screenshot, 0xFFFFFFFF, titleXPos, gridY, ASSET_SCREENSHOT_WIDTH, ASSET_SCREENSHOT_HEIGHT);
-    } else {
-        Drawing::DrawTexturedRect(TextureHelper::GetScreenshotRef(), 0xFFFFFFFF, titleXPos, gridY, ASSET_SCREENSHOT_WIDTH, ASSET_SCREENSHOT_HEIGHT);
+    D3DTexture* screenshot = mStoreVersions.screenshot;
+    if (screenshot == nullptr) 
+    {
+        if (ImageDownloader::IsScreenshotCached(mStoreVersions.appId) == true)
+        {
+            mStoreVersions.screenshot = TextureHelper::LoadFromFile(ImageDownloader::GetScreenshotCachePath(mStoreVersions.appId));
+            screenshot = mStoreVersions.screenshot;
+        }
+        else
+        {
+            screenshot = TextureHelper::GetScreenshotRef();
+            mImageDownloader->Queue(&mStoreVersions.screenshot, mStoreVersions.appId, IMAGE_SCREENSHOT);
+        }
     }
+    Drawing::DrawTexturedRect(screenshot, 0xFFFFFFFF, titleXPos, gridY, ASSET_SCREENSHOT_WIDTH, ASSET_SCREENSHOT_HEIGHT);
 
-    Drawing::DrawTexturedRect(TextureHelper::GetCoverRef(), 0xFFFFFFFF, 216 + ASSET_SCREENSHOT_WIDTH, gridY, 144, 204);
+    D3DTexture* cover = mStoreVersions.cover;
+    if (cover == nullptr) 
+    {
+        if (ImageDownloader::IsCoverCached(mStoreVersions.appId) == true)
+        {
+            mStoreVersions.cover = TextureHelper::LoadFromFile(ImageDownloader::GetCoverCachePath(mStoreVersions.appId));
+            cover = mStoreVersions.cover;
+        }
+        else
+        {
+            cover = TextureHelper::GetCoverRef();
+            mImageDownloader->Queue(&mStoreVersions.cover, mStoreVersions.appId, IMAGE_COVER);
+        }
+    }
+    Drawing::DrawTexturedRect(cover, 0xFFFFFFFF, 216 + ASSET_SCREENSHOT_WIDTH, gridY, 144, 204);
 
     gridY += ASSET_SCREENSHOT_HEIGHT + 16;
 
