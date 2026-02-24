@@ -16,6 +16,42 @@
 #include "..\DriveMount.h"
 #include "..\FtpServer.h"
 
+static void DeleteImageCache()
+{
+    WIN32_FIND_DATAA fd;
+    HANDLE h;
+    std::string pattern;
+    pattern = "T:\\Cache\\Covers\\*";
+    h = FindFirstFileA( pattern.c_str(), &fd );
+    if( h != INVALID_HANDLE_VALUE )
+    {
+        do
+        {
+            if( !(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) )
+            {
+                std::string path = "T:\\Cache\\Covers\\" + std::string( fd.cFileName );
+                DeleteFileA( path.c_str() );
+            }
+        } while( FindNextFileA( h, &fd ) );
+        FindClose( h );
+    }
+    pattern = "T:\\Cache\\Screenshots\\*";
+    h = FindFirstFileA( pattern.c_str(), &fd );
+    if( h != INVALID_HANDLE_VALUE )
+    {
+        do
+        {
+            if( !(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) )
+            {
+                std::string path = "T:\\Cache\\Screenshots\\" + std::string( fd.cFileName );
+                DeleteFileA( path.c_str() );
+            }
+        } while( FindNextFileA( h, &fd ) );
+        FindClose( h );
+    }
+}
+
+
 LoadingScene::LoadingScene() : mProgress(0)
 {
 }
@@ -50,7 +86,7 @@ void LoadingScene::Update()
             OutputDebugString( "Could not create HDD0-E:\\Homebrew\\Downloads\n" );
         }
 
-        //DeleteImageCache();  // Uncomment to clear image cache on startup
+        DeleteImageCache();  // Uncomment to clear image cache on startup
 
         SceneManager* sceneManager = Context::GetSceneManager();
         sceneManager->PopScene();

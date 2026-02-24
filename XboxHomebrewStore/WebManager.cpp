@@ -230,7 +230,7 @@ bool WebManager::TryDownload(const std::string url, const std::string filePath, 
     if (fp == nullptr) {
         return false;
     }
-    SetFileAttributesA(tempPath.c_str(), FILE_ATTRIBUTE_TEMPORARY);
+    SetFileAttributesA(tempPath.c_str(), FILE_ATTRIBUTE_ARCHIVE);
 
     // Use a dedicated handle for downloads
     CURL* curl = curl_easy_init();
@@ -286,6 +286,7 @@ bool WebManager::TryDownload(const std::string url, const std::string filePath, 
         FileSystem::FileDelete(tempPath);
         return false;
     }
+
     SetFileAttributesA(filePath.c_str(), FILE_ATTRIBUTE_NORMAL);
     return true;
 }

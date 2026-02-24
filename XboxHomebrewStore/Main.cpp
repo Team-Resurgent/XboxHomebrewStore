@@ -86,45 +86,6 @@ bool SupportsMode(DISPLAY_MODE mode, DWORD dwVideoStandard, DWORD dwVideoFlags) 
     return true;
 }
 
-//-----------------------------------------------------------------------------
-// DeleteImageCache() - Remove all files in T:\Cache\Covers and T:\Cache\Screenshots
-// Uncomment the call in main() to clear cache on startup (e.g. for testing).
-//-----------------------------------------------------------------------------
-static void DeleteImageCache()
-{
-    WIN32_FIND_DATAA fd;
-    HANDLE h;
-    std::string pattern;
-    pattern = "T:\\Cache\\Covers\\*";
-    h = FindFirstFileA( pattern.c_str(), &fd );
-    if( h != INVALID_HANDLE_VALUE )
-    {
-        do
-        {
-            if( !(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) )
-            {
-                std::string path = "T:\\Cache\\Covers\\" + std::string( fd.cFileName );
-                DeleteFileA( path.c_str() );
-            }
-        } while( FindNextFileA( h, &fd ) );
-        FindClose( h );
-    }
-    pattern = "T:\\Cache\\Screenshots\\*";
-    h = FindFirstFileA( pattern.c_str(), &fd );
-    if( h != INVALID_HANDLE_VALUE )
-    {
-        do
-        {
-            if( !(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) )
-            {
-                std::string path = "T:\\Cache\\Screenshots\\" + std::string( fd.cFileName );
-                DeleteFileA( path.c_str() );
-            }
-        } while( FindNextFileA( h, &fd ) );
-        FindClose( h );
-    }
-}
-
 bool InitD3D()
 {
     uint32_t videoFlags = XGetVideoFlags();

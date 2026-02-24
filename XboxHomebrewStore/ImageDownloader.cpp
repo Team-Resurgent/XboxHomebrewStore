@@ -61,7 +61,7 @@ static bool FileExistsAndAvailable( const char* path )
     if( att & FILE_ATTRIBUTE_DIRECTORY ) {
         return false;
     }
-    if( att & FILE_ATTRIBUTE_TEMPORARY ) {
+    if( att & FILE_ATTRIBUTE_ARCHIVE ) {
         return false;  /* still downloading / not yet renamed with attribute cleared */
     }
     return true;
