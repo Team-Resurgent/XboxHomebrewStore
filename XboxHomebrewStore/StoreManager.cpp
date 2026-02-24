@@ -108,7 +108,8 @@ bool StoreManager::LoadPrevious()
         return false;
     }
 
-    int32_t itemsToRemove = Math::MinInt32(Context::GetGridCols(), mWindowStoreItemCount);
+    int32_t remainder = mWindowStoreItemCount % Context::GetGridCols();
+    int32_t itemsToRemove = remainder ? remainder : Context::GetGridCols();
 
     for (int32_t i = 0; i < itemsToRemove; i++)
     {
@@ -162,13 +163,15 @@ bool StoreManager::LoadNext()
 
     int32_t newWindowStoreItemOffset = mWindowStoreItemOffset + Context::GetGridCols();
 
+    int32_t tempOffset = Context::GetGridCols() * Math::MaxInt32(0, Context::GetGridRows() - 1);
+
     int32_t loadedCount = 0;
-    if (LoadApplications(mTempStoreItems, newWindowStoreItemOffset, Context::GetGridCols(), &loadedCount) == false)
+    if (LoadApplications(mTempStoreItems, newWindowStoreItemOffset + tempOffset, Context::GetGridCols(), &loadedCount) == false)
     {
         return false;
     }
 
-    int32_t itemsToRemove = Math::MinInt32(Context::GetGridCols(), mWindowStoreItemCount);
+    int32_t itemsToRemove = Context::GetGridCols();
     for (int32_t i = 0; i < itemsToRemove; i++)
     {
         StoreItem& storeItem = mWindowStoreItems[i];
