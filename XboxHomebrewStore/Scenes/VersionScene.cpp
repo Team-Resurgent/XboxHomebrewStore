@@ -200,7 +200,7 @@ void VersionScene::RenderListView()
         }
         else
         {
-            screenshot = TextureHelper::GetScreenshotRef();
+            screenshot = TextureHelper::GetScreenshot();
             mImageDownloader->Queue(&mStoreVersions.screenshot, mStoreVersions.appId, IMAGE_SCREENSHOT);
         }
     }
@@ -216,7 +216,7 @@ void VersionScene::RenderListView()
         }
         else
         {
-            cover = TextureHelper::GetCoverRef();
+            cover = TextureHelper::GetCover();
             mImageDownloader->Queue(&mStoreVersions.cover, mStoreVersions.appId, IMAGE_COVER);
         }
     }

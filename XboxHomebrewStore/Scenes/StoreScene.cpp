@@ -142,7 +142,7 @@ void StoreScene::DrawStoreItem(StoreItem* storeItem, float x, float y, bool sele
         }
         else
         {
-            cover = TextureHelper::GetCoverRef();
+            cover = TextureHelper::GetCover();
             mImageDownloader->Queue(&storeItem->cover, storeItem->appId, IMAGE_COVER);
         }
     }
@@ -176,7 +176,7 @@ void StoreScene::DrawStoreItem(StoreItem* storeItem, float x, float y, bool sele
     }
     else if (storeItem->state == 2)
     {
-        Drawing::DrawTexturedRect(TextureHelper::GetNewBadge(), 0xFFFFFFFF, x + ASSET_CARD_WIDTH - ASSET_BADGE_UPDATE_WIDTH + 4, y - 12, ASSET_BADGE_UPDATE_WIDTH, ASSET_BADGE_UPDATE_HEIGHT);
+        Drawing::DrawTexturedRect(TextureHelper::GetUpdateBadge(), 0xFFFFFFFF, x + ASSET_CARD_WIDTH - ASSET_BADGE_UPDATE_WIDTH + 4, y - 12, ASSET_BADGE_UPDATE_WIDTH, ASSET_BADGE_UPDATE_HEIGHT);
     }
 }
 

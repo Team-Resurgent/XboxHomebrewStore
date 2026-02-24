@@ -2,7 +2,8 @@
 #include "String.h"
 #include "parson.h"
 #include "JsonHelper.h"
-const std::string store_api_url = "https://192.168.1.91:5001";
+#include "FileSystem.h"
+const std::string store_api_url = "https://192.168.1.98:5001";
 const std::string store_app_controller = "/api/apps";
 const std::string store_versions = "/versions";
 const std::string store_categories = "/api/categories";
@@ -62,6 +63,7 @@ static bool ParseAppsResponse(const std::string raw, AppsResponse& out)
                 app.author = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "author"));
                 app.category = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "category"));
                 app.description = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "description"));
+                app.latestVersion = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "latest_version"));
                 app.state = JsonHelper::ToBool(JsonHelper::GetObjectMember(itemObj, "state"));
                 out.items.push_back(app);
             }
@@ -218,21 +220,22 @@ bool WebManager::TryGetFileSize(const std::string url, uint32_t& outSize)
 
 bool WebManager::TryDownload(const std::string url, const std::string filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
 {
-    if (url.empty() || filePath.empty())
-    {
+    if (url.empty() || filePath.empty()) {
         return false;
     }
-    FILE* fp = fopen(filePath.c_str(), "wb");
-    if (fp == nullptr)
-    {
+
+    std::string tempPath = FileSystem::CombinePath(FileSystem::GetDirectory(filePath), FileSystem::GetFileNameWithoutExtension(filePath) + ".tmp");
+
+    FILE* fp = fopen(tempPath.c_str(), "wb");
+    if (fp == nullptr) {
         return false;
     }
 
     // Use a dedicated handle for downloads so API calls can still use the persistent one
     CURL* curl = curl_easy_init();
-    if (curl == nullptr)
-    {
+    if (curl == nullptr) {
         fclose(fp);
+        FileSystem::FileDelete(tempPath);
         return false;
     }
 
@@ -244,8 +247,7 @@ bool WebManager::TryDownload(const std::string url, const std::string filePath, 
 
     // Set larger file write buffer via setvbuf for fewer disk writes
     char* fileBuf = (char*)malloc(65536);
-    if (fileBuf != nullptr)
-    {
+    if (fileBuf != nullptr) {
         setvbuf(fp, fileBuf, _IOFBF, 65536);
     }
 
@@ -253,35 +255,34 @@ bool WebManager::TryDownload(const std::string url, const std::string filePath, 
     progCtx.fn = progressFn;
     progCtx.userData = progressUserData;
     progCtx.pCancelRequested = pCancelRequested;
-    if (progressFn != nullptr || pCancelRequested != nullptr)
-    {
+    if (progressFn != nullptr || pCancelRequested != nullptr) {
         curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
         curl_easy_setopt(curl, CURLOPT_PROGRESSFUNCTION, ProgressCallback);
         curl_easy_setopt(curl, CURLOPT_PROGRESSDATA, &progCtx);
-    }
-    else
-    {
+    } else {
         curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
     }
 
     long http_code = 0;
     CURLcode res = curl_easy_perform(curl);
-    if (res == CURLE_OK)
-    {
+    if (res == CURLE_OK) {
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
     }
 
     fclose(fp);
     curl_easy_cleanup(curl);
 
-    if (fileBuf != nullptr)
-    {
+    if (fileBuf != nullptr) {
         free(fileBuf);
     }
 
-    if (res != CURLE_OK || http_code != 200)
-    {
-        remove(filePath.c_str());
+    if (res != CURLE_OK || http_code != 200) {
+        FileSystem::FileDelete(tempPath);
+        return false;
+    }
+
+    if (!FileSystem::FileMove(tempPath, filePath)) {
+        FileSystem::FileDelete(tempPath);
         return false;
     }
     return true;

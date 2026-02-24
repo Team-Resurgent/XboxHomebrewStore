@@ -216,12 +216,12 @@ D3DTexture* TextureHelper::GetControllerIcon(const std::string name)
     return (it != mControllerIcons.end()) ? it->second : nullptr;
 }
 
-D3DTexture* TextureHelper::GetScreenshotRef()
+D3DTexture* TextureHelper::GetScreenshot()
 {
     return mScreenshot;
 }
 
-D3DTexture* TextureHelper::GetCoverRef()
+D3DTexture* TextureHelper::GetCover()
 {
     return mCover;
 }
