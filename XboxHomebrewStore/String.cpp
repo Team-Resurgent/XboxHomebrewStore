@@ -45,6 +45,16 @@ std::string String::ToUpper(const std::string s)
     return r;
 }
 
+std::string String::ToLower(const std::string s)
+{
+    std::string r = s;
+    for (size_t i = 0; i < r.length(); i++)
+    {
+        r[i] = (char)tolower((unsigned char)r[i]);
+    }
+    return r;
+}
+
 std::string String::LeftTrim(const std::string s, char ch)
 {
     size_t start = 0;
@@ -91,4 +101,12 @@ bool String::EqualsIgnoreCase(const std::string a, const std::string b)
             return false;
     }
     return true;
+}
+
+bool String::EndsWith(const std::string value, const std::string ending)
+{
+    if (ending.size() > value.size()) {
+        return false;
+    }
+    return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
 }

@@ -353,13 +353,27 @@ static void RunMultiSocketDownload(CURL* curl, FILE* fp, volatile bool* pCancelR
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 120L);
 
     char* effective_url = nullptr;
-    curl_easy_getinfo(curl, CURLINFO_EFFECTIVE_URL, &effective_url);
-    std::string url = std::string(effective_url);
-
-    if (url.find("github.com") != std::string::npos ||
-        url.find(".githubusercontent.com") != std::string::npos) {
-        Debug::Print("Using HTTP/1.0 for GitHub (BearSSL workaround)\n");
-        curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
+    if (curl_easy_getinfo(curl, CURLINFO_EFFECTIVE_URL, &effective_url) == CURLE_OK && effective_url)
+    {
+        CURLU* urlp = curl_url();
+        if (urlp)
+        {
+            if (curl_url_set(urlp, CURLUPART_URL, effective_url, 0) == CURLUE_OK)
+            {
+                char* host = nullptr;
+                if (curl_url_get(urlp, CURLUPART_HOST, &host, 0) == CURLUE_OK)
+                {
+                    std::string hostname = String::ToLower(host);
+                    curl_free(host);
+                    if (hostname == "github.com" || String::EndsWith(hostname, ".githubusercontent.com"))
+                    {
+                        Debug::Print("Using HTTP/1.0 for GitHub (BearSSL workaround)\n");
+                        curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
+                    }
+                }
+            }
+            curl_url_cleanup(urlp);
+        }
     }
 
     CURLM* multi = curl_multi_init();
