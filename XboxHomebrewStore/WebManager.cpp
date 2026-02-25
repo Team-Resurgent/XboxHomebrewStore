@@ -818,72 +818,65 @@ bool WebManager::TryGetVersions(const std::string id, VersionsResponse& result)
     return ParseVersionsResponse(raw, result);
 }
 
+bool WebManager::TryDownloadApiData(const std::string url, const std::string filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
+{
+    if (url.empty() || filePath.empty()) {
+        return false;
+    }
 
-// bool WebManager::TryDownload(const std::string url, const std::string filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
-// {
-//     if (url.empty() || filePath.empty()) {
-//         return false;
-//     }
+    FILE* fp = fopen(filePath.c_str(), "wb");
+    if (fp == nullptr) {
+        return false;
+    }
+    SetFileAttributesA(filePath.c_str(), FILE_ATTRIBUTE_ARCHIVE);
 
-//     FILE* fp = fopen(filePath.c_str(), "wb");
-//     if (fp == nullptr) {
-//         return false;
-//     }
-//     SetFileAttributesA(filePath.c_str(), FILE_ATTRIBUTE_ARCHIVE);
+    char* fileBuf = (char*)malloc(65536);
+    if (fileBuf != nullptr) {
+        setvbuf(fp, fileBuf, _IOFBF, 65536);
+    }
 
-//     // Use a dedicated handle for downloads
-//     CURL* curl = curl_easy_init();
-//     if (curl == nullptr) {
-//         fclose(fp);
-//         FileSystem::FileDelete(filePath);
-//         return false;
-//     }
+    CURL* curl = curl_easy_init();
+    if (curl == nullptr) {
+        fclose(fp);
+        if (fileBuf != nullptr) {
+            free(fileBuf);
+        }
+        FileSystem::FileDelete(filePath);
+        return false;
+    }
 
-//     ApplyCommonOptions(curl);
-//     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-//     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
-//     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, (size_t (*)(void*, size_t, size_t, void*))fwrite);
-//     curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, fwrite);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
 
-//     // Set larger file write buffer via setvbuf for fewer disk writes
-//     char* fileBuf = (char*)malloc(65536);
-//     if (fileBuf != nullptr) {
-//         setvbuf(fp, fileBuf, _IOFBF, 65536);
-//     }
+    ProgressContext progCtx;
+    progCtx.fn = progressFn;
+    progCtx.userData = progressUserData;
+    if (progressFn != nullptr || pCancelRequested != nullptr) {
+        curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+        curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, ProgressCallback);
+        curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &progCtx);
+    }
 
-//     ProgressContext progCtx;
-//     progCtx.fn = progressFn;
-//     progCtx.userData = progressUserData;
-//     progCtx.pCancelRequested = pCancelRequested;
-//     if (progressFn != nullptr || pCancelRequested != nullptr) {
-//         curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
-//         curl_easy_setopt(curl, CURLOPT_PROGRESSFUNCTION, ProgressCallback);
-//         curl_easy_setopt(curl, CURLOPT_PROGRESSDATA, &progCtx);
-//     } else {
-//         curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
-//     }
+    CURLcode res = CURLE_OK;
+    long http_code = 0;
+    RunMultiSocketDownload(curl, fp, pCancelRequested, &res, &http_code);
 
-//     long http_code = 0;
-//     CURLcode res = curl_easy_perform(curl);
-//     if (res == CURLE_OK) {
-//         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-//     }
+    fclose(fp);
+    curl_easy_cleanup(curl);
 
-//     fclose(fp);
-//     curl_easy_cleanup(curl);
+    if (fileBuf != nullptr) {
+        free(fileBuf);
+    }
 
-//     if (fileBuf != nullptr) {
-//         free(fileBuf);
-//     }
+    if (res != CURLE_OK || http_code != 200) {
+        FileSystem::FileDelete(filePath);
+        return false;
+    }
 
-//     if (res != CURLE_OK || http_code != 200) {
-//         FileSystem::FileDelete(filePath);
-//         return false;
-//     }
-
-//     SetFileAttributesA(filePath.c_str(), FILE_ATTRIBUTE_NORMAL);
-//     return true;
-// }
+    SetFileAttributesA(filePath.c_str(), FILE_ATTRIBUTE_NORMAL);
+    return true;
+}
 
 bool WebManager::TryDownloadCover(const std::string id, int32_t width, int32_t height, const std::string filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
 {
@@ -891,7 +884,7 @@ bool WebManager::TryDownloadCover(const std::string id, int32_t width, int32_t h
         return false;
     }
     std::string url = store_api_url + "/api/Cover/" + id + String::Format("?width=%u&height=%u", width, height);
-    return TryDownload(url, filePath, nullptr, progressFn, progressUserData, pCancelRequested);
+    return TryDownloadApiData(url, filePath, progressFn, progressUserData, pCancelRequested);
 }
 
 bool WebManager::TryDownloadScreenshot(const std::string id, int32_t width, int32_t height, const std::string filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
@@ -900,7 +893,7 @@ bool WebManager::TryDownloadScreenshot(const std::string id, int32_t width, int3
         return false;
     }
     std::string url = store_api_url + "/api/Screenshot/" + id + String::Format("?width=%u&height=%u", width, height);
-    return TryDownload(url, filePath, nullptr, progressFn, progressUserData, pCancelRequested);
+    return TryDownloadApiData(url, filePath, progressFn, progressUserData, pCancelRequested);
 }
 
 bool WebManager::TryDownloadApp(const std::string id, const std::string filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
@@ -909,7 +902,7 @@ bool WebManager::TryDownloadApp(const std::string id, const std::string filePath
         return false;
     }
     std::string url = store_api_url + "/api/Download/" + id;
-    return TryDownload(url, filePath, nullptr, progressFn, progressUserData, pCancelRequested);
+    return TryDownloadApiData(url, filePath, progressFn, progressUserData, pCancelRequested);
 }
 
 bool WebManager::TryDownloadVersionFile(const std::string versionId, int32_t fileIndex, const std::string filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
@@ -918,7 +911,7 @@ bool WebManager::TryDownloadVersionFile(const std::string versionId, int32_t fil
         return false;
     }
     std::string url = store_api_url + "/api/Download/" + versionId + String::Format("?fileIndex=%d", fileIndex);
-    return TryDownload(url, filePath, nullptr, progressFn, progressUserData, pCancelRequested);
+    return TryDownloadApiData(url, filePath, progressFn, progressUserData, pCancelRequested);
 }
 
 bool WebManager::TrySyncTime()

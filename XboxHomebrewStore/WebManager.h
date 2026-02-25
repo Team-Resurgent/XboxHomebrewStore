@@ -10,6 +10,7 @@ public:
 
     static bool Init();
     static bool TryDownload(const std::string url, const std::string filePath, std::string* outFinalFileName = nullptr, DownloadProgressFn progressFn = nullptr, void* progressUserData = nullptr, volatile bool* pCancelRequested = nullptr);
+    static bool TryDownloadApiData(const std::string url, const std::string filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested);
     static bool TryDownloadCover(const std::string id, int32_t width, int32_t height, const std::string filePath, DownloadProgressFn progressFn = nullptr, void* progressUserData = nullptr, volatile bool* pCancelRequested = nullptr);
     static bool TryDownloadScreenshot(const std::string id, int32_t width, int32_t height, const std::string filePath, DownloadProgressFn progressFn = nullptr, void* progressUserData = nullptr, volatile bool* pCancelRequested = nullptr);
     static bool TryDownloadApp(const std::string id, const std::string filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested);
