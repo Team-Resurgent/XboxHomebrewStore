@@ -516,8 +516,7 @@ bool WebManager::TryDownload(const std::string url, const std::string filePath, 
 
             // Let libcurl know this handle is done
             curl_multi_remove_handle(multi, curl);
-            curl_easy_cleanup(curl);
-
+            
             OutputDebugStringA("Download cancelled instantly.\n");
             res = CURLE_ABORTED_BY_CALLBACK;
             break;
