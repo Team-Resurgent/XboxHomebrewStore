@@ -429,13 +429,21 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
 
             std::string filePath = FileSystem::CombinePath(baseDir, fileName);
 
-            ok = WebManager::TryDownload(
-                entry,
-                filePath,
-                DownloadProgressCb,
-                scene,
-                (volatile bool*)&scene->mDownloadCancelRequested
-            );
+			std::string actualName;
+
+			ok = WebManager::TryDownload(
+				entry,
+				filePath,
+				&actualName,
+				DownloadProgressCb,
+				scene,
+				(volatile bool*)&scene->mDownloadCancelRequested
+			);
+
+			if (!actualName.empty())
+				downloadedFileNames[f] = actualName;
+			else
+				downloadedFileNames[f] = fileName;
         }
         else
         {

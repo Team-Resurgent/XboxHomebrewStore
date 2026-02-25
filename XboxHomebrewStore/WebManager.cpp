@@ -400,6 +400,7 @@ bool WebManager::TryGetDownloadFilename(const std::string url, std::string& outF
 bool WebManager::TryDownload(
     const std::string url,
     const std::string filePath,
+    std::string* outFinalFileName,
     DownloadProgressFn progressFn,
     void* progressUserData,
     volatile bool* pCancelRequested)
@@ -410,6 +411,9 @@ bool WebManager::TryDownload(
     OutputDebugStringA("\nFilePath: ");
     OutputDebugStringA(filePath.c_str());
     OutputDebugStringA("\n");
+
+    if (outFinalFileName)
+        outFinalFileName->clear();
 
     if (url.empty() || filePath.empty())
     {
@@ -511,6 +515,8 @@ bool WebManager::TryDownload(
     if (contentType.find("text/html") == std::string::npos)
     {
         std::string detectedName;
+        std::string finalPath = filePath;
+
         if (ParseContentDispositionFilename(headers, detectedName) && !detectedName.empty())
         {
             std::string dir;
@@ -518,7 +524,7 @@ bool WebManager::TryDownload(
             if (slash != std::string::npos)
                 dir = filePath.substr(0, slash + 1);
 
-            std::string finalPath = dir + detectedName;
+            finalPath = dir + detectedName;
 
             if (finalPath != filePath)
             {
@@ -528,7 +534,10 @@ bool WebManager::TryDownload(
             }
         }
 
-        SetFileAttributesA(filePath.c_str(), FILE_ATTRIBUTE_NORMAL);
+        if (outFinalFileName)
+            *outFinalFileName = FileSystem::GetFileName(finalPath);
+
+        SetFileAttributesA(finalPath.c_str(), FILE_ATTRIBUTE_NORMAL);
         curl_easy_cleanup(curl);
         curl_global_cleanup();
         curl_global_init(CURL_GLOBAL_DEFAULT);
@@ -563,6 +572,9 @@ bool WebManager::TryDownload(
 
     if (html.find("Google Drive can't scan this file") == std::string::npos)
     {
+        if (outFinalFileName)
+            *outFinalFileName = FileSystem::GetFileName(filePath);
+
         OutputDebugStringA("HTML but not Google confirm page\n");
         curl_easy_cleanup(curl);
         curl_global_cleanup();
@@ -660,6 +672,9 @@ bool WebManager::TryDownload(
         curl_global_init(CURL_GLOBAL_DEFAULT);
         return false;
     }
+
+    if (outFinalFileName)
+        *outFinalFileName = FileSystem::GetFileName(finalPath);
 
     SetFileAttributesA(finalPath.c_str(), FILE_ATTRIBUTE_NORMAL);
     curl_easy_cleanup(curl);
@@ -787,7 +802,7 @@ bool WebManager::TryDownloadCover(const std::string id, int32_t width, int32_t h
         return false;
     }
     std::string url = store_api_url + "/api/Cover/" + id + String::Format("?width=%u&height=%u", width, height);
-    return TryDownload(url, filePath, progressFn, progressUserData, pCancelRequested);
+    return TryDownload(url, filePath, nullptr, progressFn, progressUserData, pCancelRequested);
 }
 
 bool WebManager::TryDownloadScreenshot(const std::string id, int32_t width, int32_t height, const std::string filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
@@ -797,7 +812,7 @@ bool WebManager::TryDownloadScreenshot(const std::string id, int32_t width, int3
         return false;
     }
     std::string url = store_api_url + "/api/Screenshot/" + id + String::Format("?width=%u&height=%u", width, height);
-    return TryDownload(url, filePath, progressFn, progressUserData, pCancelRequested);
+    return TryDownload(url, filePath, nullptr, progressFn, progressUserData, pCancelRequested);
 }
 
 bool WebManager::TryDownloadApp(const std::string id, const std::string filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
@@ -807,7 +822,7 @@ bool WebManager::TryDownloadApp(const std::string id, const std::string filePath
         return false;
     }
     std::string url = store_api_url + "/api/Download/" + id;
-    return TryDownload(url, filePath, progressFn, progressUserData, pCancelRequested);
+    return TryDownload(url, filePath, nullptr, progressFn, progressUserData, pCancelRequested);
 }
 
 bool WebManager::TryDownloadVersionFile(const std::string versionId, int32_t fileIndex, const std::string filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
@@ -817,7 +832,7 @@ bool WebManager::TryDownloadVersionFile(const std::string versionId, int32_t fil
         return false;
     }
     std::string url = store_api_url + "/api/Download/" + versionId + String::Format("?fileIndex=%d", fileIndex);
-    return TryDownload(url, filePath, progressFn, progressUserData, pCancelRequested);
+    return TryDownload(url, filePath, nullptr, progressFn, progressUserData, pCancelRequested);
 }
 
 bool WebManager::TrySyncTime()
