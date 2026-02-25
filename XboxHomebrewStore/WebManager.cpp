@@ -824,7 +824,7 @@ bool WebManager::TryDownloadApiData(const std::string url, const std::string fil
     }
 
     SetFileAttributesA(filePath.c_str(), FILE_ATTRIBUTE_NORMAL);
-    Debug::Print("=== SUCCESS (normal file) ===");
+    Debug::Print("=== SUCCESS (normal file) ===\n");
     return true;
 }
 
