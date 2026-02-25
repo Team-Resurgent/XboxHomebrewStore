@@ -430,13 +430,20 @@ bool WebManager::TryDownload(
 
     ApplyCommonOptions(curl);
 
-    //curl_easy_setopt(curl, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
-    //curl_easy_setopt(curl, CURLOPT_FRESH_CONNECT, 1L);
-    //curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1L);
-
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 5L);
-    curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+
+    // Default to HTTP/1.1
+	curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+
+	// BearSSL workaround for GitHub (CloudFront chunked keep-alive issue)
+	if (url.find("github.com") != std::string::npos ||
+		url.find("objects.githubusercontent.com") != std::string::npos)
+	{
+		OutputDebugStringA("Using HTTP/1.0 for GitHub (BearSSL workaround)\n");
+		curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
+	}
+
     curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0");
     curl_easy_setopt(curl, CURLOPT_COOKIEFILE, "");
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
