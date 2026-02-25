@@ -357,7 +357,7 @@ static void RunMultiSocketDownload(CURL* curl, FILE* fp, volatile bool* pCancelR
     std::string url = std::string(effective_url);
 
     if (url.find("github.com") != std::string::npos ||
-        url.find(".githubusercontent.com") != std::string::npos) {
+        url.find("objects.githubusercontent.com") != std::string::npos) {
         Debug::Print("Using HTTP/1.0 for GitHub (BearSSL workaround)\n");
         curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
     }
