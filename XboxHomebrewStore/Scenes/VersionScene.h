@@ -46,16 +46,14 @@ private:
     /* Download and unpack */
     bool mDownloading;
     volatile bool mDownloadCancelRequested;
-    volatile uint32_t mDownloadNow;
+    volatile uint32_t mDownloadCurrent;
     volatile uint32_t mDownloadTotal;
-    volatile int mDownloadFileIndex;   /* 1-based current file */
-    volatile int mDownloadFileCount;   /* total files */
+    volatile int mProgressIndex;   /* 1-based current (download file or unpack archive) */
+    volatile int mProgressCount;   /* total (files to download or zips to unpack) */
     bool mDownloadSuccess;
     HANDLE mDownloadThread;
     bool mUnpacking;
     volatile bool mUnpackCancelRequested;
     volatile int mUnpackCurrent;
     volatile int mUnpackTotal;
-    volatile int mUnpackZipIndex;      /* 1-based current archive */
-    volatile int mUnpackZipCount;     /* total archives (zips) */
 };

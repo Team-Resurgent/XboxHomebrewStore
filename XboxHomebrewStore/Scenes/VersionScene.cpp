@@ -30,14 +30,15 @@ VersionScene::VersionScene(const StoreVersions& storeVersions)
     mNeedsUpdate = false;
     mDownloading = false;
     mDownloadCancelRequested = false;
-    mDownloadNow = 0;
+    mDownloadCurrent = 0;
     mDownloadTotal = 0;
-    mDownloadSuccess = false;
     mDownloadThread = nullptr;
     mUnpacking = false;
     mUnpackCancelRequested = false;
     mUnpackCurrent = 0;
     mUnpackTotal = 0;
+    mProgressIndex = 0;
+    mProgressCount = 0;
 
     const float infoXPos = 350.0f;
     float descMaxWidth = (float)Context::GetScreenWidth() - infoXPos - 20.0f;
@@ -107,9 +108,18 @@ void VersionScene::RenderFooter()
     Drawing::DrawTexturedRect(TextureHelper::GetFooter(), 0xffffffff, 0.0f, footerY, Context::GetScreenWidth(), ASSET_FOOTER_HEIGHT);
 
     Drawing::DrawTexturedRect(TextureHelper::GetControllerIcon("StickLeft"), 0xffffffff, 16.0f, footerY + 10, ASSET_CONTROLLER_ICON_WIDTH, ASSET_CONTROLLER_ICON_HEIGHT);
-    const char* footerText = mUnpacking
-        ? "Unpacking... B: Cancel"
-        : (mDownloading ? "Downloading... B: Cancel" : "A: Download B: Exit D-pad: Move");
+    std::string footerText;
+    if (mUnpacking) {
+        footerText = (mProgressCount > 0)
+            ? String::Format("Unpacking %d of %d... B: Cancel", mProgressIndex, mProgressCount)
+            : "Unpacking... B: Cancel";
+    } else if (mDownloading) {
+        footerText = (mProgressCount > 0)
+            ? String::Format("Downloading %d of %d... B: Cancel", mProgressIndex, mProgressCount)
+            : "Downloading... B: Cancel";
+    } else {
+        footerText = "A: Download B: Exit D-pad: Move";
+    }
     Font::DrawText(FONT_NORMAL, footerText, COLOR_WHITE, 52, footerY + 12);
 }
 
@@ -297,8 +307,8 @@ void VersionScene::RenderDownloadOverlay()
     float barX = panelX + barMargin;
 
     if (mUnpacking) {
-        std::string unpackTitle = (mUnpackZipCount > 0)
-            ? String::Format("Unpacking %d of %d...", mUnpackZipIndex, mUnpackZipCount)
+        std::string unpackTitle = (mProgressCount > 0)
+            ? String::Format("Unpacking %d of %d...", mProgressIndex, mProgressCount)
             : "Unpacking...";
         Font::DrawText(FONT_NORMAL, unpackTitle, COLOR_WHITE, panelX + 20.0f, panelY + 16.0f);
         Drawing::DrawFilledRect(COLOR_SECONDARY, barX, barY, barW, barH);
@@ -314,19 +324,19 @@ void VersionScene::RenderDownloadOverlay()
         Font::DrawText(FONT_NORMAL, progressStr, COLOR_TEXT_GRAY, panelX + 20.0f, barY + barH + 8.0f);
         Font::DrawText(FONT_NORMAL, "B: Cancel", COLOR_WHITE, panelX + 20.0f, panelY + panelHeight - 28.0f);
     } else {
-        std::string downloadTitle = (mDownloadFileCount > 0)
-            ? String::Format("Downloading %d of %d...", mDownloadFileIndex, mDownloadFileCount)
+        std::string downloadTitle = (mProgressCount > 0)
+            ? String::Format("Downloading %d of %d...", mProgressIndex, mProgressCount)
             : "Downloading...";
         Font::DrawText(FONT_NORMAL, downloadTitle, COLOR_WHITE, panelX + 20.0f, panelY + 16.0f);
         Drawing::DrawFilledRect(COLOR_SECONDARY, barX, barY, barW, barH);
         uint32_t total = mDownloadTotal;
         if (total > 0) {
-            float pct = (float)mDownloadNow / (float)total;
+            float pct = (float)mDownloadCurrent / (float)total;
             if (pct > 1.0f) pct = 1.0f;
             Drawing::DrawFilledRect(COLOR_DOWNLOAD, barX, barY, barW * pct, barH);
         }
         std::string progressStr = total > 0
-            ? String::Format("%s / %s", String::FormatSize(mDownloadNow).c_str(), String::FormatSize(total).c_str())
+            ? String::Format("%s / %s", String::FormatSize(mDownloadCurrent).c_str(), String::FormatSize(total).c_str())
             : "Connecting...";
         Font::DrawText(FONT_NORMAL, progressStr, COLOR_TEXT_GRAY, panelX + 20.0f, barY + barH + 8.0f);
         Font::DrawText(FONT_NORMAL, "B: Cancel", COLOR_WHITE, panelX + 20.0f, panelY + panelHeight - 28.0f);
@@ -337,7 +347,7 @@ void VersionScene::DownloadProgressCb(uint32_t dlNow, uint32_t dlTotal, void* us
 {
     VersionScene* scene = (VersionScene*)userData;
     if (scene != nullptr) {
-        scene->mDownloadNow = dlNow;
+        scene->mDownloadCurrent = dlNow;
         scene->mDownloadTotal = (uint32_t)dlTotal;
     }
 }
@@ -383,10 +393,10 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
         }
 
         // ---- Set current file index BEFORE download so UI is correct ----
-        scene->mDownloadFileIndex = (int)f + 1;
+        scene->mProgressIndex = (int)f + 1;
 
         // ---- Reset per-file progress BEFORE starting download ----
-        scene->mDownloadNow = 0;
+        scene->mDownloadCurrent = 0;
         scene->mDownloadTotal = 0;
 
         const std::string& entry = ver->downloadFiles[f];
@@ -471,42 +481,35 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
         scene->mUnpackCancelRequested = false;
         scene->mUnpackCurrent = 0;
         scene->mUnpackTotal = 0;
+        scene->mProgressCount = (int)downloadedFileNames.size();
+        scene->mProgressIndex = 0;
 
         bool unpackOk = true;
-
-        for (size_t f = 0; unpackOk && f < ver->downloadFiles.size(); f++)
+        for (size_t f = 0; unpackOk && f < downloadedFileNames.size(); f++)
         {
             const std::string& localName = downloadedFileNames[f];
+            std::string srcPath = FileSystem::CombinePath(baseDir, localName);
 
-            if (!EndsWithZip(localName))
-                continue;
+            scene->mProgressIndex = (int)f + 1;
 
-            std::string zipPath = FileSystem::CombinePath(baseDir, localName);
-
-            unpackOk = xunzipFromFile(
-                zipPath.c_str(),
-                installPath.c_str(),
-                true,
-                true,
-                false,
-                UnpackProgressCb,
-                scene
-            );
+            if (EndsWithZip(localName))
+            {
+                unpackOk = xunzipFromFile(
+                    srcPath.c_str(),
+                    installPath.c_str(),
+                    true,
+                    true,
+                    false,
+                    UnpackProgressCb,
+                    scene
+                );
+            }
+            else
+            {
+                std::string dstPath = FileSystem::CombinePath(installPath, localName);
+                MoveFile(srcPath.c_str(), dstPath.c_str());
+            }
         }
-	
-		// ---- Move non-zip files to installPath ----
-		for (size_t f = 0; f < ver->downloadFiles.size(); f++)
-		{
-			const std::string& localName = downloadedFileNames[f];
-
-			if (EndsWithZip(localName))
-				continue;
-
-			std::string srcPath = FileSystem::CombinePath(baseDir, localName);
-			std::string dstPath = FileSystem::CombinePath(installPath, localName);
-
-			MoveFile(srcPath.c_str(), dstPath.c_str());
-		}
 
         scene->mUnpacking = false;
 
@@ -524,7 +527,6 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
         }
     }
 
-    scene->mDownloadSuccess = ok;
     scene->mDownloading = false;
     scene->mNeedsUpdate = true;
 
@@ -542,11 +544,11 @@ void VersionScene::StartDownload()
     }
 
     mDownloadCancelRequested = false;
-    mDownloadNow = 0;
+    mDownloadCurrent = 0;
     mDownloadTotal = 0;
     StoreVersion* ver = &mStoreVersions.versions[mHighlightedVersionIndex];
-    mDownloadFileCount = (int)ver->downloadFiles.size();
-    mDownloadFileIndex = 0;
+    mProgressCount = (int)ver->downloadFiles.size();
+    mProgressIndex = (mProgressCount > 0) ? 1 : 0;
     mDownloading = true;
 
     mDownloadThread = CreateThread(nullptr, 0, DownloadThreadProc, this, 0, nullptr);
