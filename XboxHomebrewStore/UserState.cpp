@@ -3,23 +3,28 @@
 
 #define USER_STATE_PATH "T:\\UserState.bin"
 
-bool UserState::TrySave(const UserSaveState* state)
+bool UserState::TrySave(const std::string appId, const std::string versionId, const std::string* downloadPath, const std::string* installPath, const uint8_t* viewed)
 {
-    if (state == nullptr) {
-        return false;
-    }
-
     uint32_t fileHandle = 0;
     if (FileSystem::FileOpen(USER_STATE_PATH, FileModeReadUpdate, fileHandle)) {
         UserSaveState existing;
         uint32_t bytesRead = 0;
         uint32_t recordIndex = 0;
         while (FileSystem::FileRead(fileHandle, (char*)&existing, sizeof(UserSaveState), bytesRead) && bytesRead == sizeof(UserSaveState)) {
-            if (strcmp(existing.appId, state->appId) == 0 && strcmp(existing.versionId, state->versionId) == 0) {
+            if (strcmp(existing.appId, appId.c_str()) == 0 && strcmp(existing.versionId, versionId.c_str()) == 0) {
+                if (downloadPath != nullptr) {
+                    strcpy(existing.downloadPath, downloadPath->c_str());
+                }
+                if (installPath != nullptr) {
+                    strcpy(existing.installPath, installPath->c_str());
+                }
+                if (viewed != nullptr) {
+                    existing.general[0] = *viewed;
+                }
                 uint32_t offset = recordIndex * sizeof(UserSaveState);
                 FileSystem::FileSeek(fileHandle, FileSeekModeStart, offset);
                 uint32_t bytesWritten = 0;
-                bool ok = FileSystem::FileWrite(fileHandle, (char*)state, sizeof(UserSaveState), bytesWritten);
+                bool ok = FileSystem::FileWrite(fileHandle, (char*)&existing, sizeof(UserSaveState), bytesWritten);
                 FileSystem::FileClose(fileHandle);
                 return ok && (bytesWritten == sizeof(UserSaveState));
             }
@@ -31,8 +36,23 @@ bool UserState::TrySave(const UserSaveState* state)
     if (!FileSystem::FileOpen(USER_STATE_PATH, FileModeAppend, fileHandle)) {
         return false;
     }
+
+    UserSaveState userSaveState;
+    memset(&userSaveState, 0, sizeof(UserSaveState));
+    strcpy(userSaveState.appId, appId.c_str());
+    strcpy(userSaveState.versionId, versionId.c_str());
+    if (downloadPath != nullptr) {
+        strcpy(userSaveState.downloadPath, downloadPath->c_str());
+    }
+    if (installPath != nullptr) {
+        strcpy(userSaveState.installPath, installPath->c_str());
+    }
+    if (viewed != nullptr) {
+        userSaveState.general[0] = *viewed;
+    }
+
     uint32_t bytesWritten = 0;
-    bool ok = FileSystem::FileWrite(fileHandle, (char*)state, sizeof(UserSaveState), bytesWritten);
+    bool ok = FileSystem::FileWrite(fileHandle, (char*)&userSaveState, sizeof(UserSaveState), bytesWritten);
     FileSystem::FileClose(fileHandle);
     return ok && (bytesWritten == sizeof(UserSaveState));
 }

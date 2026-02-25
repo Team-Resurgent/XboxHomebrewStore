@@ -541,15 +541,8 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
 
         if (unpackOk)
         {
-            UserSaveState userSaveState;
-            memset(&userSaveState, 0, sizeof(UserSaveState));
-
-            strcpy(userSaveState.appId, ver->appId.c_str());
-            strcpy(userSaveState.versionId, ver->versionId.c_str());
-            strcpy(userSaveState.downloadPath, baseDir.c_str());
-            strcpy(userSaveState.installPath, installPath.c_str());
-
-            UserState::TrySave(&userSaveState);
+            uint8_t viewed = 1;
+            UserState::TrySave(ver->appId, ver->versionId, &baseDir, &installPath, &viewed);
         }
     }
 
