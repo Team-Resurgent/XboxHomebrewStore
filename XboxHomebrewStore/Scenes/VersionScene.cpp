@@ -485,6 +485,20 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
                 scene
             );
         }
+	
+		// ---- Move non-zip files to installPath ----
+		for (size_t f = 0; f < ver->downloadFiles.size(); f++)
+		{
+			const std::string& localName = downloadedFileNames[f];
+
+			if (EndsWithZip(localName))
+				continue;
+
+			std::string srcPath = FileSystem::CombinePath(baseDir, localName);
+			std::string dstPath = FileSystem::CombinePath(installPath, localName);
+
+			MoveFile(srcPath.c_str(), dstPath.c_str());
+		}
 
         scene->mUnpacking = false;
 
