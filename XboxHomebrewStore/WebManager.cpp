@@ -287,7 +287,7 @@ bool WebManager::TryGetDownloadFilename(const std::string url, std::string& outF
     curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);
     curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCaptureCallback);
     curl_easy_setopt(curl, CURLOPT_HEADERDATA, &headers);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
 
     CURLcode res = curl_easy_perform(curl);
     curl_easy_cleanup(curl);
@@ -335,7 +335,7 @@ bool WebManager::TryDownload(const std::string url, const std::string filePath, 
 
     ApplyCommonOptions(curl);
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, (size_t (*)(void*, size_t, size_t, void*))fwrite);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
 
@@ -401,7 +401,7 @@ bool WebManager::TryGetApps(AppsResponse& result, int32_t offset, int32_t count,
     ApplyCommonOptions(curl);
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, StringWriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &raw);
 
@@ -430,7 +430,7 @@ bool WebManager::TryGetCategories(CategoriesResponse& result)
 
     ApplyCommonOptions(curl);
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, StringWriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &raw);
 
@@ -459,7 +459,7 @@ bool WebManager::TryGetVersions(const std::string id, VersionsResponse& result)
 
     ApplyCommonOptions(curl);
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, StringWriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &raw);
 
