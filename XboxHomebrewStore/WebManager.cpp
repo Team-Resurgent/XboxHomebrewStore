@@ -755,6 +755,9 @@ bool WebManager::TryDownloadApiData(const std::string url, const std::string fil
         setvbuf(fp, fileBuf, _IOFBF, 65536);
     }
 
+    curl_global_cleanup();
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+
     CURL* curl = curl_easy_init();
     if (curl == nullptr) {
         fclose(fp);
