@@ -225,19 +225,17 @@ bool WebManager::TryDownload(const std::string url, const std::string filePath, 
         return false;
     }
 
-    std::string tempPath = FileSystem::CombinePath(FileSystem::GetDirectory(filePath), FileSystem::GetFileNameWithoutExtension(filePath) + ".tmp");
-
-    FILE* fp = fopen(tempPath.c_str(), "wb");
+    FILE* fp = fopen(filePath.c_str(), "wb");
     if (fp == nullptr) {
         return false;
     }
-    SetFileAttributesA(tempPath.c_str(), FILE_ATTRIBUTE_ARCHIVE);
+    SetFileAttributesA(filePath.c_str(), FILE_ATTRIBUTE_ARCHIVE);
 
     // Use a dedicated handle for downloads
     CURL* curl = curl_easy_init();
     if (curl == nullptr) {
         fclose(fp);
-        FileSystem::FileDelete(tempPath);
+        FileSystem::FileDelete(filePath);
         return false;
     }
 
@@ -279,12 +277,7 @@ bool WebManager::TryDownload(const std::string url, const std::string filePath, 
     }
 
     if (res != CURLE_OK || http_code != 200) {
-        FileSystem::FileDelete(tempPath);
-        return false;
-    }
-
-    if (!FileSystem::FileMove(tempPath, filePath)) {
-        FileSystem::FileDelete(tempPath);
+        FileSystem::FileDelete(filePath);
         return false;
     }
 

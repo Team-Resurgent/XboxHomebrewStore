@@ -218,12 +218,26 @@ bool StoreManager::LoadNext()
     return true;
 }
 
-bool StoreManager::TryGetStoreVersions(int32_t storeItemIndex, StoreVersions* storeVersions)
+bool StoreManager::TryGetStoreVersions(std::string appId, StoreVersions* storeVersions)
 {
-    StoreItem* storeItem = GetWindowStoreItem(storeItemIndex);
+    StoreItem* storeItem = nullptr;
+    int32_t count = GetWindowStoreItemCount();
+    for (int32_t i = 0; i < count; i++)
+    {
+        StoreItem* item = GetWindowStoreItem(i);
+        if (item != nullptr && item->appId == appId)
+        {
+            storeItem = item;
+            break;
+        }
+    }
+    if (storeItem == nullptr)
+    {
+        return false;
+    }
 
     VersionsResponse versionsResponse;
-    if (WebManager::TryGetVersions(storeItem->appId, versionsResponse) == false)
+    if (WebManager::TryGetVersions(appId, versionsResponse) == false)
     {
         return false;
     }
@@ -235,6 +249,7 @@ bool StoreManager::TryGetStoreVersions(int32_t storeItemIndex, StoreVersions* st
     storeVersions->cover = nullptr;
     storeVersions->screenshot = nullptr;
 
+    storeVersions->versions.clear();
     for (int32_t i = 0; i < (int32_t)versionsResponse.size(); i++)
     {
         VersionItem* versionItem = &versionsResponse[i];
@@ -251,7 +266,27 @@ bool StoreManager::TryGetStoreVersions(int32_t storeItemIndex, StoreVersions* st
         storeVersion.region = versionItem->region;
         storeVersion.downloadFiles = versionItem->downloadFiles;
         storeVersion.folderName = versionItem->folderName;
-        storeVersion.state = 0;
+        storeVersion.state = (i == 0) ? storeItem->state : 0;
+
+        std::vector<UserSaveState> userStates;
+        if (UserState::TryGetByAppId(storeItem->appId, userStates))
+        {
+            bool hasInstalled = false;
+            bool hasThisVersion = false;
+            for (size_t j = 0; j < userStates.size(); j++)
+            {
+                const UserSaveState& us = userStates[j];
+                if (us.installPath[0] != '\0') {
+                    hasInstalled = true;
+                    storeVersion.state = 0;
+                }
+                if (us.versionId[0] != '\0' && storeVersion.versionId == us.versionId) {
+                    hasThisVersion = true;
+                }
+            }
+            if (hasInstalled && !hasThisVersion)
+                storeVersion.state = 2;
+        }
 
         storeVersions->versions.push_back(storeVersion);
     }
@@ -318,9 +353,6 @@ bool StoreManager::LoadApplications(void* dest, int32_t offset, int32_t count, i
         storeItems[i].state = appItem->state;
         storeItems[i].cover = nullptr;
 
-        // override to update (2) when app is installed
-        // but the store's latest version has no UserState record (user has an older install).
-
         std::vector<UserSaveState> userStates;
         if (UserState::TryGetByAppId(storeItems[i].appId, userStates))
         {
@@ -329,10 +361,13 @@ bool StoreManager::LoadApplications(void* dest, int32_t offset, int32_t count, i
             for (size_t j = 0; j < userStates.size(); j++)
             {
                 const UserSaveState& us = userStates[j];
-                if (us.installPath[0] != '\0')
+                if (us.installPath[0] != '\0') {
                     hasInstalled = true;
-                if (us.versionId[0] != '\0' && storeItems[i].latestVersion == us.versionId)
+                    storeItems[i].state = 0;
+                }
+                if (us.versionId[0] != '\0' && storeItems[i].latestVersion == us.versionId) {
                     hasLatestVersion = true;
+                }
             }
             if (hasInstalled && !hasLatestVersion)
                 storeItems[i].state = 2;

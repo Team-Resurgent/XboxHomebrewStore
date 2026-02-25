@@ -30,6 +30,8 @@ private:
     ImageDownloader* mImageDownloader;
     StoreVersions mStoreVersions;
 
+    bool mNeedsUpdate;
+
     bool mSideBarFocused;
     int32_t mHighlightedVersionIndex;
     int32_t mVersionIndex;

@@ -69,7 +69,7 @@ public:
     static bool HasNext();
     static bool LoadPrevious();
     static bool LoadNext();
-    static bool TryGetStoreVersions(int32_t storeItemIndex, StoreVersions* storeVersions);
+    static bool TryGetStoreVersions(std::string appId, StoreVersions* storeVersions);
 private:
     static bool LoadCategories();
     static bool LoadApplications(void* dest, int32_t offset, int32_t count, int32_t* loadedCount);

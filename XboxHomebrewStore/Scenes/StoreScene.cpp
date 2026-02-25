@@ -301,8 +301,10 @@ void StoreScene::Update()
         }
         else if (InputManager::ControllerPressed(ControllerA, -1))
         {
+            StoreItem* storeItem = StoreManager::GetWindowStoreItem(mStoreIndex - StoreManager::GetWindowStoreItemOffset());
+
             StoreVersions storeVersions;
-            if (StoreManager::TryGetStoreVersions(mStoreIndex - StoreManager::GetWindowStoreItemOffset(), &storeVersions))
+            if (StoreManager::TryGetStoreVersions(storeItem->appId, &storeVersions))
             {
                 SceneManager* sceneManager = Context::GetSceneManager();
                 sceneManager->PushScene(new VersionScene(storeVersions));

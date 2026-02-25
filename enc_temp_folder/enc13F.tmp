@@ -70,7 +70,6 @@ void VersionScene::Render()
 {
     if (mNeedsUpdate == true)
     {
-        mNeedsUpdate = false;
         if (mStoreVersions.cover != nullptr)
         {
             mStoreVersions.cover->Release();
