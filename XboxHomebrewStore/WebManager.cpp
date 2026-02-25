@@ -740,12 +740,17 @@ bool WebManager::TryGetVersions(const std::string id, VersionsResponse& result)
 
 bool WebManager::TryDownloadApiData(const std::string url, const std::string filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested, std::string* outHeaders, std::string* outContentType)
 {
+    Debug::Print("\n=== TryDownload START ===\n");
+    Debug::Print("URL: %s\nFilePath: %s\n", url.c_str(), filePath.c_str());
+
     if (url.empty() || filePath.empty()) {
+        Debug::Print("FAILED: Url/Path Empty\n");
         return false;
     }
 
     FILE* fp = fopen(filePath.c_str(), "wb");
     if (fp == nullptr) {
+        Debug::Print("FAILED: fopen failed\n");
         return false;
     }
     SetFileAttributesA(filePath.c_str(), FILE_ATTRIBUTE_ARCHIVE);
@@ -765,6 +770,7 @@ bool WebManager::TryDownloadApiData(const std::string url, const std::string fil
             free(fileBuf);
         }
         FileSystem::FileDelete(filePath);
+        Debug::Print("FAILED: init\n");
         return false;
     }
 
@@ -791,10 +797,15 @@ bool WebManager::TryDownloadApiData(const std::string url, const std::string fil
     long http_code = 0;
     RunMultiSocketDownload(curl, fp, pCancelRequested, &res, &http_code);
 
+    Debug::Print("CURLcode: %d\n", res);
+    Debug::Print("HTTP_CODE: %ld\n", http_code);
+    Debug::Print("CURL error: %s\n", curl_easy_strerror(res));
+
     if (res == CURLE_OK && http_code == 200 && outContentType != nullptr) {
         char* ct = nullptr;
         curl_easy_getinfo(curl, CURLINFO_CONTENT_TYPE, &ct);
         *outContentType = ct ? ct : "";
+        Debug::Print("Content-Type: %s\n", ct ? ct : "");
     }
 
     fclose(fp);
@@ -806,10 +817,12 @@ bool WebManager::TryDownloadApiData(const std::string url, const std::string fil
 
     if (res != CURLE_OK || http_code != 200) {
         FileSystem::FileDelete(filePath);
+        Debug::Print("FAILED: Not OK");
         return false;
     }
 
     SetFileAttributesA(filePath.c_str(), FILE_ATTRIBUTE_NORMAL);
+    Debug::Print("=== SUCCESS (normal file) ===");
     return true;
 }
 
