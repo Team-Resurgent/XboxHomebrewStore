@@ -297,7 +297,10 @@ void VersionScene::RenderDownloadOverlay()
     float barX = panelX + barMargin;
 
     if (mUnpacking) {
-        Font::DrawText(FONT_NORMAL, "Unpacking...", COLOR_WHITE, panelX + 20.0f, panelY + 16.0f);
+        std::string unpackTitle = (mUnpackZipCount > 0)
+            ? String::Format("Unpacking %d of %d...", mUnpackZipIndex, mUnpackZipCount)
+            : "Unpacking...";
+        Font::DrawText(FONT_NORMAL, unpackTitle, COLOR_WHITE, panelX + 20.0f, panelY + 16.0f);
         Drawing::DrawFilledRect(COLOR_SECONDARY, barX, barY, barW, barH);
         int total = mUnpackTotal;
         if (total > 0) {
@@ -311,7 +314,10 @@ void VersionScene::RenderDownloadOverlay()
         Font::DrawText(FONT_NORMAL, progressStr, COLOR_TEXT_GRAY, panelX + 20.0f, barY + barH + 8.0f);
         Font::DrawText(FONT_NORMAL, "B: Cancel", COLOR_WHITE, panelX + 20.0f, panelY + panelHeight - 28.0f);
     } else {
-        Font::DrawText(FONT_NORMAL, "Downloading...", COLOR_WHITE, panelX + 20.0f, panelY + 16.0f);
+        std::string downloadTitle = (mDownloadFileCount > 0)
+            ? String::Format("Downloading %d of %d...", mDownloadFileIndex, mDownloadFileCount)
+            : "Downloading...";
+        Font::DrawText(FONT_NORMAL, downloadTitle, COLOR_WHITE, panelX + 20.0f, panelY + 16.0f);
         Drawing::DrawFilledRect(COLOR_SECONDARY, barX, barY, barW, barH);
         uint32_t total = mDownloadTotal;
         if (total > 0) {
@@ -366,6 +372,7 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
     std::string versionId = ver->versionId;
     const std::string baseDir = "HDD0-E:\\Homebrew\\Downloads\\";
 
+    std::vector<std::string> downloadedFileNames(ver->downloadFiles.size());
     bool ok = !ver->downloadFiles.empty();
     for (size_t f = 0; ok && f < ver->downloadFiles.size(); f++)
     {
@@ -376,10 +383,19 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
         const std::string& entry = ver->downloadFiles[f];
         bool isUrl = (entry.size() >= 8 && entry.compare(0, 8, "https://") == 0)
             || (entry.size() >= 7 && entry.compare(0, 7, "http://") == 0);
-        std::string filePath = FileSystem::CombinePath(baseDir, ver->folderName);
+
+        std::string fileName;
         if (isUrl) {
+            if (!WebManager::TryGetDownloadFilename(entry, fileName)) {
+                fileName = FileSystem::GetFileName(entry);
+                if (fileName.empty()) fileName = "download";
+            }
+            downloadedFileNames[f] = fileName;
+            std::string filePath = FileSystem::CombinePath(baseDir, fileName);
             ok = WebManager::TryDownload(entry, filePath, DownloadProgressCb, scene, (volatile bool*)&scene->mDownloadCancelRequested);
         } else {
+            downloadedFileNames[f] = entry;
+            std::string filePath = FileSystem::CombinePath(baseDir, entry);
             ok = WebManager::TryDownloadVersionFile(
                 versionId,
                 (int32_t)f,
@@ -402,11 +418,9 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
         bool unpackOk = true;
         for (size_t f = 0; unpackOk && f < ver->downloadFiles.size(); f++)
         {
-            const std::string& entry = ver->downloadFiles[f];
-            if (!EndsWithZip(entry)) continue;
-            bool isUrl = (entry.size() >= 8 && entry.compare(0, 8, "https://") == 0)
-                || (entry.size() >= 7 && entry.compare(0, 7, "http://") == 0);
-            std::string zipPath = FileSystem::CombinePath(baseDir, isUrl ? FileSystem::GetFileName(entry) : entry);
+            const std::string& localName = downloadedFileNames[f];
+            if (!EndsWithZip(localName)) continue;
+            std::string zipPath = FileSystem::CombinePath(baseDir, localName);
             unpackOk = xunzipFromFile(zipPath.c_str(), installPath.c_str(), true, true, false, UnpackProgressCb, scene);
         }
         scene->mUnpacking = false;
@@ -441,6 +455,9 @@ void VersionScene::StartDownload()
     mDownloadCancelRequested = false;
     mDownloadNow = 0;
     mDownloadTotal = 0;
+    StoreVersion* ver = &mStoreVersions.versions[mHighlightedVersionIndex];
+    mDownloadFileCount = (int)ver->downloadFiles.size();
+    mDownloadFileIndex = (mDownloadFileCount > 0) ? 1 : 0;
     mDownloading = true;
 
     mDownloadThread = CreateThread(nullptr, 0, DownloadThreadProc, this, 0, nullptr);

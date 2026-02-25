@@ -219,6 +219,91 @@ bool WebManager::TryGetFileSize(const std::string url, uint32_t& outSize)
     return (res == CURLE_OK && http_code == 200);
 }
 
+static size_t HeaderCaptureCallback(char* ptr, size_t size, size_t nmemb, void* userdata)
+{
+    size_t total = size * nmemb;
+    std::string* headers = (std::string*)userdata;
+    if (headers && total > 0) {
+        headers->append(ptr, total);
+    }
+    return total;
+}
+
+static bool ParseContentDispositionFilename(const std::string& headers, std::string& outFilename)
+{
+    /* Look for filename= in Content-Disposition (case-insensitive). */
+    std::string lower;
+    lower.reserve(headers.size());
+    for (size_t i = 0; i < headers.size(); i++)
+        lower += (char)(headers[i] >= 'A' && headers[i] <= 'Z' ? headers[i] + 32 : headers[i]);
+    size_t pos = 0;
+    const std::string key = "filename=";
+    for (;;) {
+        pos = lower.find("content-disposition", pos);
+        if (pos == std::string::npos) break;
+        size_t fn = lower.find(key, pos);
+        if (fn == std::string::npos) { pos++; continue; }
+        fn += key.size();
+        while (fn < headers.size() && (headers[fn] == ' ' || headers[fn] == '\t')) fn++;
+        if (fn >= headers.size()) break;
+        if (headers[fn] == '"') {
+            fn++;
+            size_t end = headers.find('"', fn);
+            if (end != std::string::npos) {
+                outFilename = headers.substr(fn, end - fn);
+                return true;
+            }
+        }
+        size_t end = fn;
+        while (end < headers.size() && headers[end] != ';' && headers[end] != '\r' && headers[end] != '\n') end++;
+        if (end > fn) {
+            outFilename = headers.substr(fn, end - fn);
+            /* trim trailing space */
+            while (!outFilename.empty() && (outFilename.back() == ' ' || outFilename.back() == '\t')) outFilename.pop_back();
+            return true;
+        }
+        pos = fn;
+    }
+    return false;
+}
+
+bool WebManager::TryGetDownloadFilename(const std::string url, std::string& outFilename)
+{
+    outFilename.clear();
+    if (url.empty()) return false;
+
+    CURL* curl = curl_easy_init();
+    if (curl == nullptr) return false;
+
+    std::string headers;
+    ApplyCommonOptions(curl);
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);
+    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCaptureCallback);
+    curl_easy_setopt(curl, CURLOPT_HEADERDATA, &headers);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
+
+    CURLcode res = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+
+    if (res != CURLE_OK) return false;
+
+    if (ParseContentDispositionFilename(headers, outFilename)) return true;
+
+    /* Fallback: last path segment of URL */
+    size_t slash = url.find_last_of('/');
+    if (slash != std::string::npos && slash + 1 < url.size()) {
+        size_t q = url.find('?', slash + 1);
+        if (q != std::string::npos)
+            outFilename = url.substr(slash + 1, q - (slash + 1));
+        else
+            outFilename = url.substr(slash + 1);
+    } else {
+        outFilename = url;
+    }
+    return true;
+}
+
 bool WebManager::TryDownload(const std::string url, const std::string filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
 {
     if (url.empty() || filePath.empty()) {
