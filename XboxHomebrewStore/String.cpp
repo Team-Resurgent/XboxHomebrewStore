@@ -23,12 +23,15 @@ std::string String::FormatSize(uint32_t size)
 {
     const uint32_t KB = 1024;
     const uint32_t MB = KB * KB;
+    const uint32_t GB = KB * KB * KB;
     if (size < KB) {
         return Format("%luB", size);
     } else if (size < MB) {
         return Format("%luKB", size / KB);
-    } else {
+    } else if (size < GB) {
         return Format("%luMB", size / MB);
+    } else {
+        return Format("%luGB", size / GB);
     }
 }
 
