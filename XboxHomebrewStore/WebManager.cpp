@@ -185,25 +185,6 @@ static void ApplyCommonOptions(CURL* curl)
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
 }
 
-// Shared download options: redirects, HTTP version, user-agent, timeouts, URL. Used by TryDownload and HandleHtmlResponse (second request).
-static void SetupCurlForDownload(CURL* curl, const std::string& url)
-{
-    ApplyCommonOptions(curl);
-    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-    curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 5L);
-    curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
-    curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0");
-    curl_easy_setopt(curl, CURLOPT_COOKIEFILE, "");
-    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 120L);
-    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    if (url.find("github.com") != std::string::npos ||
-        url.find("objects.githubusercontent.com") != std::string::npos) {
-        Debug::Print("Using HTTP/1.0 for GitHub (BearSSL workaround)\n");
-        curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
-    }
-}
-
 bool WebManager::Init()
 {
     return curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK;
@@ -360,10 +341,26 @@ static bool ExtractGoogleFilename(const std::string& html, std::string& filename
     return !filename.empty();
 }
 
-// Sets up curl for download and runs the multi-socket loop. Does not fclose fp or cleanup curl.
-static void RunMultiSocketDownload(CURL* curl, const std::string& url, FILE* fp, volatile bool* pCancelRequested, CURLcode* outRes, long* outHttpCode)
+static void RunMultiSocketDownload(CURL* curl, FILE* fp, volatile bool* pCancelRequested, CURLcode* outRes, long* outHttpCode)
 {
-    SetupCurlForDownload(curl, url);
+    ApplyCommonOptions(curl);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 5L);
+    curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0");
+    curl_easy_setopt(curl, CURLOPT_COOKIEFILE, "");
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 120L);
+
+    char* effective_url = nullptr;
+    curl_easy_getinfo(curl, CURLINFO_EFFECTIVE_URL, &effective_url);
+    std::string url = std::string(effective_url);
+
+    if (url.find("github.com") != std::string::npos ||
+        url.find("objects.githubusercontent.com") != std::string::npos) {
+        Debug::Print("Using HTTP/1.0 for GitHub (BearSSL workaround)\n");
+        curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
+    }
 
     CURLM* multi = curl_multi_init();
     if (!multi) {
@@ -589,6 +586,7 @@ static bool HandleHtmlResponse(const std::string& filePath, const std::string& u
     }
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, fwrite);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 
     ProgressContext progCtx;
     progCtx.fn = progressFn;
@@ -602,7 +600,7 @@ static bool HandleHtmlResponse(const std::string& filePath, const std::string& u
     Debug::Print("Starting Google confirm download via curl multi...\n");
     CURLcode res = CURLE_OK;
     long http_code = 0;
-    RunMultiSocketDownload(curl, confirmedUrl, fp, pCancelRequested, &res, &http_code);
+    RunMultiSocketDownload(curl, fp, pCancelRequested, &res, &http_code);
     fclose(fp);
     curl_easy_cleanup(curl);
 
@@ -663,12 +661,13 @@ bool WebManager::TryDownload(const std::string url, const std::string filePath, 
 
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, fwrite);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 
     Debug::Print("Starting download via curl multi...\n");
 
     CURLcode res = CURLE_OK;
     long http_code = 0;
-    RunMultiSocketDownload(curl, url, fp, pCancelRequested, &res, &http_code);
+    RunMultiSocketDownload(curl, fp, pCancelRequested, &res, &http_code);
     fclose(fp);
 
     Debug::Print("CURLcode: %d\n", res);
@@ -818,6 +817,73 @@ bool WebManager::TryGetVersions(const std::string id, VersionsResponse& result)
 
     return ParseVersionsResponse(raw, result);
 }
+
+
+// bool WebManager::TryDownload(const std::string url, const std::string filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
+// {
+//     if (url.empty() || filePath.empty()) {
+//         return false;
+//     }
+
+//     FILE* fp = fopen(filePath.c_str(), "wb");
+//     if (fp == nullptr) {
+//         return false;
+//     }
+//     SetFileAttributesA(filePath.c_str(), FILE_ATTRIBUTE_ARCHIVE);
+
+//     // Use a dedicated handle for downloads
+//     CURL* curl = curl_easy_init();
+//     if (curl == nullptr) {
+//         fclose(fp);
+//         FileSystem::FileDelete(filePath);
+//         return false;
+//     }
+
+//     ApplyCommonOptions(curl);
+//     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+//     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
+//     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, (size_t (*)(void*, size_t, size_t, void*))fwrite);
+//     curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+
+//     // Set larger file write buffer via setvbuf for fewer disk writes
+//     char* fileBuf = (char*)malloc(65536);
+//     if (fileBuf != nullptr) {
+//         setvbuf(fp, fileBuf, _IOFBF, 65536);
+//     }
+
+//     ProgressContext progCtx;
+//     progCtx.fn = progressFn;
+//     progCtx.userData = progressUserData;
+//     progCtx.pCancelRequested = pCancelRequested;
+//     if (progressFn != nullptr || pCancelRequested != nullptr) {
+//         curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+//         curl_easy_setopt(curl, CURLOPT_PROGRESSFUNCTION, ProgressCallback);
+//         curl_easy_setopt(curl, CURLOPT_PROGRESSDATA, &progCtx);
+//     } else {
+//         curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
+//     }
+
+//     long http_code = 0;
+//     CURLcode res = curl_easy_perform(curl);
+//     if (res == CURLE_OK) {
+//         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+//     }
+
+//     fclose(fp);
+//     curl_easy_cleanup(curl);
+
+//     if (fileBuf != nullptr) {
+//         free(fileBuf);
+//     }
+
+//     if (res != CURLE_OK || http_code != 200) {
+//         FileSystem::FileDelete(filePath);
+//         return false;
+//     }
+
+//     SetFileAttributesA(filePath.c_str(), FILE_ATTRIBUTE_NORMAL);
+//     return true;
+// }
 
 bool WebManager::TryDownloadCover(const std::string id, int32_t width, int32_t height, const std::string filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
 {
