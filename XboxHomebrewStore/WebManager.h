@@ -9,7 +9,6 @@ public:
     typedef void (*DownloadProgressFn)(uint32_t dlNow, uint32_t dlTotal, void* userData);
 
     static bool Init();
-    static bool TryGetDownloadFilename(const std::string url, std::string& outFilename);
     static bool TryDownload(const std::string url, const std::string filePath, std::string* outFinalFileName = nullptr, DownloadProgressFn progressFn = nullptr, void* progressUserData = nullptr, volatile bool* pCancelRequested = nullptr);
     static bool TryDownloadCover(const std::string id, int32_t width, int32_t height, const std::string filePath, DownloadProgressFn progressFn = nullptr, void* progressUserData = nullptr, volatile bool* pCancelRequested = nullptr);
     static bool TryDownloadScreenshot(const std::string id, int32_t width, int32_t height, const std::string filePath, DownloadProgressFn progressFn = nullptr, void* progressUserData = nullptr, volatile bool* pCancelRequested = nullptr);
