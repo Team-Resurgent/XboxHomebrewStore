@@ -441,7 +441,7 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
 
 			std::string actualName;
 
-			ok = WebManager::TryDownload(
+			ok = WebManager::TryDownloadWebData(
 				entry,
 				filePath,
 				&actualName,
