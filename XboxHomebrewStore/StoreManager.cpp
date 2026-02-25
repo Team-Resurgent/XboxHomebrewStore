@@ -249,7 +249,9 @@ bool StoreManager::TryGetStoreVersions(int32_t storeItemIndex, StoreVersions* st
         storeVersion.changeLog = versionItem->changeLog;
         storeVersion.titleId = versionItem->titleId;
         storeVersion.region = versionItem->region;
-        storeVersion.downloadFile = versionItem->downloadFile;
+        storeVersion.downloadFiles = versionItem->downloadFiles;
+        storeVersion.folderName = versionItem->folderName;
+        storeVersion.state = 0;
 
         storeVersions->versions.push_back(storeVersion);
     }

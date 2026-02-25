@@ -36,7 +36,9 @@ typedef struct
     std::string changeLog;
     std::string titleId;
     std::string region;
-    std::string downloadFile;
+    std::vector<std::string> downloadFiles;
+    std::string folderName;
+    uint32_t state;
 } StoreVersion;
 
 typedef struct

@@ -329,6 +329,13 @@ bool VersionScene::UnpackProgressCb(int currentFile, int totalFiles, const char*
     return true;
 }
 
+static bool EndsWithZip(const std::string path)
+{
+    std::string ext = FileSystem::GetExtension(path);
+    if (ext.size() != 4 || ext[0] != '.') return false;
+    return (ext[1] == 'z' || ext[1] == 'Z') && (ext[2] == 'i' || ext[2] == 'I') && (ext[3] == 'p' || ext[3] == 'P');
+}
+
 DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
 {
     VersionScene* scene = (VersionScene*)param;
@@ -336,36 +343,61 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
 
     StoreVersion* ver = &scene->mStoreVersions.versions[scene->mHighlightedVersionIndex];
     std::string versionId = ver->versionId;
-    std::string downloadPath = "HDD0-E:\\Homebrew\\Downloads\\" + ver->downloadFile;
+    const std::string baseDir = "HDD0-E:\\Homebrew\\Downloads\\";
 
-    bool ok = WebManager::TryDownloadApp(
-        versionId,
-        downloadPath,
-        DownloadProgressCb,
-        scene,
-        (volatile bool*)&scene->mDownloadCancelRequested
-    );
+    bool ok = !ver->downloadFiles.empty();
+    for (size_t f = 0; ok && f < ver->downloadFiles.size(); f++)
+    {
+        if (scene->mDownloadCancelRequested) {
+            ok = false;
+            break;
+        }
+        const std::string& entry = ver->downloadFiles[f];
+        bool isUrl = (entry.size() >= 8 && entry.compare(0, 8, "https://") == 0)
+            || (entry.size() >= 7 && entry.compare(0, 7, "http://") == 0);
+        std::string filePath = FileSystem::CombinePath(baseDir, isUrl ? FileSystem::GetFileName(entry) : entry);
+        if (isUrl) {
+            ok = WebManager::TryDownload(entry, filePath, DownloadProgressCb, scene, (volatile bool*)&scene->mDownloadCancelRequested);
+        } else {
+            ok = WebManager::TryDownloadVersionFile(
+                versionId,
+                (int32_t)f,
+                filePath,
+                DownloadProgressCb,
+                scene,
+                (volatile bool*)&scene->mDownloadCancelRequested
+            );
+        }
+    }
 
     if (ok) {
-        std::string installPath = FileSystem::CombinePath(FileSystem::GetDirectory(downloadPath), FileSystem::GetFileNameWithoutExtension(downloadPath));
-        size_t lastSlash = downloadPath.find_last_of("\\/");
-        if (lastSlash != std::string::npos) {
-            std::string destFolder = downloadPath.substr(0, lastSlash + 1);
-            scene->mUnpacking = true;
-            scene->mUnpackCancelRequested = false;
-            scene->mUnpackCurrent = 0;
-            scene->mUnpackTotal = 0;
-            bool unpackOk = xunzipFromFile(downloadPath.c_str(), destFolder.c_str(), true, true, false, UnpackProgressCb, scene);
-            scene->mUnpacking = false;
-            if (unpackOk) {
-                UserSaveState userSaveState;
-                memset(&userSaveState, 0, sizeof(UserSaveState));
-                strcpy(userSaveState.appId, ver->appId.c_str());
-                strcpy(userSaveState.versionId, ver->versionId.c_str());
-                strcpy(userSaveState.downloadPath, downloadPath.c_str());
-                strcpy(userSaveState.installPath, installPath.c_str());
-                UserState::TrySave(&userSaveState);
-            }
+        std::string installPath = FileSystem::CombinePath(baseDir, ver->folderName);
+        FileSystem::DirectoryCreate(installPath);
+
+        scene->mUnpacking = true;
+        scene->mUnpackCancelRequested = false;
+        scene->mUnpackCurrent = 0;
+        scene->mUnpackTotal = 0;
+        bool unpackOk = true;
+        for (size_t f = 0; unpackOk && f < ver->downloadFiles.size(); f++)
+        {
+            const std::string& entry = ver->downloadFiles[f];
+            if (!EndsWithZip(entry)) continue;
+            bool isUrl = (entry.size() >= 8 && entry.compare(0, 8, "https://") == 0)
+                || (entry.size() >= 7 && entry.compare(0, 7, "http://") == 0);
+            std::string zipPath = FileSystem::CombinePath(baseDir, isUrl ? FileSystem::GetFileName(entry) : entry);
+            unpackOk = xunzipFromFile(zipPath.c_str(), installPath.c_str(), true, true, false, UnpackProgressCb, scene);
+        }
+        scene->mUnpacking = false;
+
+        if (unpackOk) {
+            UserSaveState userSaveState;
+            memset(&userSaveState, 0, sizeof(UserSaveState));
+            strcpy(userSaveState.appId, ver->appId.c_str());
+            strcpy(userSaveState.versionId, ver->versionId.c_str());
+            strcpy(userSaveState.downloadPath, baseDir.c_str());
+            strcpy(userSaveState.installPath, installPath.c_str());
+            UserState::TrySave(&userSaveState);
         }
     }
 

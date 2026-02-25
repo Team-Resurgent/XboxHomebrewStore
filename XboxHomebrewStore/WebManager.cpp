@@ -134,7 +134,8 @@ static bool ParseVersionsResponse(const std::string raw, VersionsResponse& out)
             ver.changeLog = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "changelog"));
             ver.titleId = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "title_id"));
             ver.region = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "region"));
-            ver.downloadFile = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "download_file"));
+            ver.downloadFiles = JsonHelper::ToStringArray(JsonHelper::GetObjectMember(itemObj, "download_files"));
+            ver.folderName = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "folder_name"));
             out.push_back(ver);
         }
     }
@@ -414,6 +415,16 @@ bool WebManager::TryDownloadApp(const std::string id, const std::string filePath
         return false;
     }
     std::string url = store_api_url + "/api/Download/" + id;
+    return TryDownload(url, filePath, progressFn, progressUserData, pCancelRequested);
+}
+
+bool WebManager::TryDownloadVersionFile(const std::string versionId, int32_t fileIndex, const std::string filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
+{
+    if (versionId.empty())
+    {
+        return false;
+    }
+    std::string url = store_api_url + "/api/Download/" + versionId + String::Format("?fileIndex=%d", fileIndex);
     return TryDownload(url, filePath, progressFn, progressUserData, pCancelRequested);
 }
 

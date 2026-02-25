@@ -28,7 +28,8 @@ StoreScene::~StoreScene()
 
 void StoreScene::OnResume()
 {
-    StoreManager::RefreshApplications();
+    StoreManager::SetCategoryIndex(StoreManager::GetCategoryIndex());
+    mStoreIndex = 0;
 }
 
 void StoreScene::RenderHeader()

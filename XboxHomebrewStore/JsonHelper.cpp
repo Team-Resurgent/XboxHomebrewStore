@@ -25,6 +25,30 @@ std::string JsonHelper::ToString( const JSON_Value* v )
     return std::string( s, len );
 }
 
+std::vector<std::string> JsonHelper::ToStringArray( const JSON_Value* v )
+{
+    std::vector<std::string> out;
+    if( !v ) {
+        return out;
+    }
+    const JSON_Array* arr = json_value_get_array( v );
+    if( !arr ) {
+        return out;
+    }
+    size_t count = json_array_get_count( arr );
+    out.reserve( count );
+    for( size_t i = 0; i < count; i++ ) {
+        const char* s = json_array_get_string( arr, i );
+        if( s ) {
+            size_t len = json_array_get_string_len( arr, i );
+            out.push_back( std::string( s, len ) );
+        } else {
+            out.push_back( "" );
+        }
+    }
+    return out;
+}
+
 uint32_t JsonHelper::ToUInt32( const JSON_Value* v )
 {
     if( !v ) {
