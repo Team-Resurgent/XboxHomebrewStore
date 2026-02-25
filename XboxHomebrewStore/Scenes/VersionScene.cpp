@@ -541,8 +541,7 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
 
         if (unpackOk)
         {
-            uint8_t viewed = 1;
-            UserState::TrySave(ver->appId, ver->versionId, &baseDir, &installPath, &viewed);
+            UserState::TrySave(ver->appId, ver->versionId, &baseDir, &installPath);
         }
     }
 

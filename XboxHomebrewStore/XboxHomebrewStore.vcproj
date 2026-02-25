@@ -360,6 +360,9 @@
 				RelativePath=".\UserState.cpp">
 			</File>
 			<File
+				RelativePath=".\ViewState.cpp">
+			</File>
+			<File
 				RelativePath=".\WebManager.cpp">
 			</File>
 			<Filter
@@ -593,6 +596,9 @@
 			</File>
 			<File
 				RelativePath=".\UserState.h">
+			</File>
+			<File
+				RelativePath=".\ViewState.h">
 			</File>
 			<File
 				RelativePath=".\WebManager.h">

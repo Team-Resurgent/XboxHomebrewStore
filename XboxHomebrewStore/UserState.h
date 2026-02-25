@@ -8,13 +8,12 @@ typedef struct
     char versionId[64];
     char downloadPath[256];
     char installPath[256];
-    uint8_t general[128];
 } UserSaveState;
 
 class UserState
 {
 public:
-    static bool TrySave(const std::string appId, const std::string versionId, const std::string* downloadPath, const std::string* installPath, const uint8_t* viewed);
+    static bool TrySave(const std::string appId, const std::string versionId, const std::string* downloadPath, const std::string* installPath);
     static bool TryGetByAppId(const std::string appId, std::vector<UserSaveState>& out);
     static bool TryGetByAppIdAndVersionId(const std::string appId, const std::string versionId, UserSaveState& out);
     static bool PruneMissingPaths();
