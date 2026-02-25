@@ -259,7 +259,8 @@ static bool ParseContentDispositionFilename(const std::string& headers, std::str
         if (end > fn) {
             outFilename = headers.substr(fn, end - fn);
             /* trim trailing space */
-            while (!outFilename.empty() && (outFilename.back() == ' ' || outFilename.back() == '\t')) outFilename.pop_back();
+            while (outFilename.size() > 0 && (outFilename[outFilename.size() - 1] == ' ' || outFilename[outFilename.size() - 1] == '\t'))
+                outFilename.resize(outFilename.size() - 1);
             return true;
         }
         pos = fn;
