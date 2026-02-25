@@ -541,7 +541,8 @@ static bool HandleHtmlResponse(const std::string& url, const std::string& filePa
     }
 
     Debug::Print("Starting Google confirm download via curl multi...\n");
-    if (!TryDownloadApiData(confirmedUrl, finalPath, progressFn, progressUserData, pCancelRequested, nullptr, nullptr)) {
+
+    if (!WebManager::TryDownloadApiData(confirmedUrl, finalPath, progressFn, progressUserData, pCancelRequested, nullptr, nullptr)) {
         Debug::Print("Google confirmed download failed\n");
         return false;
     }
