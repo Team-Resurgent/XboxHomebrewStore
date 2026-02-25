@@ -585,7 +585,7 @@ bool WebManager::TryDownloadWebData(const std::string url, const std::string fil
     std::string headers;
     std::string contentType;
     if (!TryDownloadApiData(url, filePath, progressFn, progressUserData, pCancelRequested, &headers, &contentType)) {
-        Debug::Print("Download failed, deleting file\n");
+        Debug::Print("Download failed - deleting file\n");
         return false;
     }
 
