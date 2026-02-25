@@ -32,16 +32,12 @@ VersionScene::VersionScene(const StoreVersions& storeVersions)
     mDownloadCancelRequested = false;
     mDownloadNow = 0;
     mDownloadTotal = 0;
-    mDownloadFileIndex = 0;
-    mDownloadFileCount = 0;
     mDownloadSuccess = false;
     mDownloadThread = nullptr;
     mUnpacking = false;
     mUnpackCancelRequested = false;
     mUnpackCurrent = 0;
     mUnpackTotal = 0;
-    mUnpackZipIndex = 0;
-    mUnpackZipCount = 0;
 
     const float infoXPos = 350.0f;
     float descMaxWidth = (float)Context::GetScreenWidth() - infoXPos - 20.0f;
@@ -111,18 +107,9 @@ void VersionScene::RenderFooter()
     Drawing::DrawTexturedRect(TextureHelper::GetFooter(), 0xffffffff, 0.0f, footerY, Context::GetScreenWidth(), ASSET_FOOTER_HEIGHT);
 
     Drawing::DrawTexturedRect(TextureHelper::GetControllerIcon("StickLeft"), 0xffffffff, 16.0f, footerY + 10, ASSET_CONTROLLER_ICON_WIDTH, ASSET_CONTROLLER_ICON_HEIGHT);
-    std::string footerText;
-    if (mUnpacking) {
-        footerText = (mUnpackZipCount > 0)
-            ? String::Format("Unpacking %d of %d... B: Cancel", mUnpackZipIndex, mUnpackZipCount)
-            : "Unpacking... B: Cancel";
-    } else if (mDownloading) {
-        footerText = (mDownloadFileCount > 0)
-            ? String::Format("Downloading %d of %d... B: Cancel", mDownloadFileIndex, mDownloadFileCount)
-            : "Downloading... B: Cancel";
-    } else {
-        footerText = "A: Download B: Exit D-pad: Move";
-    }
+    const char* footerText = mUnpacking
+        ? "Unpacking... B: Cancel"
+        : (mDownloading ? "Downloading... B: Cancel" : "A: Download B: Exit D-pad: Move");
     Font::DrawText(FONT_NORMAL, footerText, COLOR_WHITE, 52, footerY + 12);
 }
 
@@ -310,10 +297,7 @@ void VersionScene::RenderDownloadOverlay()
     float barX = panelX + barMargin;
 
     if (mUnpacking) {
-        std::string unpackTitle = (mUnpackZipCount > 0)
-            ? String::Format("Unpacking %d of %d...", mUnpackZipIndex, mUnpackZipCount)
-            : "Unpacking...";
-        Font::DrawText(FONT_NORMAL, unpackTitle, COLOR_WHITE, panelX + 20.0f, panelY + 16.0f);
+        Font::DrawText(FONT_NORMAL, "Unpacking...", COLOR_WHITE, panelX + 20.0f, panelY + 16.0f);
         Drawing::DrawFilledRect(COLOR_SECONDARY, barX, barY, barW, barH);
         int total = mUnpackTotal;
         if (total > 0) {
@@ -327,10 +311,7 @@ void VersionScene::RenderDownloadOverlay()
         Font::DrawText(FONT_NORMAL, progressStr, COLOR_TEXT_GRAY, panelX + 20.0f, barY + barH + 8.0f);
         Font::DrawText(FONT_NORMAL, "B: Cancel", COLOR_WHITE, panelX + 20.0f, panelY + panelHeight - 28.0f);
     } else {
-        std::string downloadTitle = (mDownloadFileCount > 0)
-            ? String::Format("Downloading %d of %d...", mDownloadFileIndex, mDownloadFileCount)
-            : "Downloading...";
-        Font::DrawText(FONT_NORMAL, downloadTitle, COLOR_WHITE, panelX + 20.0f, panelY + 16.0f);
+        Font::DrawText(FONT_NORMAL, "Downloading...", COLOR_WHITE, panelX + 20.0f, panelY + 16.0f);
         Drawing::DrawFilledRect(COLOR_SECONDARY, barX, barY, barW, barH);
         uint32_t total = mDownloadTotal;
         if (total > 0) {
@@ -386,18 +367,16 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
     const std::string baseDir = "HDD0-E:\\Homebrew\\Downloads\\";
 
     bool ok = !ver->downloadFiles.empty();
-    scene->mDownloadFileCount = (int)ver->downloadFiles.size();
     for (size_t f = 0; ok && f < ver->downloadFiles.size(); f++)
     {
         if (scene->mDownloadCancelRequested) {
             ok = false;
             break;
         }
-        scene->mDownloadFileIndex = (int)f + 1;
         const std::string& entry = ver->downloadFiles[f];
         bool isUrl = (entry.size() >= 8 && entry.compare(0, 8, "https://") == 0)
             || (entry.size() >= 7 && entry.compare(0, 7, "http://") == 0);
-        std::string filePath = FileSystem::CombinePath(baseDir, isUrl ? FileSystem::GetFileName(entry) : entry);
+        std::string filePath = FileSystem::CombinePath(baseDir, ver->folderName);
         if (isUrl) {
             ok = WebManager::TryDownload(entry, filePath, DownloadProgressCb, scene, (volatile bool*)&scene->mDownloadCancelRequested);
         } else {
@@ -420,20 +399,11 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
         scene->mUnpackCancelRequested = false;
         scene->mUnpackCurrent = 0;
         scene->mUnpackTotal = 0;
-        int zipCount = 0;
-        for (size_t i = 0; i < ver->downloadFiles.size(); i++) {
-            if (EndsWithZip(ver->downloadFiles[i])) zipCount++;
-        }
-        scene->mUnpackZipCount = zipCount;
-        scene->mUnpackZipIndex = 0;
         bool unpackOk = true;
-        int zipIndex = 0;
         for (size_t f = 0; unpackOk && f < ver->downloadFiles.size(); f++)
         {
             const std::string& entry = ver->downloadFiles[f];
             if (!EndsWithZip(entry)) continue;
-            zipIndex++;
-            scene->mUnpackZipIndex = zipIndex;
             bool isUrl = (entry.size() >= 8 && entry.compare(0, 8, "https://") == 0)
                 || (entry.size() >= 7 && entry.compare(0, 7, "http://") == 0);
             std::string zipPath = FileSystem::CombinePath(baseDir, isUrl ? FileSystem::GetFileName(entry) : entry);
