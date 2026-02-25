@@ -8,6 +8,7 @@ typedef struct
     char versionId[64];
     char downloadPath[256];
     char installPath[256];
+    char general[128];
 } UserSaveState;
 
 class UserState
