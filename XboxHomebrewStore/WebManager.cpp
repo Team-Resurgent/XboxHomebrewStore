@@ -23,8 +23,6 @@ struct ProgressContext
     volatile bool* pCancelRequested;
 };
 
-// Persistent curl handle for connection reuse (avoids repeated TCP/SSL handshake)
-static CURL* s_persistentCurl = nullptr;
 
 static size_t StringWriteCallback(char* ptr, size_t size, size_t nmemb, void* userdata)
 {
@@ -159,17 +157,7 @@ static int ProgressCallback(void* clientp, double dltotal, double dlnow, double 
     return 0;
 }
 
-// Helper: get or create persistent curl handle
-static CURL* GetCurl()
-{
-    if (s_persistentCurl != nullptr)
-    {
-        curl_easy_reset(s_persistentCurl);
-        return s_persistentCurl;
-    }
-    s_persistentCurl = curl_easy_init();
-    return s_persistentCurl;
-}
+
 
 // Helper: apply common performance options to a curl handle
 static void ApplyCommonOptions(CURL* curl)
@@ -191,31 +179,37 @@ bool WebManager::TryGetFileSize(const std::string url, uint32_t& outSize)
 {
     outSize = 0;
 
-    CURL* curl = GetCurl();
-    if (curl == nullptr) {
+    CURL* curl = curl_easy_init();
+    if (!curl)
         return false;
-    }
 
     ApplyCommonOptions(curl);
+
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 5L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
 
     long http_code = 0;
     CURLcode res = curl_easy_perform(curl);
+
     if (res == CURLE_OK)
     {
-        res = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-        if (res == CURLE_OK)
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+
+        if (http_code == 200)
         {
             double contentLength = -1;
-            res = curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &contentLength);
-            if (res == CURLE_OK)
+            if (curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &contentLength) == CURLE_OK)
             {
-                outSize = (uint32_t)contentLength;
+                if (contentLength > 0)
+                    outSize = (uint32_t)contentLength;
             }
         }
     }
 
+    curl_easy_cleanup(curl);
     return (res == CURLE_OK && http_code == 200);
 }
 
@@ -313,6 +307,59 @@ static bool ParseContentDispositionFilename(const std::string& headers, std::str
     return false;
 }
 
+
+static bool ExtractGoogleConfirmToken(const std::string& html, std::string& token)
+{
+    size_t pos = html.find("confirm=");
+    if (pos == std::string::npos)
+        return false;
+
+    pos += 8;
+
+    size_t end = html.find('&', pos);
+    if (end == std::string::npos)
+        end = html.find('"', pos);
+
+    if (end == std::string::npos)
+        return false;
+
+    token = html.substr(pos, end - pos);
+    return !token.empty();
+}
+
+static bool ExtractGoogleFilename(const std::string& html, std::string& filename)
+{
+    filename.clear();
+
+    // Find the anchor inside uc-name-size span
+    size_t spanPos = html.find("class=\"uc-name-size\"");
+    if (spanPos == std::string::npos)
+        return false;
+
+    size_t anchorStart = html.find("<a", spanPos);
+    if (anchorStart == std::string::npos)
+        return false;
+
+    anchorStart = html.find(">", anchorStart);
+    if (anchorStart == std::string::npos)
+        return false;
+
+    anchorStart++; // move past '>'
+
+    size_t anchorEnd = html.find("</a>", anchorStart);
+    if (anchorEnd == std::string::npos)
+        return false;
+
+    filename = html.substr(anchorStart, anchorEnd - anchorStart);
+
+    // Trim whitespace
+    while (!filename.empty() &&
+          (filename[0] == ' ' || filename[0] == '\n' || filename[0] == '\r'))
+        filename.erase(0, 1);
+
+    return !filename.empty();
+}
+
 bool WebManager::TryGetDownloadFilename(const std::string url, std::string& outFilename)
 {
     outFilename.clear();
@@ -357,193 +404,379 @@ bool WebManager::TryDownload(
     void* progressUserData,
     volatile bool* pCancelRequested)
 {
-    if (url.empty() || filePath.empty()) {
+    OutputDebugStringA("\n=== TryDownload START ===\n");
+    OutputDebugStringA("URL: ");
+    OutputDebugStringA(url.c_str());
+    OutputDebugStringA("\nFilePath: ");
+    OutputDebugStringA(filePath.c_str());
+    OutputDebugStringA("\n");
+
+    if (url.empty() || filePath.empty())
+    {
+        OutputDebugStringA("FAILED: URL or filePath empty\n");
         return false;
     }
 
-    CURL* curl = GetCurl();
-    if (curl == nullptr) {
+    CURL* curl = curl_easy_init();
+    if (!curl)
+    {
+        OutputDebugStringA("FAILED: curl_easy_init returned NULL\n");
         return false;
     }
 
     ApplyCommonOptions(curl);
-    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 0L);
 
-    // ---- Capture headers during GET ----
-    std::string headers;
-    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCaptureCallback);
-    curl_easy_setopt(curl, CURLOPT_HEADERDATA, &headers);
+    //curl_easy_setopt(curl, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
+    //curl_easy_setopt(curl, CURLOPT_FRESH_CONNECT, 1L);
+    //curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1L);
 
-    // ---- Open file ----
-    FILE* fp = fopen(filePath.c_str(), "wb");
-    if (fp == nullptr) {
-        return false;
-    }
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 5L);
+    curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0");
+    curl_easy_setopt(curl, CURLOPT_COOKIEFILE, "");
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 120L);
 
-    SetFileAttributesA(filePath.c_str(), FILE_ATTRIBUTE_ARCHIVE);
-
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, fwrite);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
-
-    // Larger disk buffer
-    char* fileBuf = (char*)malloc(65536);
-    if (fileBuf != nullptr) {
-        setvbuf(fp, fileBuf, _IOFBF, 65536);
-    }
-
-    // ---- Progress support ----
     ProgressContext progCtx;
     progCtx.fn = progressFn;
     progCtx.userData = progressUserData;
     progCtx.pCancelRequested = pCancelRequested;
 
-    if (progressFn != nullptr || pCancelRequested != nullptr) {
+    if (progressFn || pCancelRequested)
+    {
         curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
         curl_easy_setopt(curl, CURLOPT_PROGRESSFUNCTION, ProgressCallback);
         curl_easy_setopt(curl, CURLOPT_PROGRESSDATA, &progCtx);
-    } else {
-        curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
     }
 
-    long http_code = 0;
-    CURLcode res = curl_easy_perform(curl);
+    std::string headers;
+    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCaptureCallback);
+    curl_easy_setopt(curl, CURLOPT_HEADERDATA, &headers);
 
-    if (res == CURLE_OK) {
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-    }
-
-    fclose(fp);
-
-    if (fileBuf != nullptr) {
-        free(fileBuf);
-    }
-
-    if (res != CURLE_OK || http_code != 200) {
-        FileSystem::FileDelete(filePath);
+    FILE* fp = fopen(filePath.c_str(), "wb");
+    if (!fp)
+    {
+        OutputDebugStringA("FAILED: fopen failed\n");
+        curl_easy_cleanup(curl);
+        curl_global_cleanup();
+        curl_global_init(CURL_GLOBAL_DEFAULT);
         return false;
     }
 
-    SetFileAttributesA(filePath.c_str(), FILE_ATTRIBUTE_NORMAL);
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, fwrite);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
 
-    // ---- OPTIONAL: Detect filename from Content-Disposition ----
-    std::string detectedName;
-    if (ParseContentDispositionFilename(headers, detectedName) && !detectedName.empty())
+    OutputDebugStringA("Calling curl_easy_perform...\n");
+
+    CURLcode res = curl_easy_perform(curl);
+
+    long http_code = 0;
+    if (res == CURLE_OK)
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+
+    fclose(fp);
+
+    char buf[128];
+    sprintf(buf, "CURLcode: %d\n", res);
+    OutputDebugStringA(buf);
+    sprintf(buf, "HTTP_CODE: %ld\n", http_code);
+    OutputDebugStringA(buf);
+    OutputDebugStringA("CURL error: ");
+    OutputDebugStringA(curl_easy_strerror(res));
+    OutputDebugStringA("\n");
+
+    if (res != CURLE_OK || http_code != 200)
     {
-					// Extract directory manually
-					std::string dir;
-					size_t slash = filePath.find_last_of("\\/");
-					if (slash != std::string::npos)
-						dir = filePath.substr(0, slash + 1);
-					else
-						dir = "";
+        OutputDebugStringA("Download failed — deleting file\n");
+        FileSystem::FileDelete(filePath);
+        curl_easy_cleanup(curl);
+        curl_global_cleanup();
+        curl_global_init(CURL_GLOBAL_DEFAULT);
+        return false;
+    }
 
-					// Build new path
-					std::string newPath = dir + detectedName;
+    char* ct = nullptr;
+    curl_easy_getinfo(curl, CURLINFO_CONTENT_TYPE, &ct);
+    std::string contentType = ct ? ct : "";
 
-        // Rename downloaded file if different
-        if (newPath != filePath) {
-            FileSystem::FileDelete(newPath); // safety
-            MoveFileA(filePath.c_str(), newPath.c_str());
+    OutputDebugStringA("Content-Type: ");
+    OutputDebugStringA(contentType.c_str());
+    OutputDebugStringA("\n");
+
+    // ------------------------------------------------
+    // NORMAL FILE (not HTML)
+    // ------------------------------------------------
+    if (contentType.find("text/html") == std::string::npos)
+    {
+        std::string detectedName;
+        if (ParseContentDispositionFilename(headers, detectedName) && !detectedName.empty())
+        {
+            std::string dir;
+            size_t slash = filePath.find_last_of("\\/");
+            if (slash != std::string::npos)
+                dir = filePath.substr(0, slash + 1);
+
+            std::string finalPath = dir + detectedName;
+
+            if (finalPath != filePath)
+            {
+                OutputDebugStringA("Renaming via Content-Disposition\n");
+                FileSystem::FileDelete(finalPath);
+                MoveFileA(filePath.c_str(), finalPath.c_str());
+            }
+        }
+
+        SetFileAttributesA(filePath.c_str(), FILE_ATTRIBUTE_NORMAL);
+        curl_easy_cleanup(curl);
+        curl_global_cleanup();
+        curl_global_init(CURL_GLOBAL_DEFAULT);
+
+        OutputDebugStringA("=== SUCCESS (normal file) ===\n");
+        return true;
+    }
+
+    // ------------------------------------------------
+    // HTML Possibly Google Large File
+    // ------------------------------------------------
+
+    OutputDebugStringA("HTML detected — checking for Google confirm page\n");
+
+    std::string html;
+    FILE* htmlFile = fopen(filePath.c_str(), "rb");
+    if (!htmlFile)
+    {
+        curl_easy_cleanup(curl);
+        curl_global_cleanup();
+        curl_global_init(CURL_GLOBAL_DEFAULT);
+        return false;
+    }
+
+    fseek(htmlFile, 0, SEEK_END);
+    long size = ftell(htmlFile);
+    fseek(htmlFile, 0, SEEK_SET);
+
+    html.resize(size);
+    fread(&html[0], 1, size, htmlFile);
+    fclose(htmlFile);
+
+    if (html.find("Google Drive can't scan this file") == std::string::npos)
+    {
+        OutputDebugStringA("HTML but not Google confirm page\n");
+        curl_easy_cleanup(curl);
+        curl_global_cleanup();
+        curl_global_init(CURL_GLOBAL_DEFAULT);
+        return true;
+    }
+
+    OutputDebugStringA("Google large file confirm detected\n");
+
+    std::string realFilename;
+    ExtractGoogleFilename(html, realFilename);
+
+    std::string fileId;
+    size_t idPos = url.find("id=");
+    if (idPos != std::string::npos)
+        fileId = url.substr(idPos + 3);
+
+    std::string confirm, uuid;
+
+    size_t confirmPos = html.find("name=\"confirm\"");
+    if (confirmPos != std::string::npos)
+    {
+        size_t v = html.find("value=\"", confirmPos);
+        if (v != std::string::npos)
+        {
+            v += 7;
+            confirm = html.substr(v, html.find("\"", v) - v);
         }
     }
 
+    size_t uuidPos = html.find("name=\"uuid\"");
+    if (uuidPos != std::string::npos)
+    {
+        size_t v = html.find("value=\"", uuidPos);
+        if (v != std::string::npos)
+        {
+            v += 7;
+            uuid = html.substr(v, html.find("\"", v) - v);
+        }
+    }
+
+    if (fileId.empty() || confirm.empty() || uuid.empty())
+    {
+        OutputDebugStringA("Google confirm extraction FAILED\n");
+        curl_easy_cleanup(curl);
+        curl_global_cleanup();
+        curl_global_init(CURL_GLOBAL_DEFAULT);
+        return false;
+    }
+
+    std::string confirmedUrl =
+        "https://drive.usercontent.google.com/download?id=" +
+        fileId + "&confirm=" + confirm + "&uuid=" + uuid;
+
+    OutputDebugStringA("Confirmed URL:\n");
+    OutputDebugStringA(confirmedUrl.c_str());
+    OutputDebugStringA("\n");
+
+    FileSystem::FileDelete(filePath);
+
+    std::string finalPath = filePath;
+    if (!realFilename.empty())
+    {
+        std::string dir;
+        size_t slash = filePath.find_last_of("\\/");
+        if (slash != std::string::npos)
+            dir = filePath.substr(0, slash + 1);
+
+        finalPath = dir + realFilename;
+    }
+
+    fp = fopen(finalPath.c_str(), "wb");
+    if (!fp)
+    {
+        curl_easy_cleanup(curl);
+        curl_global_cleanup();
+        curl_global_init(CURL_GLOBAL_DEFAULT);
+        return false;
+    }
+
+    curl_easy_setopt(curl, CURLOPT_URL, confirmedUrl.c_str());
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+
+    OutputDebugStringA("Calling curl_easy_perform (Google confirm)...\n");
+
+    res = curl_easy_perform(curl);
+    fclose(fp);
+
+    if (res != CURLE_OK)
+    {
+        OutputDebugStringA("Google confirmed download failed\n");
+        FileSystem::FileDelete(finalPath);
+        curl_easy_cleanup(curl);
+        curl_global_cleanup();
+        curl_global_init(CURL_GLOBAL_DEFAULT);
+        return false;
+    }
+
+    SetFileAttributesA(finalPath.c_str(), FILE_ATTRIBUTE_NORMAL);
+    curl_easy_cleanup(curl);
+    curl_global_cleanup();
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+
+    OutputDebugStringA("=== SUCCESS (Google large file) ===\n");
     return true;
 }
 
 bool WebManager::TryGetApps(AppsResponse& result, int32_t offset, int32_t count, const std::string category, const std::string name)
 {
     result.items.clear();
-    std::string url = store_api_url + store_app_controller + String::Format("?offset=%u&count=%u", offset, count);
-    if (!category.empty())
-    {
-        url += "&category=" + category;
-    }
-    if (!name.empty())
-    {
-        url += "&name=" + name;
-    }
 
-    std::string raw;
-    CURL* curl = GetCurl();
-    if (curl == nullptr) {
+    std::string url = store_api_url + store_app_controller +
+        String::Format("?offset=%u&count=%u", offset, count);
+
+    if (!category.empty())
+        url += "&category=" + category;
+
+    if (!name.empty())
+        url += "&name=" + name;
+
+    CURL* curl = curl_easy_init();
+    if (!curl)
         return false;
-    }
 
     ApplyCommonOptions(curl);
+
+    std::string raw;
+
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, StringWriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &raw);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
 
     long http_code = 0;
     CURLcode res = curl_easy_perform(curl);
-    if (res == CURLE_OK) {
-        res = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-    }
 
-    if (res != CURLE_OK || http_code != 200) {
+    if (res == CURLE_OK)
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+
+    curl_easy_cleanup(curl);
+
+    if (res != CURLE_OK || http_code != 200)
         return false;
-    }
+
     return ParseAppsResponse(raw, result);
 }
 
 bool WebManager::TryGetCategories(CategoriesResponse& result)
 {
     result.clear();
+
     std::string url = store_api_url + store_categories;
 
-    std::string raw;
-    CURL* curl = GetCurl();
-    if (curl == nullptr) {
+    CURL* curl = curl_easy_init();
+    if (!curl)
         return false;
-    }
 
     ApplyCommonOptions(curl);
+
+    std::string raw;
+
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, StringWriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &raw);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
 
     long http_code = 0;
     CURLcode res = curl_easy_perform(curl);
-    if (res == CURLE_OK) {
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-    }
 
-    if (res != CURLE_OK || http_code != 200) {
+    if (res == CURLE_OK)
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+
+    curl_easy_cleanup(curl);
+
+    if (res != CURLE_OK || http_code != 200)
         return false;
-    }
+
     return ParseCategoriesResponse(raw, result);
 }
 
 bool WebManager::TryGetVersions(const std::string id, VersionsResponse& result)
 {
     result.clear();
+
     std::string url = store_api_url + store_app_controller + "/" + id + store_versions;
 
-    std::string raw;
-    CURL* curl = GetCurl();
-    if (curl == nullptr) {
+    CURL* curl = curl_easy_init();
+    if (!curl)
         return false;
-    }
 
     ApplyCommonOptions(curl);
+
+    std::string raw;
+
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, StringWriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &raw);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
 
     long http_code = 0;
     CURLcode res = curl_easy_perform(curl);
-    if (res == CURLE_OK) {
-        res = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-    }
 
-    if (res != CURLE_OK || http_code != 200) {
+    if (res == CURLE_OK)
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+
+    curl_easy_cleanup(curl);
+
+    if (res != CURLE_OK || http_code != 200)
         return false;
-    }
+
     return ParseVersionsResponse(raw, result);
 }
 
