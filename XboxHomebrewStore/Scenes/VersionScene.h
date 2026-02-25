@@ -48,10 +48,14 @@ private:
     volatile bool mDownloadCancelRequested;
     volatile uint32_t mDownloadNow;
     volatile uint32_t mDownloadTotal;
+    volatile int mDownloadFileIndex;   /* 1-based current file */
+    volatile int mDownloadFileCount;   /* total files */
     bool mDownloadSuccess;
     HANDLE mDownloadThread;
     bool mUnpacking;
     volatile bool mUnpackCancelRequested;
     volatile int mUnpackCurrent;
     volatile int mUnpackTotal;
+    volatile int mUnpackZipIndex;      /* 1-based current archive */
+    volatile int mUnpackZipCount;     /* total archives (zips) */
 };
