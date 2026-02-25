@@ -3,7 +3,7 @@
 #include "parson.h"
 #include "JsonHelper.h"
 #include "FileSystem.h"
-const std::string store_api_url = "https://192.168.1.164:5001";
+const std::string store_api_url = "https://192.168.1.98:5001";
 const std::string store_app_controller = "/api/apps";
 const std::string store_versions = "/versions";
 const std::string store_categories = "/api/categories";
@@ -28,8 +28,7 @@ static size_t StringWriteCallback(char* ptr, size_t size, size_t nmemb, void* us
 {
     size_t total = size * nmemb;
     std::string* out = (std::string*)userdata;
-    if (out && total > 0)
-    {
+    if (out && total > 0) {
         out->append(ptr, total);
     }
     return total;
@@ -45,16 +44,14 @@ static bool ParseAppsResponse(const std::string raw, AppsResponse& out)
     out.items.clear();
 
     JSON_Array* itemsArr = json_value_get_array(root);
-    if (itemsArr)
-    {
+    if (itemsArr) {
         size_t count = json_array_get_count(itemsArr);
         out.items.reserve(count);
         for (size_t i = 0; i < count; i++)
         {
             JSON_Value* elemVal = json_array_get_value(itemsArr, i);
             JSON_Object* itemObj = elemVal ? json_value_get_object(elemVal) : nullptr;
-            if (itemObj)
-            {
+            if (itemObj) {
                 AppItem app;
                 app.id = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "id"));
                 app.name = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "name"));
@@ -79,20 +76,17 @@ static bool ParseCategoriesResponse(const std::string raw, CategoriesResponse& o
         return false;
     }
     JSON_Array* arr = json_value_get_array(root);
-    if (!arr)
-    {
+    if (!arr) {
         json_value_free(root);
         return false;
     }
     out.clear();
     size_t count = json_array_get_count(arr);
     out.reserve(count);
-    for (size_t i = 0; i < count; i++)
-    {
+    for (size_t i = 0; i < count; i++) {
         JSON_Value* elemVal = json_array_get_value(arr, i);
         JSON_Object* itemObj = elemVal ? json_value_get_object(elemVal) : nullptr;
-        if (itemObj)
-        {
+        if (itemObj) {
             CategoryItem cat;
             cat.name = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "name"));
             cat.count = JsonHelper::ToUInt32(JsonHelper::GetObjectMember(itemObj, "count"));
@@ -110,20 +104,17 @@ static bool ParseVersionsResponse(const std::string raw, VersionsResponse& out)
         return false;
     }
     JSON_Array* arr = json_value_get_array(root);
-    if (!arr)
-    {
+    if (!arr) {
         json_value_free(root);
         return false;
     }
     out.clear();
     size_t count = json_array_get_count(arr);
     out.reserve(count);
-    for (size_t i = 0; i < count; i++)
-    {
+    for (size_t i = 0; i < count; i++) {
         JSON_Value* elemVal = json_array_get_value(arr, i);
         JSON_Object* itemObj = elemVal ? json_value_get_object(elemVal) : nullptr;
-        if (itemObj)
-        {
+        if (itemObj) {
             VersionItem ver;
             ver.id = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "id"));
             ver.version = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "version"));
@@ -146,12 +137,10 @@ static int ProgressCallback(void* clientp, double dltotal, double dlnow, double 
     (void)ultotal;
     (void)ulnow;
     ProgressContext* ctx = (ProgressContext*)clientp;
-    if (ctx != nullptr && ctx->pCancelRequested != nullptr && *ctx->pCancelRequested)
-    {
+    if (ctx != nullptr && ctx->pCancelRequested != nullptr && *ctx->pCancelRequested) {
         return 1;
     }
-    if (ctx != nullptr && ctx->fn != nullptr)
-    {
+    if (ctx != nullptr && ctx->fn != nullptr) {
         ctx->fn((uint32_t)dlnow, (uint32_t)dltotal, ctx->userData);
     }
     return 0;
@@ -180,8 +169,9 @@ bool WebManager::TryGetFileSize(const std::string url, uint32_t& outSize)
     outSize = 0;
 
     CURL* curl = curl_easy_init();
-    if (!curl)
+    if (!curl) {
         return false;
+    }
 
     ApplyCommonOptions(curl);
 
@@ -194,17 +184,15 @@ bool WebManager::TryGetFileSize(const std::string url, uint32_t& outSize)
     long http_code = 0;
     CURLcode res = curl_easy_perform(curl);
 
-    if (res == CURLE_OK)
-    {
+    if (res == CURLE_OK) {
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
 
-        if (http_code == 200)
-        {
+        if (http_code == 200) {
             double contentLength = -1;
-            if (curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &contentLength) == CURLE_OK)
-            {
-                if (contentLength > 0)
+            if (curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &contentLength) == CURLE_OK) {
+                if (contentLength > 0) {
                     outSize = (uint32_t)contentLength;
+                }
             }
         }
     }
@@ -232,23 +220,23 @@ static bool ParseContentDispositionFilename(const std::string& headers, std::str
     for (size_t i = 0; i < headers.size(); i++)
     {
         char c = headers[i];
-        if (c >= 'A' && c <= 'Z')
+        if (c >= 'A' && c <= 'Z') {
             c = c + 32;
+        }
         lower += c;
     }
 
     size_t pos = 0;
     const std::string key = "filename=";
 
-    for (;;)
-    {
+    for (;;) {
         pos = lower.find("content-disposition", pos);
-        if (pos == std::string::npos)
+        if (pos == std::string::npos) {
             break;
+        }
 
         size_t fn = lower.find(key, pos);
-        if (fn == std::string::npos)
-        {
+        if (fn == std::string::npos) {
             pos++;
             continue;
         }
@@ -261,15 +249,14 @@ static bool ParseContentDispositionFilename(const std::string& headers, std::str
             fn++;
         }
 
-        if (fn >= headers.size())
+        if (fn >= headers.size()) {
             break;
+        }
 
-        if (headers[fn] == '"')
-        {
+        if (headers[fn] == '"') {
             fn++;
             size_t end = headers.find('"', fn);
-            if (end != std::string::npos)
-            {
+            if (end != std::string::npos) {
                 outFilename = headers.substr(fn, end - fn);
                 return true;
             }
@@ -279,23 +266,21 @@ static bool ParseContentDispositionFilename(const std::string& headers, std::str
         while (end < headers.size() &&
                headers[end] != ';' &&
                headers[end] != '\r' &&
-               headers[end] != '\n')
-        {
+               headers[end] != '\n') {
             end++;
         }
 
-        if (end > fn)
-        {
+        if (end > fn) {
             outFilename = headers.substr(fn, end - fn);
 
             /* trim trailing space */
-            while (!outFilename.empty())
-            {
+            while (!outFilename.empty()) {
                 char last = outFilename[outFilename.length() - 1];
-                if (last == ' ' || last == '\t')
+                if (last == ' ' || last == '\t') {
                     outFilename.erase(outFilename.length() - 1);
-                else
+                } else {
                     break;
+                }
             }
 
             return true;
@@ -311,17 +296,20 @@ static bool ParseContentDispositionFilename(const std::string& headers, std::str
 static bool ExtractGoogleConfirmToken(const std::string& html, std::string& token)
 {
     size_t pos = html.find("confirm=");
-    if (pos == std::string::npos)
+    if (pos == std::string::npos) {
         return false;
+    }
 
     pos += 8;
 
     size_t end = html.find('&', pos);
-    if (end == std::string::npos)
+    if (end == std::string::npos) {
         end = html.find('"', pos);
+    }
 
-    if (end == std::string::npos)
+    if (end == std::string::npos) {
         return false;
+    }
 
     token = html.substr(pos, end - pos);
     return !token.empty();
@@ -333,22 +321,26 @@ static bool ExtractGoogleFilename(const std::string& html, std::string& filename
 
     // Find the anchor inside uc-name-size span
     size_t spanPos = html.find("class=\"uc-name-size\"");
-    if (spanPos == std::string::npos)
+    if (spanPos == std::string::npos) {
         return false;
+    }
 
     size_t anchorStart = html.find("<a", spanPos);
-    if (anchorStart == std::string::npos)
+    if (anchorStart == std::string::npos) {
         return false;
+    }
 
     anchorStart = html.find(">", anchorStart);
-    if (anchorStart == std::string::npos)
+    if (anchorStart == std::string::npos) {
         return false;
+    }
 
     anchorStart++; // move past '>'
 
     size_t anchorEnd = html.find("</a>", anchorStart);
-    if (anchorEnd == std::string::npos)
+    if (anchorEnd == std::string::npos) {
         return false;
+    }
 
     filename = html.substr(anchorStart, anchorEnd - anchorStart);
 
@@ -363,10 +355,14 @@ static bool ExtractGoogleFilename(const std::string& html, std::string& filename
 bool WebManager::TryGetDownloadFilename(const std::string url, std::string& outFilename)
 {
     outFilename.clear();
-    if (url.empty()) return false;
+    if (url.empty()) {
+        return false;
+    }
 
     CURL* curl = curl_easy_init();
-    if (curl == nullptr) return false;
+    if (curl == nullptr) {
+        return false;
+    }
 
     std::string headers;
     ApplyCommonOptions(curl);
@@ -379,18 +375,23 @@ bool WebManager::TryGetDownloadFilename(const std::string url, std::string& outF
     CURLcode res = curl_easy_perform(curl);
     curl_easy_cleanup(curl);
 
-    if (res != CURLE_OK) return false;
+    if (res != CURLE_OK) {
+        return false;
+    }
 
-    if (ParseContentDispositionFilename(headers, outFilename)) return true;
+    if (ParseContentDispositionFilename(headers, outFilename)) {
+        return true;
+    }
 
     /* Fallback: last path segment of URL */
     size_t slash = url.find_last_of('/');
     if (slash != std::string::npos && slash + 1 < url.size()) {
         size_t q = url.find('?', slash + 1);
-        if (q != std::string::npos)
+        if (q != std::string::npos) {
             outFilename = url.substr(slash + 1, q - (slash + 1));
-        else
+        } else {
             outFilename = url.substr(slash + 1);
+        }
     } else {
         outFilename = url;
     }
@@ -412,18 +413,17 @@ bool WebManager::TryDownload(
     OutputDebugStringA(filePath.c_str());
     OutputDebugStringA("\n");
 
-    if (outFinalFileName)
+    if (outFinalFileName) {
         outFinalFileName->clear();
+    }
 
-    if (url.empty() || filePath.empty())
-    {
+    if (url.empty() || filePath.empty()) {
         OutputDebugStringA("FAILED: URL or filePath empty\n");
         return false;
     }
 
     CURL* curl = curl_easy_init();
-    if (!curl)
-    {
+    if (!curl) {
         OutputDebugStringA("FAILED: curl_easy_init returned NULL\n");
         return false;
     }
@@ -438,8 +438,7 @@ bool WebManager::TryDownload(
 
 	// BearSSL workaround for GitHub (CloudFront chunked keep-alive issue)
 	if (url.find("github.com") != std::string::npos ||
-		url.find("objects.githubusercontent.com") != std::string::npos)
-	{
+		url.find("objects.githubusercontent.com") != std::string::npos) {
 		OutputDebugStringA("Using HTTP/1.0 for GitHub (BearSSL workaround)\n");
 		curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
 	}
@@ -454,8 +453,7 @@ bool WebManager::TryDownload(
     progCtx.userData = progressUserData;
     progCtx.pCancelRequested = pCancelRequested;
 
-    if (progressFn || pCancelRequested)
-    {
+    if (progressFn || pCancelRequested) {
         curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
         curl_easy_setopt(curl, CURLOPT_PROGRESSFUNCTION, ProgressCallback);
         curl_easy_setopt(curl, CURLOPT_PROGRESSDATA, &progCtx);
@@ -466,8 +464,7 @@ bool WebManager::TryDownload(
     curl_easy_setopt(curl, CURLOPT_HEADERDATA, &headers);
 
     FILE* fp = fopen(filePath.c_str(), "wb");
-    if (!fp)
-    {
+    if (!fp) {
         OutputDebugStringA("FAILED: fopen failed\n");
         curl_easy_cleanup(curl);
         curl_global_cleanup();
@@ -479,13 +476,61 @@ bool WebManager::TryDownload(
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, fwrite);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
 
-    OutputDebugStringA("Calling curl_easy_perform...\n");
+    OutputDebugStringA("Starting download via curl multi...\n");
 
-    CURLcode res = curl_easy_perform(curl);
+    CURLM* multi = curl_multi_init();
+    if (!multi) {
+        fclose(fp);
+        FileSystem::FileDelete(filePath);
+        curl_easy_cleanup(curl);
+        return false;
+    }
+
+    curl_multi_add_handle(multi, curl);
+
+    CURLcode res = CURLE_OK;
+    int still_running = 1;
+
+    while (still_running)
+    {
+        CURLMcode mc = curl_multi_perform(multi, &still_running);
+        if (mc != CURLM_OK && mc != CURLM_CALL_MULTI_PERFORM) {
+            res = (mc == CURLM_OUT_OF_MEMORY) ? CURLE_OUT_OF_MEMORY : CURLE_SEND_ERROR;
+            break;
+        }
+
+        if (pCancelRequested && *pCancelRequested) {
+            res = CURLE_ABORTED_BY_CALLBACK;
+            break;
+        }
+
+        if (still_running) {
+            int numfds = 0;
+            mc = curl_multi_wait(multi, NULL, 0, 500, &numfds);
+            if (mc != CURLM_OK) {
+                res = (mc == CURLM_OUT_OF_MEMORY) ? CURLE_OUT_OF_MEMORY : CURLE_SEND_ERROR;
+                break;
+            }
+        }
+    }
+
+    CURLMsg* msg = NULL;
+    int msgs_left = 0;
+    while ((msg = curl_multi_info_read(multi, &msgs_left)) != NULL)
+    {
+        if (msg->msg == CURLMSG_DONE && msg->easy_handle == curl) {
+            res = msg->data.result;
+            break;
+        }
+    }
+
+    curl_multi_remove_handle(multi, curl);
+    curl_multi_cleanup(multi);
 
     long http_code = 0;
-    if (res == CURLE_OK)
+    if (res == CURLE_OK) {
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+    }
 
     fclose(fp);
 
@@ -498,8 +543,7 @@ bool WebManager::TryDownload(
     OutputDebugStringA(curl_easy_strerror(res));
     OutputDebugStringA("\n");
 
-    if (res != CURLE_OK || http_code != 200)
-    {
+    if (res != CURLE_OK || http_code != 200) {
         OutputDebugStringA("Download failed — deleting file\n");
         FileSystem::FileDelete(filePath);
         curl_easy_cleanup(curl);
@@ -519,30 +563,29 @@ bool WebManager::TryDownload(
     // ------------------------------------------------
     // NORMAL FILE (not HTML)
     // ------------------------------------------------
-    if (contentType.find("text/html") == std::string::npos)
-    {
+    if (contentType.find("text/html") == std::string::npos) {
         std::string detectedName;
         std::string finalPath = filePath;
 
-        if (ParseContentDispositionFilename(headers, detectedName) && !detectedName.empty())
-        {
+        if (ParseContentDispositionFilename(headers, detectedName) && !detectedName.empty()) {
             std::string dir;
             size_t slash = filePath.find_last_of("\\/");
-            if (slash != std::string::npos)
+            if (slash != std::string::npos) {
                 dir = filePath.substr(0, slash + 1);
+            }
 
             finalPath = dir + detectedName;
 
-            if (finalPath != filePath)
-            {
+            if (finalPath != filePath) {
                 OutputDebugStringA("Renaming via Content-Disposition\n");
                 FileSystem::FileDelete(finalPath);
                 MoveFileA(filePath.c_str(), finalPath.c_str());
             }
         }
 
-        if (outFinalFileName)
+        if (outFinalFileName) {
             *outFinalFileName = FileSystem::GetFileName(finalPath);
+        }
 
         SetFileAttributesA(finalPath.c_str(), FILE_ATTRIBUTE_NORMAL);
         curl_easy_cleanup(curl);
@@ -561,8 +604,7 @@ bool WebManager::TryDownload(
 
     std::string html;
     FILE* htmlFile = fopen(filePath.c_str(), "rb");
-    if (!htmlFile)
-    {
+    if (!htmlFile) {
         curl_easy_cleanup(curl);
         curl_global_cleanup();
         curl_global_init(CURL_GLOBAL_DEFAULT);
@@ -577,10 +619,10 @@ bool WebManager::TryDownload(
     fread(&html[0], 1, size, htmlFile);
     fclose(htmlFile);
 
-    if (html.find("Google Drive can't scan this file") == std::string::npos)
-    {
-        if (outFinalFileName)
+    if (html.find("Google Drive can't scan this file") == std::string::npos) {
+        if (outFinalFileName) {
             *outFinalFileName = FileSystem::GetFileName(filePath);
+        }
 
         OutputDebugStringA("HTML but not Google confirm page\n");
         curl_easy_cleanup(curl);
@@ -596,35 +638,31 @@ bool WebManager::TryDownload(
 
     std::string fileId;
     size_t idPos = url.find("id=");
-    if (idPos != std::string::npos)
+    if (idPos != std::string::npos) {
         fileId = url.substr(idPos + 3);
+    }
 
     std::string confirm, uuid;
 
     size_t confirmPos = html.find("name=\"confirm\"");
-    if (confirmPos != std::string::npos)
-    {
+    if (confirmPos != std::string::npos) {
         size_t v = html.find("value=\"", confirmPos);
-        if (v != std::string::npos)
-        {
+        if (v != std::string::npos) {
             v += 7;
             confirm = html.substr(v, html.find("\"", v) - v);
         }
     }
 
     size_t uuidPos = html.find("name=\"uuid\"");
-    if (uuidPos != std::string::npos)
-    {
+    if (uuidPos != std::string::npos) {
         size_t v = html.find("value=\"", uuidPos);
-        if (v != std::string::npos)
-        {
+        if (v != std::string::npos) {
             v += 7;
             uuid = html.substr(v, html.find("\"", v) - v);
         }
     }
 
-    if (fileId.empty() || confirm.empty() || uuid.empty())
-    {
+    if (fileId.empty() || confirm.empty() || uuid.empty()) {
         OutputDebugStringA("Google confirm extraction FAILED\n");
         curl_easy_cleanup(curl);
         curl_global_cleanup();
@@ -643,19 +681,18 @@ bool WebManager::TryDownload(
     FileSystem::FileDelete(filePath);
 
     std::string finalPath = filePath;
-    if (!realFilename.empty())
-    {
+    if (!realFilename.empty()) {
         std::string dir;
         size_t slash = filePath.find_last_of("\\/");
-        if (slash != std::string::npos)
+        if (slash != std::string::npos) {
             dir = filePath.substr(0, slash + 1);
+        }
 
         finalPath = dir + realFilename;
     }
 
     fp = fopen(finalPath.c_str(), "wb");
-    if (!fp)
-    {
+    if (!fp) {
         curl_easy_cleanup(curl);
         curl_global_cleanup();
         curl_global_init(CURL_GLOBAL_DEFAULT);
@@ -670,8 +707,7 @@ bool WebManager::TryDownload(
     res = curl_easy_perform(curl);
     fclose(fp);
 
-    if (res != CURLE_OK)
-    {
+    if (res != CURLE_OK) {
         OutputDebugStringA("Google confirmed download failed\n");
         FileSystem::FileDelete(finalPath);
         curl_easy_cleanup(curl);
@@ -680,8 +716,9 @@ bool WebManager::TryDownload(
         return false;
     }
 
-    if (outFinalFileName)
+    if (outFinalFileName) {
         *outFinalFileName = FileSystem::GetFileName(finalPath);
+    }
 
     SetFileAttributesA(finalPath.c_str(), FILE_ATTRIBUTE_NORMAL);
     curl_easy_cleanup(curl);
@@ -699,15 +736,18 @@ bool WebManager::TryGetApps(AppsResponse& result, int32_t offset, int32_t count,
     std::string url = store_api_url + store_app_controller +
         String::Format("?offset=%u&count=%u", offset, count);
 
-    if (!category.empty())
+    if (!category.empty()) {
         url += "&category=" + category;
+    }
 
-    if (!name.empty())
+    if (!name.empty()) {
         url += "&name=" + name;
+    }
 
     CURL* curl = curl_easy_init();
-    if (!curl)
+    if (!curl) {
         return false;
+    }
 
     ApplyCommonOptions(curl);
 
@@ -723,13 +763,15 @@ bool WebManager::TryGetApps(AppsResponse& result, int32_t offset, int32_t count,
     long http_code = 0;
     CURLcode res = curl_easy_perform(curl);
 
-    if (res == CURLE_OK)
+    if (res == CURLE_OK) {
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+    }
 
     curl_easy_cleanup(curl);
 
-    if (res != CURLE_OK || http_code != 200)
+    if (res != CURLE_OK || http_code != 200) {
         return false;
+    }
 
     return ParseAppsResponse(raw, result);
 }
@@ -741,8 +783,9 @@ bool WebManager::TryGetCategories(CategoriesResponse& result)
     std::string url = store_api_url + store_categories;
 
     CURL* curl = curl_easy_init();
-    if (!curl)
+    if (!curl) {
         return false;
+    }
 
     ApplyCommonOptions(curl);
 
@@ -757,13 +800,15 @@ bool WebManager::TryGetCategories(CategoriesResponse& result)
     long http_code = 0;
     CURLcode res = curl_easy_perform(curl);
 
-    if (res == CURLE_OK)
+    if (res == CURLE_OK) {
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+    }
 
     curl_easy_cleanup(curl);
 
-    if (res != CURLE_OK || http_code != 200)
+    if (res != CURLE_OK || http_code != 200) {
         return false;
+    }
 
     return ParseCategoriesResponse(raw, result);
 }
@@ -775,8 +820,9 @@ bool WebManager::TryGetVersions(const std::string id, VersionsResponse& result)
     std::string url = store_api_url + store_app_controller + "/" + id + store_versions;
 
     CURL* curl = curl_easy_init();
-    if (!curl)
+    if (!curl) {
         return false;
+    }
 
     ApplyCommonOptions(curl);
 
@@ -791,21 +837,22 @@ bool WebManager::TryGetVersions(const std::string id, VersionsResponse& result)
     long http_code = 0;
     CURLcode res = curl_easy_perform(curl);
 
-    if (res == CURLE_OK)
+    if (res == CURLE_OK) {
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+    }
 
     curl_easy_cleanup(curl);
 
-    if (res != CURLE_OK || http_code != 200)
+    if (res != CURLE_OK || http_code != 200) {
         return false;
+    }
 
     return ParseVersionsResponse(raw, result);
 }
 
 bool WebManager::TryDownloadCover(const std::string id, int32_t width, int32_t height, const std::string filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
 {
-    if (id.empty())
-    {
+    if (id.empty()) {
         return false;
     }
     std::string url = store_api_url + "/api/Cover/" + id + String::Format("?width=%u&height=%u", width, height);
@@ -814,8 +861,7 @@ bool WebManager::TryDownloadCover(const std::string id, int32_t width, int32_t h
 
 bool WebManager::TryDownloadScreenshot(const std::string id, int32_t width, int32_t height, const std::string filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
 {
-    if (id.empty())
-    {
+    if (id.empty()) {
         return false;
     }
     std::string url = store_api_url + "/api/Screenshot/" + id + String::Format("?width=%u&height=%u", width, height);
@@ -824,8 +870,7 @@ bool WebManager::TryDownloadScreenshot(const std::string id, int32_t width, int3
 
 bool WebManager::TryDownloadApp(const std::string id, const std::string filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
 {
-    if (id.empty())
-    {
+    if (id.empty()) {
         return false;
     }
     std::string url = store_api_url + "/api/Download/" + id;
@@ -834,8 +879,7 @@ bool WebManager::TryDownloadApp(const std::string id, const std::string filePath
 
 bool WebManager::TryDownloadVersionFile(const std::string versionId, int32_t fileIndex, const std::string filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
 {
-    if (versionId.empty())
-    {
+    if (versionId.empty()) {
         return false;
     }
     std::string url = store_api_url + "/api/Download/" + versionId + String::Format("?fileIndex=%d", fileIndex);
