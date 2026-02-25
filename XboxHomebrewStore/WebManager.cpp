@@ -3,7 +3,7 @@
 #include "parson.h"
 #include "JsonHelper.h"
 #include "FileSystem.h"
-const std::string store_api_url = "https://192.168.1.98:5001";
+const std::string store_api_url = "https://192.168.1.164:5001";
 const std::string store_app_controller = "/api/apps";
 const std::string store_versions = "/versions";
 const std::string store_categories = "/api/categories";
@@ -234,52 +234,92 @@ static bool ParseContentDispositionFilename(const std::string& headers, std::str
     /* Look for filename= in Content-Disposition (case-insensitive). */
     std::string lower;
     lower.reserve(headers.size());
+
     for (size_t i = 0; i < headers.size(); i++)
-        lower += (char)(headers[i] >= 'A' && headers[i] <= 'Z' ? headers[i] + 32 : headers[i]);
+    {
+        char c = headers[i];
+        if (c >= 'A' && c <= 'Z')
+            c = c + 32;
+        lower += c;
+    }
+
     size_t pos = 0;
     const std::string key = "filename=";
-    for (;;) {
+
+    for (;;)
+    {
         pos = lower.find("content-disposition", pos);
-        if (pos == std::string::npos) break;
+        if (pos == std::string::npos)
+            break;
+
         size_t fn = lower.find(key, pos);
-        if (fn == std::string::npos) { pos++; continue; }
+        if (fn == std::string::npos)
+        {
+            pos++;
+            continue;
+        }
+
         fn += key.size();
-        while (fn < headers.size() && (headers[fn] == ' ' || headers[fn] == '\t')) fn++;
-        if (fn >= headers.size()) break;
-        if (headers[fn] == '"') {
+
+        while (fn < headers.size() &&
+               (headers[fn] == ' ' || headers[fn] == '\t'))
+        {
+            fn++;
+        }
+
+        if (fn >= headers.size())
+            break;
+
+        if (headers[fn] == '"')
+        {
             fn++;
             size_t end = headers.find('"', fn);
-            if (end != std::string::npos) {
+            if (end != std::string::npos)
+            {
                 outFilename = headers.substr(fn, end - fn);
                 return true;
             }
         }
+
         size_t end = fn;
-        while (end < headers.size() && headers[end] != ';' && headers[end] != '\r' && headers[end] != '\n') end++;
-        if (end > fn) {
+        while (end < headers.size() &&
+               headers[end] != ';' &&
+               headers[end] != '\r' &&
+               headers[end] != '\n')
+        {
+            end++;
+        }
+
+        if (end > fn)
+        {
             outFilename = headers.substr(fn, end - fn);
+
             /* trim trailing space */
-            while (outFilename.size() > 0 && (outFilename[outFilename.size() - 1] == ' ' || outFilename[outFilename.size() - 1] == '\t'))
-                outFilename.resize(outFilename.size() - 1);
+            while (!outFilename.empty())
+            {
+                char last = outFilename[outFilename.length() - 1];
+                if (last == ' ' || last == '\t')
+                    outFilename.erase(outFilename.length() - 1);
+                else
+                    break;
+            }
+
             return true;
         }
+
         pos = fn;
     }
+
     return false;
 }
 
 bool WebManager::TryGetDownloadFilename(const std::string url, std::string& outFilename)
 {
     outFilename.clear();
-    if (url.empty()) {
-        return false;
-    }
+    if (url.empty()) return false;
 
     CURL* curl = curl_easy_init();
-    if (curl == nullptr) 
-    {
-        return false;
-    }
+    if (curl == nullptr) return false;
 
     std::string headers;
     ApplyCommonOptions(curl);
@@ -292,9 +332,7 @@ bool WebManager::TryGetDownloadFilename(const std::string url, std::string& outF
     CURLcode res = curl_easy_perform(curl);
     curl_easy_cleanup(curl);
 
-    if (res != CURLE_OK) {
-        return false;
-    }
+    if (res != CURLE_OK) return false;
 
     if (ParseContentDispositionFilename(headers, outFilename)) return true;
 
@@ -302,53 +340,64 @@ bool WebManager::TryGetDownloadFilename(const std::string url, std::string& outF
     size_t slash = url.find_last_of('/');
     if (slash != std::string::npos && slash + 1 < url.size()) {
         size_t q = url.find('?', slash + 1);
-        if (q != std::string::npos) {
+        if (q != std::string::npos)
             outFilename = url.substr(slash + 1, q - (slash + 1));
-        } else {
+        else
             outFilename = url.substr(slash + 1);
-        }
-        return true;
+    } else {
+        outFilename = url;
     }
-
-    return false;
+    return true;
 }
 
-bool WebManager::TryDownload(const std::string url, const std::string filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
+bool WebManager::TryDownload(
+    const std::string url,
+    const std::string filePath,
+    DownloadProgressFn progressFn,
+    void* progressUserData,
+    volatile bool* pCancelRequested)
 {
     if (url.empty() || filePath.empty()) {
         return false;
     }
 
-    FILE* fp = fopen(filePath.c_str(), "wb");
-    if (fp == nullptr) {
-        return false;
-    }
-    SetFileAttributesA(filePath.c_str(), FILE_ATTRIBUTE_ARCHIVE);
-
-    // Use a dedicated handle for downloads
-    CURL* curl = curl_easy_init();
+    CURL* curl = GetCurl();
     if (curl == nullptr) {
-        fclose(fp);
-        FileSystem::FileDelete(filePath);
         return false;
     }
 
     ApplyCommonOptions(curl);
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, (size_t (*)(void*, size_t, size_t, void*))fwrite);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 0L);
+
+    // ---- Capture headers during GET ----
+    std::string headers;
+    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCaptureCallback);
+    curl_easy_setopt(curl, CURLOPT_HEADERDATA, &headers);
+
+    // ---- Open file ----
+    FILE* fp = fopen(filePath.c_str(), "wb");
+    if (fp == nullptr) {
+        return false;
+    }
+
+    SetFileAttributesA(filePath.c_str(), FILE_ATTRIBUTE_ARCHIVE);
+
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, fwrite);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
 
-    // Set larger file write buffer via setvbuf for fewer disk writes
+    // Larger disk buffer
     char* fileBuf = (char*)malloc(65536);
     if (fileBuf != nullptr) {
         setvbuf(fp, fileBuf, _IOFBF, 65536);
     }
 
+    // ---- Progress support ----
     ProgressContext progCtx;
     progCtx.fn = progressFn;
     progCtx.userData = progressUserData;
     progCtx.pCancelRequested = pCancelRequested;
+
     if (progressFn != nullptr || pCancelRequested != nullptr) {
         curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
         curl_easy_setopt(curl, CURLOPT_PROGRESSFUNCTION, ProgressCallback);
@@ -359,12 +408,12 @@ bool WebManager::TryDownload(const std::string url, const std::string filePath, 
 
     long http_code = 0;
     CURLcode res = curl_easy_perform(curl);
+
     if (res == CURLE_OK) {
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
     }
 
     fclose(fp);
-    curl_easy_cleanup(curl);
 
     if (fileBuf != nullptr) {
         free(fileBuf);
@@ -376,6 +425,29 @@ bool WebManager::TryDownload(const std::string url, const std::string filePath, 
     }
 
     SetFileAttributesA(filePath.c_str(), FILE_ATTRIBUTE_NORMAL);
+
+    // ---- OPTIONAL: Detect filename from Content-Disposition ----
+    std::string detectedName;
+    if (ParseContentDispositionFilename(headers, detectedName) && !detectedName.empty())
+    {
+					// Extract directory manually
+					std::string dir;
+					size_t slash = filePath.find_last_of("\\/");
+					if (slash != std::string::npos)
+						dir = filePath.substr(0, slash + 1);
+					else
+						dir = "";
+
+					// Build new path
+					std::string newPath = dir + detectedName;
+
+        // Rename downloaded file if different
+        if (newPath != filePath) {
+            FileSystem::FileDelete(newPath); // safety
+            MoveFileA(filePath.c_str(), newPath.c_str());
+        }
+    }
+
     return true;
 }
 
@@ -401,7 +473,7 @@ bool WebManager::TryGetApps(AppsResponse& result, int32_t offset, int32_t count,
     ApplyCommonOptions(curl);
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, StringWriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &raw);
 
@@ -430,7 +502,7 @@ bool WebManager::TryGetCategories(CategoriesResponse& result)
 
     ApplyCommonOptions(curl);
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, StringWriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &raw);
 
@@ -459,7 +531,7 @@ bool WebManager::TryGetVersions(const std::string id, VersionsResponse& result)
 
     ApplyCommonOptions(curl);
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, StringWriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &raw);
 

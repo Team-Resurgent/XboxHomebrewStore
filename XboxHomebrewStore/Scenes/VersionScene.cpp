@@ -374,27 +374,75 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
 
     std::vector<std::string> downloadedFileNames(ver->downloadFiles.size());
     bool ok = !ver->downloadFiles.empty();
+
     for (size_t f = 0; ok && f < ver->downloadFiles.size(); f++)
     {
         if (scene->mDownloadCancelRequested) {
             ok = false;
             break;
         }
+
+        // ---- Set current file index BEFORE download so UI is correct ----
+        scene->mDownloadFileIndex = (int)f + 1;
+
+        // ---- Reset per-file progress BEFORE starting download ----
+        scene->mDownloadNow = 0;
+        scene->mDownloadTotal = 0;
+
         const std::string& entry = ver->downloadFiles[f];
-        bool isUrl = (entry.size() >= 8 && entry.compare(0, 8, "https://") == 0)
-            || (entry.size() >= 7 && entry.compare(0, 7, "http://") == 0);
+
+        bool isUrl =
+            (entry.size() >= 8 && entry.compare(0, 8, "https://") == 0) ||
+            (entry.size() >= 7 && entry.compare(0, 7, "http://") == 0);
 
         std::string fileName;
-        if (isUrl) {
-            ok = WebManager::TryGetDownloadFilename(entry, fileName);
-            if (ok) {
-                downloadedFileNames[f] = fileName;
-                std::string filePath = FileSystem::CombinePath(baseDir, fileName);
-                ok = WebManager::TryDownload(entry, filePath, DownloadProgressCb, scene, (volatile bool*)&scene->mDownloadCancelRequested);
+
+        if (isUrl)
+        {
+            size_t slash = entry.find_last_of('/');
+            if (slash != std::string::npos && slash + 1 < entry.size())
+            {
+                std::string temp = entry.substr(slash + 1);
+
+                size_t q = temp.find('?');
+                if (q != std::string::npos)
+                    temp = temp.substr(0, q);
+
+                if (temp.empty())
+                    temp = "download";
+
+                fileName = temp;
             }
-        } else {
+            else
+            {
+                fileName = "download";
+            }
+
+            const char* illegal = "\\/:*?\"<>|";
+            for (size_t i = 0; i < fileName.size(); ++i)
+            {
+                if (strchr(illegal, fileName[i]) != nullptr)
+                    fileName[i] = '_';
+            }
+
+            downloadedFileNames[f] = fileName;
+
+            std::string filePath = FileSystem::CombinePath(baseDir, fileName);
+
+            ok = WebManager::TryDownload(
+                entry,
+                filePath,
+                DownloadProgressCb,
+                scene,
+                (volatile bool*)&scene->mDownloadCancelRequested
+            );
+        }
+        else
+        {
             downloadedFileNames[f] = entry;
+
             std::string filePath = FileSystem::CombinePath(baseDir, entry);
+
             ok = WebManager::TryDownloadVersionFile(
                 versionId,
                 (int32_t)f,
@@ -406,7 +454,8 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
         }
     }
 
-    if (ok) {
+    if (ok)
+    {
         std::string installPath = FileSystem::CombinePath(baseDir, ver->folderName);
         FileSystem::DirectoryCreate(installPath);
 
@@ -414,23 +463,41 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
         scene->mUnpackCancelRequested = false;
         scene->mUnpackCurrent = 0;
         scene->mUnpackTotal = 0;
+
         bool unpackOk = true;
+
         for (size_t f = 0; unpackOk && f < ver->downloadFiles.size(); f++)
         {
             const std::string& localName = downloadedFileNames[f];
-            if (!EndsWithZip(localName)) continue;
+
+            if (!EndsWithZip(localName))
+                continue;
+
             std::string zipPath = FileSystem::CombinePath(baseDir, localName);
-            unpackOk = xunzipFromFile(zipPath.c_str(), installPath.c_str(), true, true, false, UnpackProgressCb, scene);
+
+            unpackOk = xunzipFromFile(
+                zipPath.c_str(),
+                installPath.c_str(),
+                true,
+                true,
+                false,
+                UnpackProgressCb,
+                scene
+            );
         }
+
         scene->mUnpacking = false;
 
-        if (unpackOk) {
+        if (unpackOk)
+        {
             UserSaveState userSaveState;
             memset(&userSaveState, 0, sizeof(UserSaveState));
+
             strcpy(userSaveState.appId, ver->appId.c_str());
             strcpy(userSaveState.versionId, ver->versionId.c_str());
             strcpy(userSaveState.downloadPath, baseDir.c_str());
             strcpy(userSaveState.installPath, installPath.c_str());
+
             UserState::TrySave(&userSaveState);
         }
     }
@@ -438,6 +505,7 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
     scene->mDownloadSuccess = ok;
     scene->mDownloading = false;
     scene->mNeedsUpdate = true;
+
     return 0;
 }
 
@@ -456,7 +524,7 @@ void VersionScene::StartDownload()
     mDownloadTotal = 0;
     StoreVersion* ver = &mStoreVersions.versions[mHighlightedVersionIndex];
     mDownloadFileCount = (int)ver->downloadFiles.size();
-    mDownloadFileIndex = (mDownloadFileCount > 0) ? 1 : 0;
+    mDownloadFileIndex = 0;
     mDownloading = true;
 
     mDownloadThread = CreateThread(nullptr, 0, DownloadThreadProc, this, 0, nullptr);
