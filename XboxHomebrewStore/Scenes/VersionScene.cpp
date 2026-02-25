@@ -39,6 +39,7 @@ VersionScene::VersionScene(const StoreVersions& storeVersions)
     mUnpackTotal = 0;
     mProgressIndex = 0;
     mProgressCount = 0;
+    mShowFailedOverlay = false;
 
     const float infoXPos = 350.0f;
     float descMaxWidth = (float)Context::GetScreenWidth() - infoXPos - 20.0f;
@@ -93,6 +94,9 @@ void VersionScene::Render()
     if (mDownloading) {
         RenderDownloadOverlay();
     }
+    if (mShowFailedOverlay) {
+        RenderFailedOverlay();
+    }
 }
 
 void VersionScene::RenderHeader()
@@ -109,7 +113,9 @@ void VersionScene::RenderFooter()
 
     Drawing::DrawTexturedRect(TextureHelper::GetControllerIcon("StickLeft"), 0xffffffff, 16.0f, footerY + 10, ASSET_CONTROLLER_ICON_WIDTH, ASSET_CONTROLLER_ICON_HEIGHT);
     std::string footerText;
-    if (mUnpacking) {
+    if (mShowFailedOverlay) {
+        footerText = "A: Close";
+    } else if (mUnpacking) {
         footerText = (mProgressCount > 0)
             ? String::Format("Unpacking %d of %d... B: Cancel", mProgressIndex, mProgressCount)
             : "Unpacking... B: Cancel";
@@ -343,6 +349,24 @@ void VersionScene::RenderDownloadOverlay()
     }
 }
 
+void VersionScene::RenderFailedOverlay()
+{
+    const float w = Context::GetScreenWidth();
+    const float h = Context::GetScreenHeight();
+
+    Drawing::DrawFilledRect(0xCC000000, 0.0f, 0.0f, (float)w, (float)h);
+
+    const float panelWidth = 400.0f;
+    const float panelHeight = 100.0f;
+    float panelX = ((float)w - panelWidth) * 0.5f;
+    float panelY = ((float)h - panelHeight) * 0.5f;
+
+    Drawing::DrawFilledRect(COLOR_CARD_BG, panelX, panelY, panelWidth, panelHeight);
+
+    Font::DrawText(FONT_NORMAL, "Download / Install failed", COLOR_WHITE, panelX + 20.0f, panelY + 24.0f);
+    Font::DrawText(FONT_NORMAL, "A: Close", COLOR_TEXT_GRAY, panelX + 20.0f, panelY + panelHeight - 32.0f);
+}
+
 void VersionScene::DownloadProgressCb(uint32_t dlNow, uint32_t dlTotal, void* userData)
 {
     VersionScene* scene = (VersionScene*)userData;
@@ -384,6 +408,7 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
 
     std::vector<std::string> downloadedFileNames(ver->downloadFiles.size());
     bool ok = !ver->downloadFiles.empty();
+    bool unpackSucceeded = true;
 
     for (size_t f = 0; ok && f < ver->downloadFiles.size(); f++)
     {
@@ -512,6 +537,7 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
         }
 
         scene->mUnpacking = false;
+        unpackSucceeded = unpackOk;
 
         if (unpackOk)
         {
@@ -526,6 +552,10 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
             UserState::TrySave(&userSaveState);
         }
     }
+
+    bool cancelled = scene->mDownloadCancelRequested || scene->mUnpackCancelRequested;
+    bool failed = !ok || !unpackSucceeded;
+    scene->mShowFailedOverlay = (failed && !cancelled);
 
     scene->mDownloading = false;
     scene->mNeedsUpdate = true;
@@ -549,6 +579,7 @@ void VersionScene::StartDownload()
     StoreVersion* ver = &mStoreVersions.versions[mHighlightedVersionIndex];
     mProgressCount = (int)ver->downloadFiles.size();
     mProgressIndex = (mProgressCount > 0) ? 1 : 0;
+    mShowFailedOverlay = false;
     mDownloading = true;
 
     mDownloadThread = CreateThread(nullptr, 0, DownloadThreadProc, this, 0, nullptr);
@@ -559,6 +590,13 @@ void VersionScene::StartDownload()
 
 void VersionScene::Update()
 {
+    if (mShowFailedOverlay) {
+        if (InputManager::ControllerPressed(ControllerA, -1)) {
+            mShowFailedOverlay = false;
+        }
+        return;
+    }
+
     if (mDownloading) {
         if (InputManager::ControllerPressed(ControllerB, -1)) {
             if (mUnpacking) {

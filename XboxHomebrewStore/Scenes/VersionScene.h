@@ -21,6 +21,7 @@ private:
     void RenderVersionSidebar();
     void RenderListView();
     void RenderDownloadOverlay();
+    void RenderFailedOverlay();
 
     void StartDownload();
     static void DownloadProgressCb(uint32_t dlNow, uint32_t dlTotal, void* userData);
@@ -51,6 +52,7 @@ private:
     volatile int mProgressIndex;   /* 1-based current (download file or unpack archive) */
     volatile int mProgressCount;   /* total (files to download or zips to unpack) */
     bool mDownloadSuccess;
+    bool mShowFailedOverlay;
     HANDLE mDownloadThread;
     bool mUnpacking;
     volatile bool mUnpackCancelRequested;
