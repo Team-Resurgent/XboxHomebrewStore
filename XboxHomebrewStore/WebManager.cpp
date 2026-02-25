@@ -271,10 +271,15 @@ static bool ParseContentDispositionFilename(const std::string& headers, std::str
 bool WebManager::TryGetDownloadFilename(const std::string url, std::string& outFilename)
 {
     outFilename.clear();
-    if (url.empty()) return false;
+    if (url.empty()) {
+        return false;
+    }
 
     CURL* curl = curl_easy_init();
-    if (curl == nullptr) return false;
+    if (curl == nullptr) 
+    {
+        return false;
+    }
 
     std::string headers;
     ApplyCommonOptions(curl);
@@ -282,12 +287,14 @@ bool WebManager::TryGetDownloadFilename(const std::string url, std::string& outF
     curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);
     curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCaptureCallback);
     curl_easy_setopt(curl, CURLOPT_HEADERDATA, &headers);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
 
     CURLcode res = curl_easy_perform(curl);
     curl_easy_cleanup(curl);
 
-    if (res != CURLE_OK) return false;
+    if (res != CURLE_OK) {
+        return false;
+    }
 
     if (ParseContentDispositionFilename(headers, outFilename)) return true;
 
@@ -295,14 +302,15 @@ bool WebManager::TryGetDownloadFilename(const std::string url, std::string& outF
     size_t slash = url.find_last_of('/');
     if (slash != std::string::npos && slash + 1 < url.size()) {
         size_t q = url.find('?', slash + 1);
-        if (q != std::string::npos)
+        if (q != std::string::npos) {
             outFilename = url.substr(slash + 1, q - (slash + 1));
-        else
+        } else {
             outFilename = url.substr(slash + 1);
-    } else {
-        outFilename = url;
+        }
+        return true;
     }
-    return true;
+
+    return false;
 }
 
 bool WebManager::TryDownload(const std::string url, const std::string filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
@@ -327,7 +335,7 @@ bool WebManager::TryDownload(const std::string url, const std::string filePath, 
 
     ApplyCommonOptions(curl);
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 0L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, (size_t (*)(void*, size_t, size_t, void*))fwrite);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
 

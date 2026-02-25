@@ -386,13 +386,12 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
 
         std::string fileName;
         if (isUrl) {
-            if (!WebManager::TryGetDownloadFilename(entry, fileName)) {
-                fileName = FileSystem::GetFileName(entry);
-                if (fileName.empty()) fileName = "download";
+            ok = WebManager::TryGetDownloadFilename(entry, fileName);
+            if (ok) {
+                downloadedFileNames[f] = fileName;
+                std::string filePath = FileSystem::CombinePath(baseDir, fileName);
+                ok = WebManager::TryDownload(entry, filePath, DownloadProgressCb, scene, (volatile bool*)&scene->mDownloadCancelRequested);
             }
-            downloadedFileNames[f] = fileName;
-            std::string filePath = FileSystem::CombinePath(baseDir, fileName);
-            ok = WebManager::TryDownload(entry, filePath, DownloadProgressCb, scene, (volatile bool*)&scene->mDownloadCancelRequested);
         } else {
             downloadedFileNames[f] = entry;
             std::string filePath = FileSystem::CombinePath(baseDir, entry);
