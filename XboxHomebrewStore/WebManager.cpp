@@ -351,6 +351,8 @@ static void RunMultiSocketDownload(CURL* curl, FILE* fp, volatile bool* pCancelR
     curl_easy_setopt(curl, CURLOPT_COOKIEFILE, "");
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 120L);
+    curl_easy_setopt(curl, CURLOPT_SSL_SESSIONID_CACHE, 0L);
+    curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1L);
 
     char* effective_url = nullptr;
     if (curl_easy_getinfo(curl, CURLINFO_EFFECTIVE_URL, &effective_url) == CURLE_OK && effective_url)
