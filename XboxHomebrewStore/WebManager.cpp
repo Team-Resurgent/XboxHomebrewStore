@@ -20,9 +20,41 @@ struct ProgressContext
 {
     WebManager::DownloadProgressFn fn;
     void* userData;
-    volatile bool* pCancelRequested;
 };
 
+struct MultiSocketContext
+{
+    curl_socket_t sock;
+    int what;
+    long timeout_ms;
+};
+
+static int MultiTimerCallback(CURLM* multi, long timeout_ms, void* userp)
+{
+    (void)multi;
+    MultiSocketContext* ctx = (MultiSocketContext*)userp;
+    if (ctx != nullptr) {
+        ctx->timeout_ms = timeout_ms;
+    }
+    return 0;
+}
+
+static int MultiSocketCallback(CURL* easy, curl_socket_t s, int what, void* userp, void* socketp)
+{
+    (void)easy;
+    (void)socketp;
+    MultiSocketContext* ctx = (MultiSocketContext*)userp;
+    if (ctx != nullptr) {
+        if (what == CURL_POLL_REMOVE) {
+            ctx->sock = CURL_SOCKET_BAD;
+            ctx->what = 0;
+        } else {
+            ctx->sock = s;
+            ctx->what = what;
+        }
+    }
+    return 0;
+}
 
 static size_t StringWriteCallback(char* ptr, size_t size, size_t nmemb, void* userdata)
 {
@@ -132,21 +164,14 @@ static bool ParseVersionsResponse(const std::string raw, VersionsResponse& out)
     return true;
 }
 
-static int ProgressCallback(void* clientp, double dltotal, double dlnow, double ultotal, double ulnow)
+static int ProgressCallback(void* clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow)
 {
-    (void)ultotal;
-    (void)ulnow;
     ProgressContext* ctx = (ProgressContext*)clientp;
-    if (ctx != nullptr && ctx->pCancelRequested != nullptr && *ctx->pCancelRequested) {
-        return 1;
-    }
     if (ctx != nullptr && ctx->fn != nullptr) {
         ctx->fn((uint32_t)dlnow, (uint32_t)dltotal, ctx->userData);
     }
     return 0;
 }
-
-
 
 // Helper: apply common performance options to a curl handle
 static void ApplyCommonOptions(CURL* curl)
@@ -162,43 +187,6 @@ static void ApplyCommonOptions(CURL* curl)
 bool WebManager::Init()
 {
     return curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK;
-}
-
-bool WebManager::TryGetFileSize(const std::string url, uint32_t& outSize)
-{
-    outSize = 0;
-
-    CURL* curl = curl_easy_init();
-    if (!curl) {
-        return false;
-    }
-
-    ApplyCommonOptions(curl);
-
-    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);
-    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-    curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 5L);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
-
-    long http_code = 0;
-    CURLcode res = curl_easy_perform(curl);
-
-    if (res == CURLE_OK) {
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-
-        if (http_code == 200) {
-            double contentLength = -1;
-            if (curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &contentLength) == CURLE_OK) {
-                if (contentLength > 0) {
-                    outSize = (uint32_t)contentLength;
-                }
-            }
-        }
-    }
-
-    curl_easy_cleanup(curl);
-    return (res == CURLE_OK && http_code == 200);
 }
 
 static size_t HeaderCaptureCallback(char* ptr, size_t size, size_t nmemb, void* userdata)
@@ -398,13 +386,7 @@ bool WebManager::TryGetDownloadFilename(const std::string url, std::string& outF
     return true;
 }
 
-bool WebManager::TryDownload(
-    const std::string url,
-    const std::string filePath,
-    std::string* outFinalFileName,
-    DownloadProgressFn progressFn,
-    void* progressUserData,
-    volatile bool* pCancelRequested)
+bool WebManager::TryDownload(const std::string url, const std::string filePath, std::string* outFinalFileName, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
 {
     OutputDebugStringA("\n=== TryDownload START ===\n");
     OutputDebugStringA("URL: ");
@@ -430,49 +412,42 @@ bool WebManager::TryDownload(
 
     ApplyCommonOptions(curl);
 
+    std::string headers;
+    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCaptureCallback);
+    curl_easy_setopt(curl, CURLOPT_HEADERDATA, &headers);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 5L);
-
-    // Default to HTTP/1.1
 	curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0");
+    curl_easy_setopt(curl, CURLOPT_COOKIEFILE, "");
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 120L);
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 
-	// BearSSL workaround for GitHub (CloudFront chunked keep-alive issue)
+    ProgressContext progCtx;
+    progCtx.fn = progressFn;
+    progCtx.userData = progressUserData;
+
+    if (progressFn || pCancelRequested) {
+        curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+        curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, ProgressCallback);
+        curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &progCtx);
+    }
+
+    // BearSSL workaround for GitHub (CloudFront chunked keep-alive issue)
 	if (url.find("github.com") != std::string::npos ||
 		url.find("objects.githubusercontent.com") != std::string::npos) {
 		OutputDebugStringA("Using HTTP/1.0 for GitHub (BearSSL workaround)\n");
 		curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
 	}
 
-    curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0");
-    curl_easy_setopt(curl, CURLOPT_COOKIEFILE, "");
-    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 120L);
-
-    ProgressContext progCtx;
-    progCtx.fn = progressFn;
-    progCtx.userData = progressUserData;
-    progCtx.pCancelRequested = pCancelRequested;
-
-    if (progressFn || pCancelRequested) {
-        curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
-        curl_easy_setopt(curl, CURLOPT_PROGRESSFUNCTION, ProgressCallback);
-        curl_easy_setopt(curl, CURLOPT_PROGRESSDATA, &progCtx);
-    }
-
-    std::string headers;
-    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, HeaderCaptureCallback);
-    curl_easy_setopt(curl, CURLOPT_HEADERDATA, &headers);
-
     FILE* fp = fopen(filePath.c_str(), "wb");
     if (!fp) {
         OutputDebugStringA("FAILED: fopen failed\n");
         curl_easy_cleanup(curl);
-        curl_global_cleanup();
-        curl_global_init(CURL_GLOBAL_DEFAULT);
         return false;
     }
 
-    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, fwrite);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
 
@@ -488,44 +463,104 @@ bool WebManager::TryDownload(
 
     curl_multi_add_handle(multi, curl);
 
-    CURLcode res = CURLE_OK;
-    int still_running = 1;
+    MultiSocketContext sockCtx;
+    sockCtx.sock = CURL_SOCKET_BAD;
+    sockCtx.what = 0;
+    sockCtx.timeout_ms = 100;
 
-    while (still_running)
+    curl_multi_setopt(multi, CURLMOPT_SOCKETFUNCTION, MultiSocketCallback);
+    curl_multi_setopt(multi, CURLMOPT_SOCKETDATA, &sockCtx);
+    curl_multi_setopt(multi, CURLMOPT_TIMERFUNCTION, MultiTimerCallback);
+    curl_multi_setopt(multi, CURLMOPT_TIMERDATA, &sockCtx);
+
+    int still_running = 0;
+    CURLMcode mc = curl_multi_socket_action(multi, CURL_SOCKET_TIMEOUT, 0, &still_running);
+    if (mc != CURLM_OK) {
+        curl_multi_remove_handle(multi, curl);
+        curl_multi_cleanup(multi);
+        fclose(fp);
+        FileSystem::FileDelete(filePath);
+        curl_easy_cleanup(curl);
+        return false;
+    }
+
+    CURLcode res = CURLE_OK;
+
+    while (still_running) 
     {
-        CURLMcode mc = curl_multi_perform(multi, &still_running);
-        if (mc != CURLM_OK && mc != CURLM_CALL_MULTI_PERFORM) {
-            res = (mc == CURLM_OUT_OF_MEMORY) ? CURLE_OUT_OF_MEMORY : CURLE_SEND_ERROR;
-            break;
+        fd_set read_fd, write_fd;
+        FD_ZERO(&read_fd);
+        FD_ZERO(&write_fd);
+
+        int ev = 0;
+
+        if (sockCtx.sock != CURL_SOCKET_BAD) {
+            if (sockCtx.what & CURL_POLL_IN) FD_SET(sockCtx.sock, &read_fd);
+            if (sockCtx.what & CURL_POLL_OUT) FD_SET(sockCtx.sock, &write_fd);
         }
 
-        if (pCancelRequested && *pCancelRequested) {
+        struct timeval tv;
+        tv.tv_sec = (sockCtx.timeout_ms < 0 ? 1 : sockCtx.timeout_ms / 1000);
+        tv.tv_usec = (sockCtx.timeout_ms < 0 ? 0 : (sockCtx.timeout_ms % 1000) * 1000);
+
+        int r = select(0, &read_fd, &write_fd, NULL, &tv);
+
+        if (pCancelRequested && *pCancelRequested)
+        {
+            // Instant abort: forcibly close the socket
+            if (sockCtx.sock != CURL_SOCKET_BAD)
+            {
+                closesocket(sockCtx.sock);
+                sockCtx.sock = CURL_SOCKET_BAD;
+            }
+
+            // Let libcurl know this handle is done
+            curl_multi_remove_handle(multi, curl);
+            curl_easy_cleanup(curl);
+
+            OutputDebugStringA("Download cancelled instantly.\n");
             res = CURLE_ABORTED_BY_CALLBACK;
             break;
         }
 
-        if (still_running) {
-            int numfds = 0;
-            mc = curl_multi_wait(multi, NULL, 0, 500, &numfds);
-            if (mc != CURLM_OK) {
-                res = (mc == CURLM_OUT_OF_MEMORY) ? CURLE_OUT_OF_MEMORY : CURLE_SEND_ERROR;
-                break;
+        if (r < 0) {
+            res = CURLE_SEND_ERROR;
+            break;
+        } else if (r == 0) {
+            mc = curl_multi_socket_action(multi, CURL_SOCKET_TIMEOUT, 0, &still_running);
+        } else if (sockCtx.sock != CURL_SOCKET_BAD) {
+            if (FD_ISSET(sockCtx.sock, &read_fd)) ev |= CURL_CSELECT_IN;
+            if (FD_ISSET(sockCtx.sock, &write_fd)) ev |= CURL_CSELECT_OUT;
+            mc = curl_multi_socket_action(multi, sockCtx.sock, ev, &still_running);
+        } else {
+            mc = curl_multi_socket_action(multi, CURL_SOCKET_TIMEOUT, 0, &still_running);
+        }
+
+        if (mc != CURLM_OK) {
+            res = (mc == CURLM_OUT_OF_MEMORY ? CURLE_OUT_OF_MEMORY : CURLE_SEND_ERROR);
+            break;
+        }
+
+        // read DONE messages here inside loop
+        CURLMsg* msg;
+        int msgs_left;
+        while ((msg = curl_multi_info_read(multi, &msgs_left))) {
+            if (msg->msg == CURLMSG_DONE && msg->easy_handle == curl) {
+                res = msg->data.result;
+                if (sockCtx.sock != CURL_SOCKET_BAD)
+                {
+                    closesocket(sockCtx.sock);
+                    sockCtx.sock = CURL_SOCKET_BAD;
+                }
+                curl_multi_remove_handle(multi, curl);
+                still_running = 0; 
+
+                if (res == CURLE_ABORTED_BY_CALLBACK) {
+                    OutputDebugStringA("Download cancelled.\n");
+                }
             }
         }
     }
-
-    CURLMsg* msg = NULL;
-    int msgs_left = 0;
-    while ((msg = curl_multi_info_read(multi, &msgs_left)) != NULL)
-    {
-        if (msg->msg == CURLMSG_DONE && msg->easy_handle == curl) {
-            res = msg->data.result;
-            break;
-        }
-    }
-
-    curl_multi_remove_handle(multi, curl);
-    curl_multi_cleanup(multi);
 
     long http_code = 0;
     if (res == CURLE_OK) {
@@ -547,8 +582,6 @@ bool WebManager::TryDownload(
         OutputDebugStringA("Download failed — deleting file\n");
         FileSystem::FileDelete(filePath);
         curl_easy_cleanup(curl);
-        curl_global_cleanup();
-        curl_global_init(CURL_GLOBAL_DEFAULT);
         return false;
     }
 
@@ -568,6 +601,7 @@ bool WebManager::TryDownload(
         std::string finalPath = filePath;
 
         if (ParseContentDispositionFilename(headers, detectedName) && !detectedName.empty()) {
+
             std::string dir;
             size_t slash = filePath.find_last_of("\\/");
             if (slash != std::string::npos) {
@@ -589,8 +623,6 @@ bool WebManager::TryDownload(
 
         SetFileAttributesA(finalPath.c_str(), FILE_ATTRIBUTE_NORMAL);
         curl_easy_cleanup(curl);
-        curl_global_cleanup();
-        curl_global_init(CURL_GLOBAL_DEFAULT);
 
         OutputDebugStringA("=== SUCCESS (normal file) ===\n");
         return true;
@@ -606,8 +638,6 @@ bool WebManager::TryDownload(
     FILE* htmlFile = fopen(filePath.c_str(), "rb");
     if (!htmlFile) {
         curl_easy_cleanup(curl);
-        curl_global_cleanup();
-        curl_global_init(CURL_GLOBAL_DEFAULT);
         return false;
     }
 
@@ -626,8 +656,6 @@ bool WebManager::TryDownload(
 
         OutputDebugStringA("HTML but not Google confirm page\n");
         curl_easy_cleanup(curl);
-        curl_global_cleanup();
-        curl_global_init(CURL_GLOBAL_DEFAULT);
         return true;
     }
 
@@ -665,8 +693,6 @@ bool WebManager::TryDownload(
     if (fileId.empty() || confirm.empty() || uuid.empty()) {
         OutputDebugStringA("Google confirm extraction FAILED\n");
         curl_easy_cleanup(curl);
-        curl_global_cleanup();
-        curl_global_init(CURL_GLOBAL_DEFAULT);
         return false;
     }
 
@@ -694,8 +720,6 @@ bool WebManager::TryDownload(
     fp = fopen(finalPath.c_str(), "wb");
     if (!fp) {
         curl_easy_cleanup(curl);
-        curl_global_cleanup();
-        curl_global_init(CURL_GLOBAL_DEFAULT);
         return false;
     }
 
@@ -711,8 +735,6 @@ bool WebManager::TryDownload(
         OutputDebugStringA("Google confirmed download failed\n");
         FileSystem::FileDelete(finalPath);
         curl_easy_cleanup(curl);
-        curl_global_cleanup();
-        curl_global_init(CURL_GLOBAL_DEFAULT);
         return false;
     }
 
@@ -722,8 +744,6 @@ bool WebManager::TryDownload(
 
     SetFileAttributesA(finalPath.c_str(), FILE_ATTRIBUTE_NORMAL);
     curl_easy_cleanup(curl);
-    curl_global_cleanup();
-    curl_global_init(CURL_GLOBAL_DEFAULT);
 
     OutputDebugStringA("=== SUCCESS (Google large file) ===\n");
     return true;

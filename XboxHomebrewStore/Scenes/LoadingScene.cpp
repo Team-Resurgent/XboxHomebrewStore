@@ -86,7 +86,7 @@ void LoadingScene::Update()
             OutputDebugString( "Could not create HDD0-E:\\Homebrew\\Downloads\n" );
         }
 
-        DeleteImageCache();  // Uncomment to clear image cache on startup
+        //DeleteImageCache();  // Uncomment to clear image cache on startup
 
         SceneManager* sceneManager = Context::GetSceneManager();
         sceneManager->PopScene();
