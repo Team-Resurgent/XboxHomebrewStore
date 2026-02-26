@@ -13,12 +13,13 @@ bool UserState::TrySave(const std::string appId, const std::string versionId, co
         uint32_t recordIndex = 0;
         while (FileSystem::FileRead(fileHandle, (char*)&existing, sizeof(UserSaveState), bytesRead) && bytesRead == sizeof(UserSaveState)) {
             if (strcmp(existing.appId, appId.c_str()) == 0 && strcmp(existing.versionId, versionId.c_str()) == 0) {
+                Debug::Print("Updating new userstate.\n");
                 if (downloadPath != nullptr) {
                     strcpy(existing.downloadPath, downloadPath->c_str());
                 }
                 if (installPath != nullptr) {
                     strcpy(existing.installPath, installPath->c_str());
-                }
+                } 
                 uint32_t offset = recordIndex * sizeof(UserSaveState);
                 FileSystem::FileSeek(fileHandle, FileSeekModeStart, offset);
                 uint32_t bytesWritten = 0;

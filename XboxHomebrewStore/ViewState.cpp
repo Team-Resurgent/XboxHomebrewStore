@@ -13,6 +13,7 @@ bool ViewState::TrySave(const std::string appId, const std::string verId)
         uint32_t recordIndex = 0;
         while (FileSystem::FileRead(fileHandle, (char*)&existing, sizeof(ViewSaveState), bytesRead) && bytesRead == sizeof(ViewSaveState)) {
             if (strcmp(existing.appId, appId.c_str()) == 0) {
+                Debug::Print("Updating new viewstate.\n");
                 strcpy(existing.verId, verId.c_str());
                 uint32_t offset = recordIndex * sizeof(ViewSaveState);
                 FileSystem::FileSeek(fileHandle, FileSeekModeStart, offset);
