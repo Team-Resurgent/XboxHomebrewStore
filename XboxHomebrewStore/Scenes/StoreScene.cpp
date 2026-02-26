@@ -40,13 +40,35 @@ void StoreScene::RenderHeader()
     Drawing::DrawTexturedRect(TextureHelper::GetStore(), 0x8fe386, 16, 12, ASSET_STORE_ICON_WIDTH, ASSET_STORE_ICON_HEIGHT);
 }
 
+void StoreScene::DrawFooterControl(float& x, float footerY, const char* iconName, const char* label)
+{
+    const float iconW = ASSET_CONTROLLER_ICON_WIDTH;
+    const float iconH = ASSET_CONTROLLER_ICON_HEIGHT;
+    const float gap = 4.0f;
+    const float groupSpacing = 20.0f;
+    float textY = footerY + 12.0f;
+    float iconY = footerY + 10.0f;
+    float textWidth = 0.0f;
+
+    D3DTexture* icon = TextureHelper::GetControllerIcon(iconName);
+    if (icon != nullptr) {
+        Drawing::DrawTexturedRect(icon, 0xffffffff, x, iconY, iconW, iconH);
+        x += iconW + gap;
+    }
+    Font::DrawText(FONT_NORMAL, label, COLOR_WHITE, (int)x, (int)textY);
+    Font::MeasureText(FONT_NORMAL, label, &textWidth);
+    x += textWidth + groupSpacing;
+}
+
 void StoreScene::RenderFooter()
 {
     float footerY = Context::GetScreenHeight() - ASSET_FOOTER_HEIGHT;
+    float x = 16.0f;
+
     Drawing::DrawTexturedRect(TextureHelper::GetFooter(), 0xffffffff, 0, footerY, Context::GetScreenWidth(), ASSET_FOOTER_HEIGHT);
 
-    Drawing::DrawTexturedRect(TextureHelper::GetControllerIcon("StickLeft"), 0xffffffff, 16.0f, footerY + 10.0f, ASSET_CONTROLLER_ICON_WIDTH, ASSET_CONTROLLER_ICON_HEIGHT);
-    Font::DrawText(FONT_NORMAL, "Hide A: Details B: Exit LT/RT: Category D-pad: Move", COLOR_WHITE, 52, footerY + 12);
+    DrawFooterControl(x, footerY, "ButtonA", "Select");
+    DrawFooterControl(x, footerY, "Dpad", "Navigate");
 }
 
 void StoreScene::RenderCategorySidebar()
@@ -219,7 +241,10 @@ void StoreScene::RenderMainGrid()
     }
 
     std::string pageStr = String::Format("Item %d of %d", mStoreIndex + 1, StoreManager::GetSelectedCategoryTotal());
-    Font::DrawText(FONT_NORMAL, pageStr.c_str(), (uint32_t)COLOR_TEXT_GRAY, 600, Context::GetScreenHeight() - 30);
+    float pageStrWidth = 0.0f;
+    Font::MeasureText(FONT_NORMAL, pageStr, &pageStrWidth);
+    float pageStrX = Context::GetScreenWidth() - 16.0f - pageStrWidth;
+    Font::DrawText(FONT_NORMAL, pageStr.c_str(), (uint32_t)COLOR_TEXT_GRAY, (int)pageStrX, Context::GetScreenHeight() - 30);
 }
 
 void StoreScene::Render()

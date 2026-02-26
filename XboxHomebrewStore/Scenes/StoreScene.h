@@ -19,6 +19,7 @@ public:
 private:
     void RenderHeader();
     void RenderFooter();
+    void DrawFooterControl(float& x, float footerY, const char* iconName, const char* label);
     void RenderCategorySidebar();
     void RenderMainGrid();
     void DrawStoreItem(StoreItem* storeItem, float x, float y, bool selected, int32_t slotIndex);

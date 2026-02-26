@@ -107,27 +107,42 @@ void VersionScene::RenderHeader()
     Drawing::DrawTexturedRect(TextureHelper::GetStore(), 0x8fe386, 16, 12, ASSET_STORE_ICON_WIDTH, ASSET_STORE_ICON_HEIGHT);
 }
 
+void VersionScene::DrawFooterControl(float& x, float footerY, const char* iconName, const char* label)
+{
+    const float iconW = ASSET_CONTROLLER_ICON_WIDTH;
+    const float iconH = ASSET_CONTROLLER_ICON_HEIGHT;
+    const float gap = 4.0f;
+    const float groupSpacing = 20.0f;
+    float textY = footerY + 12.0f;
+    float iconY = footerY + 10.0f;
+    float textWidth = 0.0f;
+
+    D3DTexture* icon = TextureHelper::GetControllerIcon(iconName);
+    if (icon != nullptr) {
+        Drawing::DrawTexturedRect(icon, 0xffffffff, x, iconY, iconW, iconH);
+        x += iconW + gap;
+    }
+    Font::DrawText(FONT_NORMAL, label, COLOR_WHITE, (int)x, (int)textY);
+    Font::MeasureText(FONT_NORMAL, label, &textWidth);
+    x += textWidth + groupSpacing;
+}
+
 void VersionScene::RenderFooter()
 {
     float footerY = Context::GetScreenHeight() - ASSET_FOOTER_HEIGHT;
+    float x = 16.0f;
+
     Drawing::DrawTexturedRect(TextureHelper::GetFooter(), 0xffffffff, 0.0f, footerY, Context::GetScreenWidth(), ASSET_FOOTER_HEIGHT);
 
-    Drawing::DrawTexturedRect(TextureHelper::GetControllerIcon("StickLeft"), 0xffffffff, 16.0f, footerY + 10, ASSET_CONTROLLER_ICON_WIDTH, ASSET_CONTROLLER_ICON_HEIGHT);
-    std::string footerText;
     if (mShowFailedOverlay) {
-        footerText = "A: Close";
-    } else if (mUnpacking) {
-        footerText = (mProgressCount > 0)
-            ? String::Format("Unpacking %d of %d... B: Cancel", mProgressIndex, mProgressCount)
-            : "Unpacking... B: Cancel";
-    } else if (mDownloading) {
-        footerText = (mProgressCount > 0)
-            ? String::Format("Downloading %d of %d... B: Cancel", mProgressIndex, mProgressCount)
-            : "Downloading... B: Cancel";
+        DrawFooterControl(x, footerY, "ButtonA", "Close");
+    } else if (mUnpacking || mDownloading) {
+        DrawFooterControl(x, footerY, "ButtonB", "Cancel");
     } else {
-        footerText = "A: Download B: Exit D-pad: Move";
+        DrawFooterControl(x, footerY, "ButtonA", "Download");
+        DrawFooterControl(x, footerY, "ButtonB", "Exit");
+        DrawFooterControl(x, footerY, "Dpad", "Move");
     }
-    Font::DrawText(FONT_NORMAL, footerText, COLOR_WHITE, 52, footerY + 12);
 }
 
 void VersionScene::RenderVersionSidebar()
@@ -179,7 +194,7 @@ void VersionScene::RenderVersionSidebar()
                     storeVersion->versionScrollState.active = false;
                     Font::DrawText(FONT_NORMAL, storeVersion->version, COLOR_WHITE, 16, y);
                 }
-                float itemTop = y - 32.0f;
+                float itemTop = y - 24.0f;
                 if (storeVersion->state == 1) {
                     Drawing::DrawTexturedRect(TextureHelper::GetNewBadge(), 0xFFFFFFFF, ASSET_SIDEBAR_WIDTH - 32.0f - ASSET_BADGE_NEW_WIDTH, itemTop, ASSET_BADGE_NEW_WIDTH, ASSET_BADGE_NEW_HEIGHT);
                 } else if (storeVersion->state == 2) {
@@ -329,7 +344,14 @@ void VersionScene::RenderDownloadOverlay()
             ? String::Format("%d / %d files", mUnpackCurrent, total)
             : "Preparing...";
         Font::DrawText(FONT_NORMAL, progressStr, COLOR_TEXT_GRAY, panelX + 20.0f, barY + barH + 8.0f);
-        Font::DrawText(FONT_NORMAL, "B: Cancel", COLOR_WHITE, panelX + 20.0f, panelY + panelHeight - 28.0f);
+        float hintX = panelX + 20.0f;
+        float hintY = panelY + panelHeight - 28.0f;
+        D3DTexture* iconB = TextureHelper::GetControllerIcon("ButtonB");
+        if (iconB != nullptr) {
+            Drawing::DrawTexturedRect(iconB, 0xffffffff, hintX, hintY - 2.0f, ASSET_CONTROLLER_ICON_WIDTH, ASSET_CONTROLLER_ICON_HEIGHT);
+            hintX += ASSET_CONTROLLER_ICON_WIDTH + 4.0f;
+        }
+        Font::DrawText(FONT_NORMAL, "Cancel", COLOR_WHITE, (int)hintX, (int)hintY);
     } else {
         std::string downloadTitle = (mProgressCount > 0)
             ? String::Format("Downloading %d of %d...", mProgressIndex, mProgressCount)
@@ -346,7 +368,14 @@ void VersionScene::RenderDownloadOverlay()
             ? String::Format("%s / %s", String::FormatSize(mDownloadCurrent).c_str(), String::FormatSize(total).c_str())
             : "Connecting...";
         Font::DrawText(FONT_NORMAL, progressStr, COLOR_TEXT_GRAY, panelX + 20.0f, barY + barH + 8.0f);
-        Font::DrawText(FONT_NORMAL, "B: Cancel", COLOR_WHITE, panelX + 20.0f, panelY + panelHeight - 28.0f);
+        float hintX = panelX + 20.0f;
+        float hintY = panelY + panelHeight - 28.0f;
+        D3DTexture* iconB = TextureHelper::GetControllerIcon("ButtonB");
+        if (iconB != nullptr) {
+            Drawing::DrawTexturedRect(iconB, 0xffffffff, hintX, hintY - 2.0f, ASSET_CONTROLLER_ICON_WIDTH, ASSET_CONTROLLER_ICON_HEIGHT);
+            hintX += ASSET_CONTROLLER_ICON_WIDTH + 4.0f;
+        }
+        Font::DrawText(FONT_NORMAL, "Cancel", COLOR_WHITE, (int)hintX, (int)hintY);
     }
 }
 
@@ -365,7 +394,14 @@ void VersionScene::RenderFailedOverlay()
     Drawing::DrawFilledRect(COLOR_CARD_BG, panelX, panelY, panelWidth, panelHeight);
 
     Font::DrawText(FONT_NORMAL, "Download / Install failed", COLOR_WHITE, panelX + 20.0f, panelY + 24.0f);
-    Font::DrawText(FONT_NORMAL, "A: Close", COLOR_TEXT_GRAY, panelX + 20.0f, panelY + panelHeight - 32.0f);
+    float hintX = panelX + 20.0f;
+    float hintY = panelY + panelHeight - 32.0f;
+    D3DTexture* iconA = TextureHelper::GetControllerIcon("ButtonA");
+    if (iconA != nullptr) {
+        Drawing::DrawTexturedRect(iconA, 0xffffffff, hintX, hintY - 2.0f, ASSET_CONTROLLER_ICON_WIDTH, ASSET_CONTROLLER_ICON_HEIGHT);
+        hintX += ASSET_CONTROLLER_ICON_WIDTH + 4.0f;
+    }
+    Font::DrawText(FONT_NORMAL, "Close", COLOR_TEXT_GRAY, (int)hintX, (int)hintY);
 }
 
 void VersionScene::DownloadProgressCb(uint32_t dlNow, uint32_t dlTotal, void* userData)

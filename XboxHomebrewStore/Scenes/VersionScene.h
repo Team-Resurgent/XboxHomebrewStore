@@ -18,6 +18,7 @@ public:
 private:
     void RenderHeader();
     void RenderFooter();
+    void DrawFooterControl(float& x, float footerY, const char* iconName, const char* label);
     void RenderVersionSidebar();
     void RenderListView();
     void RenderDownloadOverlay();
