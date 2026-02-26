@@ -162,7 +162,7 @@ void VersionScene::RenderVersionSidebar()
 
     int32_t itemCount = Math::MinInt32(start + maxItems, versionCount) - start;
 
-    for (int32_t pass = 0; pass < 2; pass++) 
+    for (int32_t pass = 0; pass < 3; pass++) 
     {
         float y = ASSET_SIDEBAR_Y + 64.0f;
 
@@ -186,7 +186,7 @@ void VersionScene::RenderVersionSidebar()
                     Drawing::DrawTexturedRect(TextureHelper::GetCategoryHighlight(), focused ? COLOR_FOCUS_HIGHLIGHT : COLOR_HIGHLIGHT, 0.0f, y - 32.0f, ASSET_SIDEBAR_HIGHLIGHT_WIDTH, ASSET_SIDEBAR_HIGHLIGHT_HEIGHT);
                 }
             }
-            else
+            else if (pass == 1)
             {
                 if (focused == true) {
                     Font::DrawTextScrolling(FONT_NORMAL, storeVersion->version, COLOR_WHITE, 16.0f, y, ASSET_SIDEBAR_WIDTH - 64.0f, storeVersion->versionScrollState);
@@ -194,11 +194,18 @@ void VersionScene::RenderVersionSidebar()
                     storeVersion->versionScrollState.active = false;
                     Font::DrawText(FONT_NORMAL, storeVersion->version, COLOR_WHITE, 16, y);
                 }
+            } else {
                 float itemTop = y - 24.0f;
                 if (storeVersion->state == 1) {
-                    Drawing::DrawTexturedRect(TextureHelper::GetNewBadge(), 0xFFFFFFFF, ASSET_SIDEBAR_WIDTH - 32.0f - ASSET_BADGE_NEW_WIDTH, itemTop, ASSET_BADGE_NEW_WIDTH, ASSET_BADGE_NEW_HEIGHT);
+                    if (focused == false) {
+                        Drawing::DrawTexturedRect(TextureHelper::GetCategoryHighlight(), 0x40ffffff, 0.0f, y - 32.0f, ASSET_SIDEBAR_HIGHLIGHT_WIDTH, ASSET_SIDEBAR_HIGHLIGHT_HEIGHT);
+                    }
+                    Drawing::DrawTexturedRect(TextureHelper::GetNewBadge(), 0xFFFFFFFF, ASSET_SIDEBAR_WIDTH + 8.0f - ASSET_BADGE_NEW_WIDTH, itemTop, ASSET_BADGE_NEW_WIDTH, ASSET_BADGE_NEW_HEIGHT);
                 } else if (storeVersion->state == 2) {
-                    Drawing::DrawTexturedRect(TextureHelper::GetUpdateBadge(), 0xFFFFFFFF, ASSET_SIDEBAR_WIDTH - 32.0f - ASSET_BADGE_UPDATE_WIDTH, itemTop, ASSET_BADGE_UPDATE_WIDTH, ASSET_BADGE_UPDATE_HEIGHT);
+                    if (focused == false) {
+                        Drawing::DrawTexturedRect(TextureHelper::GetCategoryHighlight(), 0x40ffffff, 0.0f, y - 32.0f, ASSET_SIDEBAR_HIGHLIGHT_WIDTH, ASSET_SIDEBAR_HIGHLIGHT_HEIGHT);
+                    }
+                    Drawing::DrawTexturedRect(TextureHelper::GetUpdateBadge(), 0xFFFFFFFF, ASSET_SIDEBAR_WIDTH + 8.0f - ASSET_BADGE_UPDATE_WIDTH, itemTop, ASSET_BADGE_UPDATE_WIDTH, ASSET_BADGE_UPDATE_HEIGHT);
                 }
             }
 
