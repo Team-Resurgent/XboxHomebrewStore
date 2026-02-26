@@ -1,5 +1,6 @@
 #include "UserState.h"
 #include "FileSystem.h"
+#include "Debug.h"
 
 #define USER_STATE_PATH "T:\\UserState.bin"
 
@@ -33,6 +34,8 @@ bool UserState::TrySave(const std::string appId, const std::string versionId, co
     if (!FileSystem::FileOpen(USER_STATE_PATH, FileModeAppend, fileHandle)) {
         return false;
     }
+
+    Debug::Print("Saving new userstate.\n");
 
     UserSaveState userSaveState;
     memset(&userSaveState, 0, sizeof(UserSaveState));

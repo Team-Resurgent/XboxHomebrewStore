@@ -1,5 +1,6 @@
 #include "ViewState.h"
 #include "FileSystem.h"
+#include "Debug.h"
 
 #define VIEW_STATE_PATH "T:\\ViewState.bin"
 
@@ -28,6 +29,8 @@ bool ViewState::TrySave(const std::string appId, const std::string verId)
     if (!FileSystem::FileOpen(VIEW_STATE_PATH, FileModeAppend, fileHandle)) {
         return false;
     }
+
+    Debug::Print("Saving new viewstate.\n");
 
     ViewSaveState viewSaveState;
     memset(&viewSaveState, 0, sizeof(ViewSaveState));
