@@ -441,16 +441,22 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
 
     StoreVersion* ver = &scene->mStoreVersions.versions[scene->mHighlightedVersionIndex];
     std::string versionId = ver->versionId;
-    const std::string baseDir = "HDD0-E:\\Homebrew\\Downloads\\";
+    
+    const std::string downloadsRoot = "HDD0-E:\\Homebrew\\Downloads\\";
+    std::string downloadPath = FileSystem::CombinePath(downloadsRoot, ver->folderName);
+    const std::string installsRoot = "HDD0-E:\\Homebrew\\Installs\\";
+    std::string installPath = FileSystem::CombinePath(installsRoot, ver->folderName);
+
+    FileSystem::DirectoryCreate(downloadPath);
 
     std::vector<std::string> downloadedFileNames(ver->downloadFiles.size());
-    bool ok = !ver->downloadFiles.empty();
+    bool downloadSucceeded = !ver->downloadFiles.empty();
     bool unpackSucceeded = true;
 
-    for (size_t f = 0; ok && f < ver->downloadFiles.size(); f++)
+    for (size_t f = 0; downloadSucceeded && f < ver->downloadFiles.size(); f++)
     {
         if (scene->mDownloadCancelRequested) {
-            ok = false;
+            downloadSucceeded = false;
             break;
         }
 
@@ -499,11 +505,11 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
 
             downloadedFileNames[f] = fileName;
 
-            std::string filePath = FileSystem::CombinePath(baseDir, fileName);
+            std::string filePath = FileSystem::CombinePath(downloadPath, fileName);
 
 			std::string actualName;
 
-			ok = WebManager::TryDownloadWebData(
+			downloadSucceeded = WebManager::TryDownloadWebData(
 				entry,
 				filePath,
 				&actualName,
@@ -516,14 +522,17 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
 				downloadedFileNames[f] = actualName;
 			else
 				downloadedFileNames[f] = fileName;
+
+			if (!downloadSucceeded)
+				break;
         }
         else
         {
             downloadedFileNames[f] = entry;
 
-            std::string filePath = FileSystem::CombinePath(baseDir, entry);
+            std::string filePath = FileSystem::CombinePath(downloadPath, entry);
 
-            ok = WebManager::TryDownloadVersionFile(
+            downloadSucceeded = WebManager::TryDownloadVersionFile(
                 versionId,
                 (int32_t)f,
                 filePath,
@@ -531,12 +540,14 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
                 scene,
                 (volatile bool*)&scene->mDownloadCancelRequested
             );
+
+            if (!downloadSucceeded)
+                break;
         }
     }
 
-    if (ok)
+    if (downloadSucceeded)
     {
-        std::string installPath = FileSystem::CombinePath(baseDir, ver->folderName);
         FileSystem::DirectoryCreate(installPath);
 
         scene->mUnpacking = true;
@@ -546,17 +557,16 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
         scene->mProgressCount = (int)downloadedFileNames.size();
         scene->mProgressIndex = 0;
 
-        bool unpackOk = true;
-        for (size_t f = 0; unpackOk && f < downloadedFileNames.size(); f++)
+        for (size_t f = 0; unpackSucceeded && f < downloadedFileNames.size(); f++)
         {
             const std::string& localName = downloadedFileNames[f];
-            std::string srcPath = FileSystem::CombinePath(baseDir, localName);
+            std::string srcPath = FileSystem::CombinePath(downloadPath, localName);
 
             scene->mProgressIndex = (int)f + 1;
 
             if (EndsWithZip(localName))
             {
-                unpackOk = xunzipFromFile(
+                unpackSucceeded = xunzipFromFile(
                     srcPath.c_str(),
                     installPath.c_str(),
                     true,
@@ -569,22 +579,23 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
             else
             {
                 std::string dstPath = FileSystem::CombinePath(installPath, localName);
-                MoveFile(srcPath.c_str(), dstPath.c_str());
+                unpackSucceeded = FileSystem::FileCopy(srcPath, dstPath);
             }
+
+            if (!unpackSucceeded)
+                break;
         }
 
         scene->mUnpacking = false;
-        unpackSucceeded = unpackOk;
+    }
 
-        if (unpackOk)
-        {
-            std::string downloadPath = FileSystem::CombinePath(baseDir, downloadedFileNames[0]);
-            UserState::TrySave(ver->appId, ver->versionId, &downloadPath, &installPath);
-        }
+    if (downloadSucceeded && unpackSucceeded)
+    {
+        UserState::TrySave(ver->appId, ver->versionId, &downloadPath, &installPath);
     }
 
     bool cancelled = scene->mDownloadCancelRequested || scene->mUnpackCancelRequested;
-    bool failed = !ok || !unpackSucceeded;
+    bool failed = !downloadSucceeded || !unpackSucceeded;
     scene->mShowFailedOverlay = (failed && !cancelled);
 
     scene->mDownloading = false;

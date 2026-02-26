@@ -158,7 +158,7 @@ bool UserState::PruneMissingPaths()
 
         if (state.downloadPath[0] != '\0') {
             bool exists = false;
-            if (FileSystem::FileExists(state.downloadPath, exists) && !exists) {
+            if (FileSystem::DirectoryExists(state.downloadPath, exists) && !exists) {
                 memset(state.downloadPath, 0, sizeof(state.downloadPath));
                 changed = true;
             }

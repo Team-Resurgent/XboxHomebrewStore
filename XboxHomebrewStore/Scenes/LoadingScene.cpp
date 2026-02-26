@@ -86,6 +86,10 @@ void LoadingScene::Update()
         {
             OutputDebugString( "Could not create HDD0-E:\\Homebrew\\Downloads\n" );
         }
+        if (FileSystem::DirectoryCreate("HDD0-E:\\Homebrew\\Installs") == false)
+        {
+            OutputDebugString( "Could not create HDD0-E:\\Homebrew\\Installs\n" );
+        }
 
         //DeleteImageCache();  // Uncomment to clear image cache on startup
 
