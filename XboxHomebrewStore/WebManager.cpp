@@ -4,7 +4,7 @@
 #include "parson.h"
 #include "JsonHelper.h"
 #include "FileSystem.h"
-const std::string store_api_url = "https://192.168.1.98:5001";
+const std::string store_api_url = "https://192.168.1.164:5001";
 const std::string store_app_controller = "/api/apps";
 const std::string store_versions = "/versions";
 const std::string store_categories = "/api/categories";
