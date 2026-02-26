@@ -12,6 +12,7 @@
 #include "..\InputManager.h"
 #include "..\TextureHelper.h"
 #include "..\StoreManager.h"
+#include "..\ViewState.h"
 #include "..\Debug.h"
 
 StoreScene::StoreScene()
@@ -304,6 +305,7 @@ void StoreScene::Update()
             StoreItem* storeItem = StoreManager::GetWindowStoreItem(mStoreIndex - StoreManager::GetWindowStoreItemOffset());
 
             StoreVersions storeVersions;
+            ViewState::TrySave(storeItem->appId, storeItem->latestVersion);
             if (StoreManager::TryGetStoreVersions(storeItem->appId, &storeVersions))
             {
                 SceneManager* sceneManager = Context::GetSceneManager();

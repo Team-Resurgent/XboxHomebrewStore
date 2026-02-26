@@ -11,6 +11,7 @@
 #include "..\TextureHelper.h"
 #include "..\WebManager.h"
 #include "..\UserState.h"
+#include "..\ViewState.h"
 #include "..\FileSystem.h"
 
 VersionScene::VersionScene(const StoreVersions& storeVersions)

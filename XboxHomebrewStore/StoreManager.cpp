@@ -7,6 +7,7 @@
 #include "TextureHelper.h"
 #include "ImageDownloader.h"
 #include "UserState.h"
+#include "ViewState.h"
 
 namespace {
     int32_t mCategoryIndex;
@@ -266,7 +267,11 @@ bool StoreManager::TryGetStoreVersions(std::string appId, StoreVersions* storeVe
         storeVersion.region = versionItem->region;
         storeVersion.downloadFiles = versionItem->downloadFiles;
         storeVersion.folderName = versionItem->folderName;
+
         storeVersion.state = (i == 0) ? storeItem->state : 0;
+        if (ViewState::GetViewed(storeItem->appId, storeItem->latestVersion)) {
+            storeVersion.state = 0;
+        }
 
         std::vector<UserSaveState> userStates;
         if (UserState::TryGetByAppId(storeItem->appId, userStates))
@@ -350,7 +355,7 @@ bool StoreManager::LoadApplications(void* dest, int32_t offset, int32_t count, i
         storeItems[i].category = appItem->category;
         storeItems[i].description = appItem->description;
         storeItems[i].latestVersion = appItem->latestVersion;
-        storeItems[i].state = appItem->state;
+        storeItems[i].state = ViewState::GetViewed(appItem->id, storeItems[i].latestVersion) ? 0 : appItem->state;
         storeItems[i].cover = nullptr;
 
         std::vector<UserSaveState> userStates;
