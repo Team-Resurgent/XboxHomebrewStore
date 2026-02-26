@@ -244,16 +244,17 @@ bool StoreManager::TryGetStoreVersions(std::string appId, StoreVersions* storeVe
     }
 
     storeVersions->appId = storeItem->appId;
-    storeVersions->name = storeItem->name;
-    storeVersions->author = storeItem->author;
-    storeVersions->description = storeItem->description;
+    storeVersions->name = versionsResponse.name;
+    storeVersions->author =versionsResponse.author;
+    storeVersions->description = versionsResponse.description;
+    storeVersions->latestVersion = versionsResponse.latestVersion;
     storeVersions->cover = nullptr;
     storeVersions->screenshot = nullptr;
 
     storeVersions->versions.clear();
-    for (int32_t i = 0; i < (int32_t)versionsResponse.size(); i++)
+    for (int32_t i = 0; i < (int32_t)versionsResponse.versions.size(); i++)
     {
-        VersionItem* versionItem = &versionsResponse[i];
+        VersionItem* versionItem = &versionsResponse.versions[i];
 
         StoreVersion storeVersion;
         storeVersion.appId = storeItem->appId;
@@ -269,7 +270,7 @@ bool StoreManager::TryGetStoreVersions(std::string appId, StoreVersions* storeVe
         storeVersion.folderName = versionItem->folderName;
 
         storeVersion.state = (i == 0) ? storeItem->state : 0;
-        if (ViewState::GetViewed(storeItem->appId, storeItem->latestVersion)) {
+        if (ViewState::GetViewed(storeItem->appId, storeVersions->latestVersion)) {
             storeVersion.state = 0;
         }
 

@@ -31,7 +31,15 @@ typedef struct
     std::string folderName;
 } VersionItem;
 
-typedef std::vector<VersionItem> VersionsResponse;
+typedef struct
+{
+    std::string id;
+    std::string name;
+    std::string author;
+    std::string description;
+    std::string latestVersion;
+    std::vector<VersionItem> versions;
+} VersionsResponse;
 
 typedef struct {
     std::string name;

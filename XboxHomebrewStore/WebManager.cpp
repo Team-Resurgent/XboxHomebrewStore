@@ -136,29 +136,38 @@ static bool ParseVersionsResponse(const std::string raw, VersionsResponse& out)
     if (!root) {
         return false;
     }
-    JSON_Array* arr = json_value_get_array(root);
-    if (!arr) {
+    JSON_Object* rootObj = json_value_get_object(root);
+    if (!rootObj) {
         json_value_free(root);
         return false;
     }
-    out.clear();
-    size_t count = json_array_get_count(arr);
-    out.reserve(count);
-    for (size_t i = 0; i < count; i++) {
-        JSON_Value* elemVal = json_array_get_value(arr, i);
-        JSON_Object* itemObj = elemVal ? json_value_get_object(elemVal) : nullptr;
-        if (itemObj) {
-            VersionItem ver;
-            ver.id = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "id"));
-            ver.version = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "version"));
-            ver.size = JsonHelper::ToUInt32(JsonHelper::GetObjectMember(itemObj, "size"));
-            ver.releaseDate = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "release_date"));
-            ver.changeLog = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "changelog"));
-            ver.titleId = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "title_id"));
-            ver.region = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "region"));
-            ver.downloadFiles = JsonHelper::ToStringArray(JsonHelper::GetObjectMember(itemObj, "download_files"));
-            ver.folderName = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "folder_name"));
-            out.push_back(ver);
+    out.id = JsonHelper::ToString(JsonHelper::GetObjectMember(rootObj, "id"));
+    out.name = JsonHelper::ToString(JsonHelper::GetObjectMember(rootObj, "name"));
+    out.author = JsonHelper::ToString(JsonHelper::GetObjectMember(rootObj, "author"));
+    out.description = JsonHelper::ToString(JsonHelper::GetObjectMember(rootObj, "description"));
+    out.latestVersion = JsonHelper::ToString(JsonHelper::GetObjectMember(rootObj, "latest_version"));
+
+    JSON_Array* arr = json_object_get_array(rootObj, "versions");
+    out.versions.clear();
+    if (arr) {
+        size_t count = json_array_get_count(arr);
+        out.versions.reserve(count);
+        for (size_t i = 0; i < count; i++) {
+            JSON_Value* elemVal = json_array_get_value(arr, i);
+            JSON_Object* itemObj = elemVal ? json_value_get_object(elemVal) : nullptr;
+            if (itemObj) {
+                VersionItem ver;
+                ver.id = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "id"));
+                ver.version = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "version"));
+                ver.size = JsonHelper::ToUInt32(JsonHelper::GetObjectMember(itemObj, "size"));
+                ver.releaseDate = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "release_date"));
+                ver.changeLog = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "changelog"));
+                ver.titleId = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "title_id"));
+                ver.region = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "region"));
+                ver.downloadFiles = JsonHelper::ToStringArray(JsonHelper::GetObjectMember(itemObj, "download_files"));
+                ver.folderName = JsonHelper::ToString(JsonHelper::GetObjectMember(itemObj, "folder_name"));
+                out.versions.push_back(ver);
+            }
         }
     }
     json_value_free(root);
@@ -705,7 +714,12 @@ bool WebManager::TryGetCategories(CategoriesResponse& result)
 
 bool WebManager::TryGetVersions(const std::string id, VersionsResponse& result)
 {
-    result.clear();
+    result.id.clear();
+    result.name.clear();
+    result.author.clear();
+    result.description.clear();
+    result.latestVersion.clear();
+    result.versions.clear();
 
     std::string url = store_api_url + store_app_controller + "/" + id + store_versions;
 

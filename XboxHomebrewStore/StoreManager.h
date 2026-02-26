@@ -47,6 +47,7 @@ typedef struct
     std::string name;
     std::string author;
     std::string description;
+    std::string latestVersion;
     std::vector<StoreVersion> versions;
     D3DTexture* cover;
     D3DTexture* screenshot;
