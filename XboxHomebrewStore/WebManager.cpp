@@ -186,7 +186,7 @@ static int ProgressCallback(void* clientp, curl_off_t dltotal, curl_off_t dlnow,
 // Helper: apply common performance options to a curl handle
 static void ApplyCommonOptions(CURL* curl)
 {
-    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 30L);
     curl_easy_setopt(curl, CURLOPT_BUFFERSIZE, 65536L);       // 64KB receive buffer (default is 16KB)
     curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, 1L);
     curl_easy_setopt(curl, CURLOPT_TCP_NODELAY, 1L);          // Disable Nagle's algorithm
@@ -358,10 +358,15 @@ static void RunMultiSocketDownload(CURL* curl, FILE* fp, volatile bool* pCancelR
     curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
     curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0");
     curl_easy_setopt(curl, CURLOPT_COOKIEFILE, "");
-    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 120L);
-    curl_easy_setopt(curl, CURLOPT_SSL_SESSIONID_CACHE, 0L);
-    curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1L);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 30L);
+	curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1L);
+
+	// Remove total timeout completely
+	curl_easy_setopt(curl, CURLOPT_TIMEOUT, 0L);
+
+	// Only fail if transfer is extremely slow
+	curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 1024L);   // 1 KB/sec
+	curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 60L);      // for 60 seconds
 
     char* effective_url = nullptr;
     if (curl_easy_getinfo(curl, CURLINFO_EFFECTIVE_URL, &effective_url) == CURLE_OK && effective_url)
