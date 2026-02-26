@@ -578,7 +578,8 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
 
         if (unpackOk)
         {
-            UserState::TrySave(ver->appId, ver->versionId, &baseDir, &installPath);
+            std::string downloadPath = FileSystem::CombinePath(baseDir, downloadedFileNames[0]);
+            UserState::TrySave(ver->appId, ver->versionId, &downloadPath, &installPath);
         }
     }
 

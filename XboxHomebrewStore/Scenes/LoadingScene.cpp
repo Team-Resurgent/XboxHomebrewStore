@@ -104,7 +104,7 @@ void LoadingScene::Update()
     case 4: TextureHelper::Init();          break;
     case 5: StoreManager::Init();           break;
     case 6: FtpServer::Init();              break;
-    case 7: UserState::PruneMissingPaths(); break;
+    //case 7: UserState::PruneMissingPaths(); break;
     default: break;
     }
     mProgress++;

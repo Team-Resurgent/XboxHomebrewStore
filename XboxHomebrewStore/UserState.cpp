@@ -13,7 +13,7 @@ bool UserState::TrySave(const std::string appId, const std::string versionId, co
         uint32_t recordIndex = 0;
         while (FileSystem::FileRead(fileHandle, (char*)&existing, sizeof(UserSaveState), bytesRead) && bytesRead == sizeof(UserSaveState)) {
             if (strcmp(existing.appId, appId.c_str()) == 0 && strcmp(existing.versionId, versionId.c_str()) == 0) {
-                Debug::Print("Updating new userstate.\n");
+                Debug::Print("Updating userstate.\n");
                 if (downloadPath != nullptr) {
                     strcpy(existing.downloadPath, downloadPath->c_str());
                 }
@@ -63,9 +63,22 @@ bool UserState::TryGetByAppId(const std::string appId, std::vector<UserSaveState
         return false;
     }
 
+    uint32_t fileSize = 0;
+    if (!FileSystem::FileSize(fileHandle, fileSize)) {
+        FileSystem::FileClose(fileHandle);
+        return false;
+    }
+
+    const uint32_t recordSize = sizeof(UserSaveState);
+    uint32_t recordCount = fileSize / recordSize;
     UserSaveState state;
-    uint32_t bytesRead = 0;
-    while (FileSystem::FileRead(fileHandle, (char*)&state, sizeof(UserSaveState), bytesRead) && bytesRead == sizeof(UserSaveState)) {
+
+    for (uint32_t i = 0; i < recordCount; i++) {
+        FileSystem::FileSeek(fileHandle, FileSeekModeStart, i * recordSize);
+        uint32_t bytesRead = 0;
+        if (!FileSystem::FileRead(fileHandle, (char*)&state, recordSize, bytesRead) || bytesRead != recordSize) {
+            continue;
+        }
         if (strcmp(state.appId, appId.c_str()) == 0) {
             out.push_back(state);
         }
@@ -82,9 +95,22 @@ bool UserState::TryGetByAppIdAndVersionId(const std::string appId, const std::st
         return false;
     }
 
+    uint32_t fileSize = 0;
+    if (!FileSystem::FileSize(fileHandle, fileSize)) {
+        FileSystem::FileClose(fileHandle);
+        return false;
+    }
+
+    const uint32_t recordSize = sizeof(UserSaveState);
+    uint32_t recordCount = fileSize / recordSize;
     UserSaveState state;
-    uint32_t bytesRead = 0;
-    while (FileSystem::FileRead(fileHandle, (char*)&state, sizeof(UserSaveState), bytesRead) && bytesRead == sizeof(UserSaveState)) {
+
+    for (uint32_t i = 0; i < recordCount; i++) {
+        FileSystem::FileSeek(fileHandle, FileSeekModeStart, i * recordSize);
+        uint32_t bytesRead = 0;
+        if (!FileSystem::FileRead(fileHandle, (char*)&state, recordSize, bytesRead) || bytesRead != recordSize) {
+            continue;
+        }
         if (strcmp(state.appId, appId.c_str()) == 0 && strcmp(state.versionId, versionId.c_str()) == 0) {
             out = state;
             FileSystem::FileClose(fileHandle);
@@ -103,11 +129,23 @@ bool UserState::PruneMissingPaths()
         return false;
     }
 
-    UserSaveState state;
-    uint32_t bytesRead = 0;
-    uint32_t recordIndex = 0;
+    uint32_t fileSize = 0;
+    if (!FileSystem::FileSize(fileHandle, fileSize)) {
+        FileSystem::FileClose(fileHandle);
+        return false;
+    }
 
-    while (FileSystem::FileRead(fileHandle, (char*)&state, sizeof(UserSaveState), bytesRead) && bytesRead == sizeof(UserSaveState)) {
+    const uint32_t recordSize = sizeof(UserSaveState);
+    uint32_t recordCount = fileSize / recordSize;
+
+    UserSaveState state;
+    for (uint32_t recordIndex = 0; recordIndex < recordCount; recordIndex++) {
+        FileSystem::FileSeek(fileHandle, FileSeekModeStart, recordIndex * recordSize);
+        uint32_t bytesRead = 0;
+        if (!FileSystem::FileRead(fileHandle, (char*)&state, recordSize, bytesRead) || bytesRead != recordSize) {
+            continue;
+        }
+
         bool changed = false;
 
         if (state.installPath[0] != '\0') {
@@ -127,12 +165,10 @@ bool UserState::PruneMissingPaths()
         }
 
         if (changed) {
-            FileSystem::FileSeek(fileHandle, FileSeekModeStart, recordIndex * sizeof(UserSaveState));
+            FileSystem::FileSeek(fileHandle, FileSeekModeStart, recordIndex * recordSize);
             uint32_t bytesWritten = 0;
-            FileSystem::FileWrite(fileHandle, (char*)&state, sizeof(UserSaveState), bytesWritten);
+            FileSystem::FileWrite(fileHandle, (char*)&state, recordSize, bytesWritten);
         }
-
-        recordIndex++;
     }
 
     FileSystem::FileClose(fileHandle);

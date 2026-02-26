@@ -8,21 +8,28 @@ bool ViewState::TrySave(const std::string appId, const std::string verId)
 {
     uint32_t fileHandle = 0;
     if (FileSystem::FileOpen(VIEW_STATE_PATH, FileModeReadUpdate, fileHandle)) {
-        ViewSaveState existing;
-        uint32_t bytesRead = 0;
-        uint32_t recordIndex = 0;
-        while (FileSystem::FileRead(fileHandle, (char*)&existing, sizeof(ViewSaveState), bytesRead) && bytesRead == sizeof(ViewSaveState)) {
-            if (strcmp(existing.appId, appId.c_str()) == 0) {
-                Debug::Print("Updating new viewstate.\n");
-                strcpy(existing.verId, verId.c_str());
-                uint32_t offset = recordIndex * sizeof(ViewSaveState);
-                FileSystem::FileSeek(fileHandle, FileSeekModeStart, offset);
-                uint32_t bytesWritten = 0;
-                bool ok = FileSystem::FileWrite(fileHandle, (char*)&existing, sizeof(ViewSaveState), bytesWritten);
-                FileSystem::FileClose(fileHandle);
-                return ok && (bytesWritten == sizeof(ViewSaveState));
+        uint32_t fileSize = 0;
+        if (FileSystem::FileSize(fileHandle, fileSize)) {
+            const uint32_t recordSize = sizeof(ViewSaveState);
+            uint32_t recordCount = fileSize / recordSize;
+            ViewSaveState existing;
+
+            for (uint32_t recordIndex = 0; recordIndex < recordCount; recordIndex++) {
+                FileSystem::FileSeek(fileHandle, FileSeekModeStart, recordIndex * recordSize);
+                uint32_t bytesRead = 0;
+                if (!FileSystem::FileRead(fileHandle, (char*)&existing, recordSize, bytesRead) || bytesRead != recordSize) {
+                    continue;
+                }
+                if (strcmp(existing.appId, appId.c_str()) == 0) {
+                    Debug::Print("Updating viewstate.\n");
+                    strcpy(existing.verId, verId.c_str());
+                    FileSystem::FileSeek(fileHandle, FileSeekModeStart, recordIndex * recordSize);
+                    uint32_t bytesWritten = 0;
+                    bool ok = FileSystem::FileWrite(fileHandle, (char*)&existing, recordSize, bytesWritten);
+                    FileSystem::FileClose(fileHandle);
+                    return ok && (bytesWritten == recordSize);
+                }
             }
-            recordIndex++;
         }
         FileSystem::FileClose(fileHandle);
     }
@@ -47,17 +54,32 @@ bool ViewState::TrySave(const std::string appId, const std::string verId)
 bool ViewState::GetViewed(const std::string appId, const std::string verId)
 {
     uint32_t fileHandle = 0;
-    if (FileSystem::FileOpen(VIEW_STATE_PATH, FileModeReadUpdate, fileHandle)) {
-        ViewSaveState existing;
-        uint32_t bytesRead = 0;
-        uint32_t recordIndex = 0;
-        while (FileSystem::FileRead(fileHandle, (char*)&existing, sizeof(ViewSaveState), bytesRead) && bytesRead == sizeof(ViewSaveState)) {
-            if (strcmp(existing.appId, appId.c_str()) == 0) {
-                return true;
-            }
-            recordIndex++;
-        }
-        FileSystem::FileClose(fileHandle);
+    if (!FileSystem::FileOpen(VIEW_STATE_PATH, FileModeRead, fileHandle)) {
+        return false;
     }
+
+    uint32_t fileSize = 0;
+    if (!FileSystem::FileSize(fileHandle, fileSize)) {
+        FileSystem::FileClose(fileHandle);
+        return false;
+    }
+
+    const uint32_t recordSize = sizeof(ViewSaveState);
+    uint32_t recordCount = fileSize / recordSize;
+    ViewSaveState existing;
+
+    for (uint32_t i = 0; i < recordCount; i++) {
+        FileSystem::FileSeek(fileHandle, FileSeekModeStart, i * recordSize);
+        uint32_t bytesRead = 0;
+        if (!FileSystem::FileRead(fileHandle, (char*)&existing, recordSize, bytesRead) || bytesRead != recordSize) {
+            continue;
+        }
+        if (strcmp(existing.appId, appId.c_str()) == 0) {
+            FileSystem::FileClose(fileHandle);
+            return true;
+        }
+    }
+
+    FileSystem::FileClose(fileHandle);
     return false;
 }
