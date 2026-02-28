@@ -30,6 +30,18 @@ struct MultiSocketContext
     long timeout_ms;
 };
 
+static void ResetCurlGlobal()
+{
+    Debug::Print("Resetting global curl + BearSSL state...\n");
+
+    curl_global_cleanup();
+
+    if (curl_global_init(CURL_GLOBAL_DEFAULT) != CURLE_OK)
+    {
+        Debug::Print("curl_global_init FAILED!\n");
+    }
+}
+
 static int MultiTimerCallback(CURLM* multi, long timeout_ms, void* userp)
 {
     (void)multi;
@@ -637,6 +649,7 @@ bool WebManager::TryDownloadWebData(const std::string url, const std::string fil
 bool WebManager::TryGetApps(AppsResponse& result, int32_t offset, int32_t count, const std::string category, const std::string name)
 {
     result.items.clear();
+	ResetCurlGlobal();
 
     std::string url = store_api_url + store_app_controller + String::Format("?offset=%u&count=%u", offset, count);
 
@@ -683,6 +696,7 @@ bool WebManager::TryGetApps(AppsResponse& result, int32_t offset, int32_t count,
 bool WebManager::TryGetCategories(CategoriesResponse& result)
 {
     result.clear();
+	ResetCurlGlobal();
 
     std::string url = store_api_url + store_categories;
 
@@ -725,6 +739,7 @@ bool WebManager::TryGetVersions(const std::string id, VersionsResponse& result)
     result.description.clear();
     result.latestVersion.clear();
     result.versions.clear();
+	ResetCurlGlobal();
 
     std::string url = store_api_url + store_app_controller + "/" + id + store_versions;
 
@@ -781,8 +796,7 @@ bool WebManager::TryDownloadApiData(const std::string url, const std::string fil
         setvbuf(fp, fileBuf, _IOFBF, 65536);
     }
 
-    curl_global_cleanup();
-    curl_global_init(CURL_GLOBAL_DEFAULT);
+    ResetCurlGlobal();
 
     CURL* curl = curl_easy_init();
     if (curl == nullptr) {
