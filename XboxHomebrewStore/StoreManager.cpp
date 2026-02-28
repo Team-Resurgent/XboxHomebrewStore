@@ -385,6 +385,9 @@ bool StoreManager::LoadApplications(void* dest, int32_t offset, int32_t count, i
 
 bool StoreManager::RefreshApplications()
 {
+	if (!LoadCategories())
+    return false;
+
     for (int32_t i = 0; i < mWindowStoreItemCount; i++)
     {
         StoreItem& storeItem = mWindowStoreItems[i];
