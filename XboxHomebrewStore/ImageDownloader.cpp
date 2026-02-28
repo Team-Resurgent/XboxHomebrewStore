@@ -213,41 +213,78 @@ void ImageDownloader::WorkerLoop()
         }
 
         Request req;
-        bool moreInQueue = false;
+        bool haveRequest = false;
 
         EnterCriticalSection( &m_queueLock );
-        bool haveRequest = !m_queue.empty();
-        if( haveRequest )
+
+        if( !m_queue.empty() )
         {
             req = m_queue.front();
             m_queue.pop_front();
+            haveRequest = true;
         }
-        if ( m_queue.empty() )
+
+        if( m_queue.empty() )
             m_cancelRequested = false;
+
         LeaveCriticalSection( &m_queueLock );
 
-
-        if (!haveRequest )
+        if( !haveRequest )
         {
             Sleep(10);
             continue;
         }
 
         std::string path = CachePathFor( req.appId, req.type );
+
+        // Unique key so cover/screenshot are tracked separately
+        std::string failKey = req.appId;
+        if( req.type == IMAGE_COVER )
+            failKey += "_cover";
+        else
+            failKey += "_screenshot";
+
         bool haveFile = FileExists( path.c_str() );
-        if( !haveFile )
+        bool previouslyFailed = ( m_failed.find( failKey ) != m_failed.end() );
+
+        if( !haveFile && !previouslyFailed )
         {
             EnforceCacheLimit();
+
             bool ok = false;
-            if( req.type == IMAGE_COVER ) {
-                ok = WebManager::TryDownloadCover( req.appId, 144, 204, path, nullptr, nullptr, &m_cancelRequested );
-            } else {
-                ok = WebManager::TryDownloadScreenshot( req.appId, 640, 360, path, nullptr, nullptr, &m_cancelRequested );
+
+            if( req.type == IMAGE_COVER )
+            {
+                ok = WebManager::TryDownloadCover(
+                    req.appId,
+                    144,
+                    204,
+                    path,
+                    NULL,
+                    NULL,
+                    &m_cancelRequested );
             }
-            if( m_cancelRequested || m_quit ) {
+            else
+            {
+                ok = WebManager::TryDownloadScreenshot(
+                    req.appId,
+                    640,
+                    360,
+                    path,
+                    NULL,
+                    NULL,
+                    &m_cancelRequested );
+            }
+
+            if( m_cancelRequested || m_quit )
+            {
                 continue;
             }
-            if( !ok ) {
+
+            if( !ok )
+            {
+                // Mark as failed so we don't retry forever
+                m_failed.insert( failKey );
                 continue;
             }
         }

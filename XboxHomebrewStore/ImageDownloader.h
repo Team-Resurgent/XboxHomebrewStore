@@ -5,6 +5,7 @@
 #pragma once
 
 #include "Main.h"
+#include <set> 
 
 enum ImageDownloadType
 {
@@ -44,4 +45,5 @@ private:
     HANDLE                 m_thread;
     volatile bool          m_quit;
     volatile bool          m_cancelRequested;
+	std::set<std::string>  m_failed;
 };
