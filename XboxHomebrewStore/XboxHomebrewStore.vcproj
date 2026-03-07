@@ -303,6 +303,9 @@
 			Filter="cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx"
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}">
 			<File
+				RelativePath=".\Appsettings.cpp">
+			</File>
+			<File
 				RelativePath=".\Context.cpp">
 			</File>
 			<File
@@ -340,6 +343,9 @@
 			</File>
 			<File
 				RelativePath=".\Network.cpp">
+			</File>
+			<File
+				RelativePath=".\Onscreenkeyboard.cpp">
 			</File>
 			<File
 				RelativePath=".\parson.c">
@@ -508,10 +514,16 @@
 				Name="Scenes"
 				Filter="">
 				<File
+					RelativePath=".\Scenes\Installpathscene.cpp">
+				</File>
+				<File
 					RelativePath=".\Scenes\LoadingScene.cpp">
 				</File>
 				<File
 					RelativePath=".\Scenes\SceneManager.cpp">
+				</File>
+				<File
+					RelativePath=".\Scenes\Settingsscene.cpp">
 				</File>
 				<File
 					RelativePath=".\Scenes\StoreScene.cpp">
@@ -525,6 +537,9 @@
 			Name="Header Files"
 			Filter="h;hpp;hxx;hm;inl;inc;xsd"
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}">
+			<File
+				RelativePath=".\Appsettings.h">
+			</File>
 			<File
 				RelativePath=".\Context.h">
 			</File>
@@ -569,6 +584,9 @@
 			</File>
 			<File
 				RelativePath=".\Network.h">
+			</File>
+			<File
+				RelativePath=".\Onscreenkeyboard.h">
 			</File>
 			<File
 				RelativePath=".\parson.h">
@@ -638,6 +656,9 @@
 				Name="Scenes"
 				Filter="">
 				<File
+					RelativePath=".\Scenes\Installpathscene.h">
+				</File>
+				<File
 					RelativePath=".\Scenes\LoadingScene.h">
 				</File>
 				<File
@@ -645,6 +666,9 @@
 				</File>
 				<File
 					RelativePath=".\Scenes\SceneManager.h">
+				</File>
+				<File
+					RelativePath=".\Scenes\Settingsscene.h">
 				</File>
 				<File
 					RelativePath=".\Scenes\StoreScene.h">

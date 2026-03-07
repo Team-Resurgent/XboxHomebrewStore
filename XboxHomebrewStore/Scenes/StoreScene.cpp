@@ -1,6 +1,7 @@
 #include "StoreScene.h"
 #include "SceneManager.h"
 #include "VersionScene.h"
+#include "SettingsScene.h"
 
 #include "..\Main.h"
 #include "..\Math.h"
@@ -55,7 +56,7 @@ void StoreScene::DrawFooterControl(float& x, float footerY, const char* iconName
         Drawing::DrawTexturedRect(icon, 0xffffffff, x, iconY, iconW, iconH);
         x += iconW + gap;
     }
-    Font::DrawText(FONT_NORMAL, label, COLOR_WHITE, (int)x, (int)textY);
+    Font::DrawText(FONT_NORMAL, label, COLOR_WHITE, x, textY);
     Font::MeasureText(FONT_NORMAL, label, &textWidth);
     x += textWidth + groupSpacing;
 }
@@ -69,6 +70,7 @@ void StoreScene::RenderFooter()
 
     DrawFooterControl(x, footerY, "ButtonA", "Select");
     DrawFooterControl(x, footerY, "Dpad", "Navigate");
+    DrawFooterControl(x, footerY, "Start", "Settings");
 }
 
 void StoreScene::RenderCategorySidebar()
@@ -259,6 +261,12 @@ void StoreScene::Render()
 
 void StoreScene::Update()
 {
+    if (InputManager::ControllerPressed(ControllerStart, -1))
+    {
+        Context::GetSceneManager()->PushScene(new SettingsScene());
+        return;
+    }
+
     if (mSideBarFocused)
     {
         if (InputManager::ControllerPressed(ControllerDpadUp, -1))
