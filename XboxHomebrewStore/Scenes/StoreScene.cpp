@@ -13,6 +13,7 @@
 #include "..\InputManager.h"
 #include "..\TextureHelper.h"
 #include "..\StoreManager.h"
+#include "..\StoreList.h"
 #include "..\ViewState.h"
 #include "..\Debug.h"
 
@@ -30,6 +31,16 @@ StoreScene::~StoreScene()
 
 void StoreScene::OnResume()
 {
+    if (StoreList::WasStoreChanged())
+    {
+        StoreList::ClearStoreChangedFlag();
+        mStoreIndex               = 0;
+        mHighlightedCategoryIndex = 0;
+        mSideBarFocused           = false;
+        StoreManager::Reset();
+        return;
+    }
+
     StoreManager::SetCategoryIndex(StoreManager::GetCategoryIndex());
     mStoreIndex = 0;
 }

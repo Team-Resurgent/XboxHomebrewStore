@@ -37,6 +37,36 @@ bool StoreManager::Init()
     return RefreshApplications();
 }
 
+// ==========================================================================
+// Reset  –  release current data and re-fetch from the now-active store URL
+// ==========================================================================
+bool StoreManager::Reset()
+{
+    // Release all cover textures in the current window
+    for (int32_t i = 0; i < mWindowStoreItemCount; i++)
+    {
+        if (mWindowStoreItems[i].cover != nullptr)
+        {
+            mWindowStoreItems[i].cover->Release();
+            mWindowStoreItems[i].cover = nullptr;
+        }
+    }
+
+    // Clear window buffer and indices
+    memset(mWindowStoreItems, 0, sizeof(StoreItem) * Context::GetGridCells());
+    memset(mTempStoreItems,   0, sizeof(StoreItem) * Context::GetGridCols());
+    mCategoryIndex         = 0;
+    mWindowStoreItemOffset = 0;
+    mWindowStoreItemCount  = 0;
+    mCategories.clear();
+
+    // Re-fetch from the new active store URL
+    if (!LoadCategories())
+        return false;
+
+    return RefreshApplications();
+}
+
 int32_t StoreManager::GetCategoryCount() 
 { 
     return mCategories.size(); 
@@ -49,22 +79,30 @@ int32_t StoreManager::GetCategoryIndex()
 
 void StoreManager::SetCategoryIndex(int32_t categoryIndex)
 {
+    if (mCategories.empty() || categoryIndex < 0 || categoryIndex >= (int32_t)mCategories.size())
+        return;
     mCategoryIndex = categoryIndex;
     RefreshApplications();
 }
 
 StoreCategory* StoreManager::GetStoreCategory(int32_t categoryIndex) 
 { 
+    if (categoryIndex < 0 || categoryIndex >= (int32_t)mCategories.size())
+        return NULL;
     return &mCategories[categoryIndex]; 
 }
 
 int32_t StoreManager::GetSelectedCategoryTotal() 
 { 
+    if (mCategories.empty() || mCategoryIndex < 0 || mCategoryIndex >= (int32_t)mCategories.size())
+        return 0;
     return mCategories[mCategoryIndex].count; 
 }
 
 std::string StoreManager::GetSelectedCategoryName() 
 { 
+    if (mCategories.empty() || mCategoryIndex < 0 || mCategoryIndex >= (int32_t)mCategories.size())
+        return std::string("");
     return mCategories[mCategoryIndex].name; 
 }
 
@@ -85,11 +123,14 @@ StoreItem* StoreManager::GetWindowStoreItem(int32_t storeItemIndex)
 
 bool StoreManager::HasPrevious()
 {
+    if (mCategories.empty()) return false;
     return mWindowStoreItemOffset >= Context::GetGridCols();
 }
 
 bool StoreManager::HasNext()
 {
+    if (mCategories.empty() || mCategoryIndex < 0 || mCategoryIndex >= (int32_t)mCategories.size())
+        return false;
     int32_t categoryItemCount = mCategories[mCategoryIndex].count;
     int32_t windowStoreItemEndOffset = mWindowStoreItemOffset + mWindowStoreItemCount;
     return windowStoreItemEndOffset < categoryItemCount;

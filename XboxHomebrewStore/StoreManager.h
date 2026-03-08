@@ -57,6 +57,7 @@ class StoreManager
 {
 public:
     static bool Init();
+    static bool Reset();   // Re-fetch from active store URL (call after switching stores)
     static int32_t GetCategoryCount();
     static int32_t GetCategoryIndex();
     static void SetCategoryIndex(int32_t categoryIndex);

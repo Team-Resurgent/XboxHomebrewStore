@@ -17,6 +17,7 @@
 #include "..\FtpServer.h"
 #include "..\UserState.h"
 #include "..\AppSettings.h"
+#include "..\StoreList.h"
 
 static void DeleteImageCache()
 {
@@ -64,7 +65,7 @@ LoadingScene::~LoadingScene()
 
 void LoadingScene::Update()
 {
-    if (mProgress >= 9)
+    if (mProgress >= 10)
     {
         if (FileSystem::DirectoryCreate("T:\\Cache") == false)
         {
@@ -110,6 +111,7 @@ void LoadingScene::Update()
     case 5: StoreManager::Init();           break;
     case 6: FtpServer::Init();              break;
     case 7: AppSettings::Load();            break;
+    case 8: StoreList::Load();              break;
     default: break;
     }
     mProgress++;
@@ -121,8 +123,8 @@ void LoadingScene::Render()
     float h = Context::GetScreenHeight();
     Drawing::DrawFilledRect(COLOR_BG, 0, 0, w, h);
 
-    int step = (mProgress < 9) ? (mProgress + 1) : 9;
-    std::string progressText = String::Format("%d of 9", step);
+    int step = (mProgress < 10) ? (mProgress + 1) : 10;
+    std::string progressText = String::Format("%d of 10", step);
     float centerX = w * 0.5f;
     float centerY = h * 0.5f;
     float loadingW = 0.0f, progressW = 0.0f;

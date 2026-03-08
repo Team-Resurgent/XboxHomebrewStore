@@ -4,7 +4,9 @@
 #include "parson.h"
 #include "JsonHelper.h"
 #include "FileSystem.h"
-const std::string store_api_url = "https://192.168.1.164:5001";
+#include "StoreList.h"
+// StoreList::GetActiveUrl() is now read dynamically via StoreList::GetActiveUrl()
+// keeping path constants here
 const std::string store_app_controller = "/api/apps";
 const std::string store_versions = "/versions";
 const std::string store_categories = "/api/categories";
@@ -651,7 +653,7 @@ bool WebManager::TryGetApps(AppsResponse& result, int32_t offset, int32_t count,
     result.items.clear();
 	ResetCurlGlobal();
 
-    std::string url = store_api_url + store_app_controller + String::Format("?offset=%u&count=%u", offset, count);
+    std::string url = StoreList::GetActiveUrl() + store_app_controller + String::Format("?offset=%u&count=%u", offset, count);
 
     if (!category.empty()) {
         url += "&category=" + category;
@@ -698,7 +700,7 @@ bool WebManager::TryGetCategories(CategoriesResponse& result)
     result.clear();
 	ResetCurlGlobal();
 
-    std::string url = store_api_url + store_categories;
+    std::string url = StoreList::GetActiveUrl() + store_categories;
 
     CURL* curl = curl_easy_init();
     if (!curl) {
@@ -741,7 +743,7 @@ bool WebManager::TryGetVersions(const std::string id, VersionsResponse& result)
     result.versions.clear();
 	ResetCurlGlobal();
 
-    std::string url = store_api_url + store_app_controller + "/" + id + store_versions;
+    std::string url = StoreList::GetActiveUrl() + store_app_controller + "/" + id + store_versions;
 
     CURL* curl = curl_easy_init();
     if (!curl) {
@@ -866,7 +868,7 @@ bool WebManager::TryDownloadCover(const std::string id, int32_t width, int32_t h
     if (id.empty()) {
         return false;
     }
-    std::string url = store_api_url + "/api/Cover/" + id + String::Format("?width=%u&height=%u", width, height);
+    std::string url = StoreList::GetActiveUrl() + "/api/Cover/" + id + String::Format("?width=%u&height=%u", width, height);
     return TryDownloadApiData(url, filePath, progressFn, progressUserData, pCancelRequested, nullptr, nullptr);
 }
 
@@ -875,7 +877,7 @@ bool WebManager::TryDownloadScreenshot(const std::string id, int32_t width, int3
     if (id.empty()) {
         return false;
     }
-    std::string url = store_api_url + "/api/Screenshot/" + id + String::Format("?width=%u&height=%u", width, height);
+    std::string url = StoreList::GetActiveUrl() + "/api/Screenshot/" + id + String::Format("?width=%u&height=%u", width, height);
     return TryDownloadApiData(url, filePath, progressFn, progressUserData, pCancelRequested, nullptr, nullptr);
 }
 
@@ -884,7 +886,7 @@ bool WebManager::TryDownloadApp(const std::string id, const std::string filePath
     if (id.empty()) {
         return false;
     }
-    std::string url = store_api_url + "/api/Download/" + id;
+    std::string url = StoreList::GetActiveUrl() + "/api/Download/" + id;
     return TryDownloadApiData(url, filePath, progressFn, progressUserData, pCancelRequested, nullptr, nullptr);
 }
 
@@ -893,7 +895,7 @@ bool WebManager::TryDownloadVersionFile(const std::string versionId, int32_t fil
     if (versionId.empty()) {
         return false;
     }
-    std::string url = store_api_url + "/api/Download/" + versionId + String::Format("?fileIndex=%d", fileIndex);
+    std::string url = StoreList::GetActiveUrl() + "/api/Download/" + versionId + String::Format("?fileIndex=%d", fileIndex);
     return TryDownloadApiData(url, filePath, progressFn, progressUserData, pCancelRequested, nullptr, nullptr);
 }
 

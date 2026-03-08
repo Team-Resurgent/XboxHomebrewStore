@@ -354,6 +354,9 @@
 				RelativePath=".\SocketUtility.cpp">
 			</File>
 			<File
+				RelativePath=".\Storelist.cpp">
+			</File>
+			<File
 				RelativePath=".\StoreManager.cpp">
 			</File>
 			<File
@@ -526,6 +529,9 @@
 					RelativePath=".\Scenes\Settingsscene.cpp">
 				</File>
 				<File
+					RelativePath=".\Scenes\Storemanagerscene.cpp">
+				</File>
+				<File
 					RelativePath=".\Scenes\StoreScene.cpp">
 				</File>
 				<File
@@ -604,6 +610,9 @@
 				RelativePath=".\stb_image.h">
 			</File>
 			<File
+				RelativePath=".\Storelist.h">
+			</File>
+			<File
 				RelativePath=".\StoreManager.h">
 			</File>
 			<File
@@ -669,6 +678,9 @@
 				</File>
 				<File
 					RelativePath=".\Scenes\Settingsscene.h">
+				</File>
+				<File
+					RelativePath=".\Scenes\Storemanagerscene.h">
 				</File>
 				<File
 					RelativePath=".\Scenes\StoreScene.h">

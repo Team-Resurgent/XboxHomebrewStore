@@ -562,14 +562,21 @@ void InstallPathScene::RenderDeleteConfirm()
     Font::DrawText(FONT_NORMAL, msg.c_str(), COLOR_TEXT_GRAY,
                    (int)(px + 16.0f), (int)(py + 46.0f));
 
-    float hx = px + 16.0f;
-    float hy  = py + panelH - 36.0f;
+    float iW    = (float)ASSET_CONTROLLER_ICON_WIDTH;
+    float iH    = (float)ASSET_CONTROLLER_ICON_HEIGHT;
+    float delW  = 0.0f;
+    float canW  = 0.0f;
+    Font::MeasureText(FONT_NORMAL, "Delete", &delW);
+    Font::MeasureText(FONT_NORMAL, "Cancel", &canW);
+    float pairW = (iW + 4.0f + delW) + 24.0f + (iW + 4.0f + canW);
+    float hx    = px + (panelW - pairW) * 0.5f;
+    float hy    = py + panelH - 36.0f;
 
     D3DTexture* iconA = TextureHelper::GetControllerIcon("ButtonA");
-    if (iconA) { Drawing::DrawTexturedRect(iconA, 0xffffffff, hx, hy, ASSET_CONTROLLER_ICON_WIDTH, ASSET_CONTROLLER_ICON_HEIGHT); hx += ASSET_CONTROLLER_ICON_WIDTH + 4.0f; }
-    Font::DrawText(FONT_NORMAL, "Delete", 0xFFEF5350, hx, hy); hx += 80.0f;
+    if (iconA) { Drawing::DrawTexturedRect(iconA, 0xffffffff, hx, hy, iW, iH); hx += iW + 4.0f; }
+    Font::DrawText(FONT_NORMAL, "Delete", 0xFFEF5350, (int)hx, (int)hy); hx += delW + 24.0f;
 
     D3DTexture* iconB = TextureHelper::GetControllerIcon("ButtonB");
-    if (iconB) { Drawing::DrawTexturedRect(iconB, 0xffffffff, hx, hy, ASSET_CONTROLLER_ICON_WIDTH, ASSET_CONTROLLER_ICON_HEIGHT); hx += ASSET_CONTROLLER_ICON_WIDTH + 4.0f; }
-    Font::DrawText(FONT_NORMAL, "Cancel", COLOR_WHITE, hx, hy);
+    if (iconB) { Drawing::DrawTexturedRect(iconB, 0xffffffff, hx, hy, iW, iH); hx += iW + 4.0f; }
+    Font::DrawText(FONT_NORMAL, "Cancel", COLOR_WHITE, (int)hx, (int)hy);
 }
