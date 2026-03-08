@@ -22,7 +22,7 @@
 static void OnInstallPathConfirmed(const std::string& path, void* userData)
 {
     VersionScene* scene = (VersionScene*)userData;
-    if (scene != nullptr)
+    if (scene != NULL)
         scene->SetPendingInstallPath(path);
 }
 
@@ -48,7 +48,7 @@ VersionScene::VersionScene(const StoreVersions& storeVersions)
     mDownloadCancelRequested = false;
     mDownloadCurrent = 0;
     mDownloadTotal = 0;
-    mDownloadThread = nullptr;
+    mDownloadThread = NULL;
     mUnpacking = false;
     mUnpackCancelRequested = false;
     mUnpackCurrent = 0;
@@ -63,27 +63,27 @@ VersionScene::VersionScene(const StoreVersions& storeVersions)
     const float infoXPos = 350.0f;
     float descMaxWidth = (float)Context::GetScreenWidth() - infoXPos - 20.0f;
     Font::MeasureTextWrapped(FONT_NORMAL, mStoreVersions.description, descMaxWidth,
-                             nullptr, &mDescriptionHeight);
+                             NULL, &mDescriptionHeight);
     if (!mStoreVersions.versions.empty())
     {
         Font::MeasureTextWrapped(FONT_NORMAL, mStoreVersions.versions[0].changeLog,
-                                 descMaxWidth, nullptr, &mChangeLogHeight);
+                                 descMaxWidth, NULL, &mChangeLogHeight);
         mLastMeasuredVersionIndex = 0;
     }
 }
 
 VersionScene::~VersionScene()
 {
-    if (mStoreVersions.cover != nullptr)
+    if (mStoreVersions.cover != NULL)
         mStoreVersions.cover->Release();
-    if (mStoreVersions.screenshot != nullptr)
+    if (mStoreVersions.screenshot != NULL)
         mStoreVersions.screenshot->Release();
-    if (mDownloadThread != nullptr)
+    if (mDownloadThread != NULL)
     {
         mDownloadCancelRequested = true;
         WaitForSingleObject(mDownloadThread, INFINITE);
         CloseHandle(mDownloadThread);
-        mDownloadThread = nullptr;
+        mDownloadThread = NULL;
     }
 }
 
@@ -135,11 +135,11 @@ void VersionScene::StartDownload()
 {
     if (mDownloading || mStoreVersions.versions.empty()) return;
 
-    if (mDownloadThread != nullptr)
+    if (mDownloadThread != NULL)
     {
         WaitForSingleObject(mDownloadThread, INFINITE);
         CloseHandle(mDownloadThread);
-        mDownloadThread = nullptr;
+        mDownloadThread = NULL;
     }
 
     StoreVersion* ver = &mStoreVersions.versions[mHighlightedVersionIndex];
@@ -163,8 +163,8 @@ void VersionScene::StartDownload()
     mShowAfterInstallDialog = false;
     mDownloading = true;
 
-    mDownloadThread = CreateThread(nullptr, 0, DownloadThreadProc, this, 0, nullptr);
-    if (mDownloadThread == nullptr)
+    mDownloadThread = CreateThread(NULL, 0, DownloadThreadProc, this, 0, NULL);
+    if (mDownloadThread == NULL)
         mDownloading = false;
 }
 
@@ -192,7 +192,7 @@ void VersionScene::HandleAfterInstall()
 void VersionScene::DownloadProgressCb(uint32_t dlNow, uint32_t dlTotal, void* userData)
 {
     VersionScene* scene = (VersionScene*)userData;
-    if (scene != nullptr)
+    if (scene != NULL)
     {
         scene->mDownloadCurrent = dlNow;
         scene->mDownloadTotal   = (uint32_t)dlTotal;
@@ -204,7 +204,7 @@ bool VersionScene::UnpackProgressCb(int currentFile, int totalFiles,
 {
     (void)currentFileName;
     VersionScene* scene = (VersionScene*)userData;
-    if (scene != nullptr)
+    if (scene != NULL)
     {
         if (scene->mUnpackCancelRequested) return false;
         scene->mUnpackCurrent = currentFile;
@@ -226,7 +226,7 @@ static bool EndsWithZip(const std::string& path)
 DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
 {
     VersionScene* scene = (VersionScene*)param;
-    if (scene == nullptr) return 0;
+    if (scene == NULL) return 0;
 
     StoreVersion* ver = &scene->mStoreVersions.versions[scene->mHighlightedVersionIndex];
     std::string versionId = ver->versionId;
@@ -272,7 +272,7 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
 
             const char* illegal = "\\/:*?\"<>|";
             for (size_t i = 0; i < fileName.size(); ++i)
-                if (strchr(illegal, fileName[i]) != nullptr) fileName[i] = '_';
+                if (strchr(illegal, fileName[i]) != NULL) fileName[i] = '_';
 
             downloadedFileNames[f] = fileName;
 
@@ -363,8 +363,8 @@ void VersionScene::Render()
     if (mNeedsUpdate)
     {
         mNeedsUpdate = false;
-        if (mStoreVersions.cover != nullptr)     mStoreVersions.cover->Release();
-        if (mStoreVersions.screenshot != nullptr) mStoreVersions.screenshot->Release();
+        if (mStoreVersions.cover != NULL)     mStoreVersions.cover->Release();
+        if (mStoreVersions.screenshot != NULL) mStoreVersions.screenshot->Release();
         StoreManager::TryGetStoreVersions(mStoreVersions.appId, &mStoreVersions);
     }
 
@@ -397,7 +397,7 @@ void VersionScene::DrawFooterControl(float& x, float footerY,
 {
     float textWidth = 0.0f;
     D3DTexture* icon = TextureHelper::GetControllerIcon(iconName);
-    if (icon != nullptr)
+    if (icon != NULL)
     {
         Drawing::DrawTexturedRect(icon, 0xffffffff, x, footerY + 10.0f,
             ASSET_CONTROLLER_ICON_WIDTH, ASSET_CONTROLLER_ICON_HEIGHT);
@@ -532,7 +532,7 @@ void VersionScene::RenderListView()
     if (mHighlightedVersionIndex != mLastMeasuredVersionIndex)
     {
         Font::MeasureTextWrapped(FONT_NORMAL, storeVersion->changeLog,
-                                 infoMaxWidth, nullptr, &mChangeLogHeight);
+                                 infoMaxWidth, NULL, &mChangeLogHeight);
         mLastMeasuredVersionIndex = mHighlightedVersionIndex;
     }
 
@@ -555,7 +555,7 @@ void VersionScene::RenderListView()
 
     // Screenshot
     D3DTexture* screenshot = mStoreVersions.screenshot;
-    if (screenshot == nullptr)
+    if (screenshot == NULL)
     {
         if (ImageDownloader::IsScreenshotCached(mStoreVersions.appId))
         {
@@ -575,7 +575,7 @@ void VersionScene::RenderListView()
 
     // Cover
     D3DTexture* cover = mStoreVersions.cover;
-    if (cover == nullptr)
+    if (cover == NULL)
     {
         if (ImageDownloader::IsCoverCached(mStoreVersions.appId))
         {
@@ -695,7 +695,7 @@ void VersionScene::RenderDownloadOverlay()
     float hx = px + 20.0f;
     float hy = py + panelH - 28.0f;
     D3DTexture* iconB = TextureHelper::GetControllerIcon("ButtonB");
-    if (iconB != nullptr)
+    if (iconB != NULL)
     {
         Drawing::DrawTexturedRect(iconB, 0xffffffff, hx, hy - 2.0f,
             ASSET_CONTROLLER_ICON_WIDTH, ASSET_CONTROLLER_ICON_HEIGHT);
@@ -726,7 +726,7 @@ void VersionScene::RenderFailedOverlay()
     float hx = px + 20.0f;
     float hy = py + panelH - 32.0f;
     D3DTexture* iconA = TextureHelper::GetControllerIcon("ButtonA");
-    if (iconA != nullptr)
+    if (iconA != NULL)
     {
         Drawing::DrawTexturedRect(iconA, 0xffffffff, hx, hy - 2.0f,
             ASSET_CONTROLLER_ICON_WIDTH, ASSET_CONTROLLER_ICON_HEIGHT);
@@ -756,27 +756,32 @@ void VersionScene::RenderAfterInstallDialog()
     Font::DrawText(FONT_NORMAL, "Keep the downloaded zip file?", COLOR_TEXT_GRAY,
                    px + 16.0f, py + 42.0f);
 
-    float hx = px + 16.0f;
-    float hy = py + panelH - 32.0f;
+    float iW   = (float)ASSET_CONTROLLER_ICON_WIDTH;
+    float iH   = (float)ASSET_CONTROLLER_ICON_HEIGHT;
+    float delW = 0.0f;
+    float kepW = 0.0f;
+    Font::MeasureText(FONT_NORMAL, "Delete", &delW);
+    Font::MeasureText(FONT_NORMAL, "Keep",   &kepW);
+    float pairW = (iW + 4.0f + delW) + 24.0f + (iW + 4.0f + kepW);
+    float hx    = px + (panelW - pairW) * 0.5f;
+    float hy    = py + panelH - 32.0f;
 
     D3DTexture* iconA = TextureHelper::GetControllerIcon("ButtonA");
-    if (iconA != nullptr)
+    if (iconA != NULL)
     {
-        Drawing::DrawTexturedRect(iconA, 0xffffffff, hx, hy - 2.0f,
-            ASSET_CONTROLLER_ICON_WIDTH, ASSET_CONTROLLER_ICON_HEIGHT);
-        hx += ASSET_CONTROLLER_ICON_WIDTH + 4.0f;
+        Drawing::DrawTexturedRect(iconA, 0xffffffff, hx, hy - 2.0f, iW, iH);
+        hx += iW + 4.0f;
     }
-    Font::DrawText(FONT_NORMAL, "Delete", 0xFFEF5350, hx, hy);
-    hx += 80.0f;
+    Font::DrawText(FONT_NORMAL, "Delete", 0xFFEF5350, (int)hx, (int)hy);
+    hx += delW + 24.0f;
 
     D3DTexture* iconB = TextureHelper::GetControllerIcon("ButtonB");
-    if (iconB != nullptr)
+    if (iconB != NULL)
     {
-        Drawing::DrawTexturedRect(iconB, 0xffffffff, hx, hy - 2.0f,
-            ASSET_CONTROLLER_ICON_WIDTH, ASSET_CONTROLLER_ICON_HEIGHT);
-        hx += ASSET_CONTROLLER_ICON_WIDTH + 4.0f;
+        Drawing::DrawTexturedRect(iconB, 0xffffffff, hx, hy - 2.0f, iW, iH);
+        hx += iW + 4.0f;
     }
-    Font::DrawText(FONT_NORMAL, "Keep", COLOR_WHITE, hx, hy);
+    Font::DrawText(FONT_NORMAL, "Keep", COLOR_WHITE, (int)hx, (int)hy);
 }
 
 // ==========================================================================
