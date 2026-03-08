@@ -4,8 +4,7 @@
 
 #define SETTINGS_PATH "T:\\Settings.bin"
 
-#define DEFAULT_DOWNLOAD_PATH  "HDD0-E:\\Homebrew\\Downloads\\"
-#define DEFAULT_INSTALL_PATH   "HDD0-E:\\Homebrew\\Installs\\"
+#define DEFAULT_DOWNLOAD_PATH  "HDD0-E:\\XHS Downloads\\"
 
 AppSettingsData AppSettings::mData;
 bool            AppSettings::mLoaded = false;
@@ -14,9 +13,8 @@ bool            AppSettings::mLoaded = false;
 void AppSettings::ApplyDefaults()
 {
     memset(&mData, 0, sizeof(AppSettingsData));
-    strncpy(mData.downloadPath,   DEFAULT_DOWNLOAD_PATH,  sizeof(mData.downloadPath)  - 1);
-    strncpy(mData.lastInstallPath, DEFAULT_INSTALL_PATH,  sizeof(mData.lastInstallPath) - 1);
-    mData.afterInstallAction = (uint32_t)AfterInstallDelete;
+    strncpy(mData.downloadPath, DEFAULT_DOWNLOAD_PATH, sizeof(mData.downloadPath) - 1);
+    mData.afterInstallAction = (uint32_t)AfterInstallAsk;
 }
 
 // ==========================================================================
@@ -49,14 +47,11 @@ bool AppSettings::Load()
     }
 
     // Null-terminate string fields defensively
-    mData.downloadPath[sizeof(mData.downloadPath)     - 1] = '\0';
-    mData.lastInstallPath[sizeof(mData.lastInstallPath) - 1] = '\0';
+    mData.downloadPath[sizeof(mData.downloadPath) - 1] = '\0';
 
-    // If paths were blank (older file), apply defaults for those fields
+    // If path was blank (older file), apply default
     if (mData.downloadPath[0] == '\0')
         strncpy(mData.downloadPath, DEFAULT_DOWNLOAD_PATH, sizeof(mData.downloadPath) - 1);
-    if (mData.lastInstallPath[0] == '\0')
-        strncpy(mData.lastInstallPath, DEFAULT_INSTALL_PATH, sizeof(mData.lastInstallPath) - 1);
 
     // Clamp enum value
     if (mData.afterInstallAction > (uint32_t)AfterInstallAsk)
@@ -91,12 +86,6 @@ std::string AppSettings::GetDownloadPath()
     return std::string(mData.downloadPath);
 }
 
-std::string AppSettings::GetLastInstallPath()
-{
-    if (!mLoaded) Load();
-    return std::string(mData.lastInstallPath);
-}
-
 AfterInstallAction AppSettings::GetAfterInstallAction()
 {
     if (!mLoaded) Load();
@@ -111,13 +100,6 @@ void AppSettings::SetDownloadPath(const std::string& path)
     if (!mLoaded) Load();
     strncpy(mData.downloadPath, path.c_str(), sizeof(mData.downloadPath) - 1);
     mData.downloadPath[sizeof(mData.downloadPath) - 1] = '\0';
-}
-
-void AppSettings::SetLastInstallPath(const std::string& path)
-{
-    if (!mLoaded) Load();
-    strncpy(mData.lastInstallPath, path.c_str(), sizeof(mData.lastInstallPath) - 1);
-    mData.lastInstallPath[sizeof(mData.lastInstallPath) - 1] = '\0';
 }
 
 void AppSettings::SetAfterInstallAction(AfterInstallAction action)

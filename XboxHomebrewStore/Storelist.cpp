@@ -115,6 +115,10 @@ bool StoreList::Save()
     }
 
     FileSystem::FileClose(fileHandle);
+    if (ok)
+        Debug::Print("StoreList: saved %d entries.\n", mCount);
+    else
+        Debug::Print("StoreList: save failed.\n");
     return ok;
 }
 
@@ -176,6 +180,11 @@ bool StoreList::Edit(int32_t index, const std::string& name, const std::string& 
     mEntries[index].name[STORE_NAME_MAX - 1] = '\0';
     strncpy(mEntries[index].url, url.c_str(), STORE_URL_MAX - 1);
     mEntries[index].url[STORE_URL_MAX - 1] = '\0';
+
+    // If the edited entry is the active store, trigger a reload in StoreScene
+    if (index == mActiveIndex)
+        mStoreChanged = true;
+
     return true;
 }
 

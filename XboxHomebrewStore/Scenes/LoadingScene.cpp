@@ -65,7 +65,7 @@ LoadingScene::~LoadingScene()
 
 void LoadingScene::Update()
 {
-    if (mProgress >= 10)
+    if (mProgress >= 9)
     {
         if (FileSystem::DirectoryCreate("T:\\Cache") == false)
         {
@@ -103,15 +103,15 @@ void LoadingScene::Update()
 
     switch (mProgress)
     {
-    case 0: DriveMount::Init();             break;
-    case 1: Network::Init();                break;
-    case 2: WebManager::Init();             break;
-    case 3: WebManager::TrySyncTime();      break;
-    case 4: TextureHelper::Init();          break;
-    case 5: StoreManager::Init();           break;
-    case 6: FtpServer::Init();              break;
-    case 7: AppSettings::Load();            break;
-    case 8: StoreList::Load();              break;
+    case 0: DriveMount::Init();                                          break;
+    case 1: Network::Init();                                             break;
+    case 2: WebManager::Init();                                          break;
+    case 3: WebManager::TrySyncTime();                                   break;
+    case 4: if (!AppSettings::Load()) AppSettings::Save();               break;
+    case 5: if (!StoreList::Load())   StoreList::Save();                 break;
+    case 6: TextureHelper::Init();                                       break;
+    case 7: StoreManager::Init();                                        break;
+    case 8: FtpServer::Init();                                           break;
     default: break;
     }
     mProgress++;
@@ -123,8 +123,8 @@ void LoadingScene::Render()
     float h = Context::GetScreenHeight();
     Drawing::DrawFilledRect(COLOR_BG, 0, 0, w, h);
 
-    int step = (mProgress < 10) ? (mProgress + 1) : 10;
-    std::string progressText = String::Format("%d of 10", step);
+    int step = (mProgress < 9) ? (mProgress + 1) : 9;
+    std::string progressText = String::Format("%d of 9", step);
     float centerX = w * 0.5f;
     float centerY = h * 0.5f;
     float loadingW = 0.0f, progressW = 0.0f;

@@ -104,9 +104,6 @@ void VersionScene::OnResume()
 
     if (!mPendingInstallPath.empty())
     {
-        // Save chosen path as last-used so next time the browser pre-navigates here
-        AppSettings::SetLastInstallPath(mPendingInstallPath);
-        AppSettings::Save();
         StartDownload();
         mPendingInstallPath = "";
     }
@@ -146,13 +143,25 @@ void VersionScene::StartDownload()
 
     // Build download path from settings
     std::string downloadsRoot = AppSettings::GetDownloadPath();
+
+    // Ensure the downloads root folder exists — it may have been deleted
+    bool rootExists = false;
+    FileSystem::DirectoryExists(downloadsRoot, rootExists);
+    if (!rootExists)
+    {
+        if (!FileSystem::DirectoryCreate(downloadsRoot))
+        {
+            // Can't create root — show error and bail
+            mShowFailedOverlay = true;
+            return;
+        }
+    }
+
     mDownloadPath = FileSystem::CombinePath(downloadsRoot, ver->folderName);
 
     // Install path was chosen by the user via InstallPathScene
     // Append the app folder name so each app gets its own subfolder
-    mInstallPath = FileSystem::CombinePath(mPendingInstallPath.empty()
-        ? AppSettings::GetLastInstallPath()
-        : mPendingInstallPath, ver->folderName);
+    mInstallPath = FileSystem::CombinePath(mPendingInstallPath, ver->folderName);
 
     mDownloadCancelRequested = false;
     mDownloadCurrent = 0;
