@@ -81,6 +81,12 @@ static size_t StringWriteCallback(char* ptr, size_t size, size_t nmemb, void* us
     return total;
 }
 
+static size_t NullWriteCallback(char* ptr, size_t size, size_t nmemb, void* userdata)
+{
+    (void)ptr; (void)userdata;
+    return size * nmemb;  // discard — used for range check requests
+}
+
 static bool ParseAppsResponse(const std::string raw, AppsResponse& out)
 {
     JSON_Value* root = json_parse_string(raw.c_str());
@@ -938,4 +944,65 @@ bool WebManager::TrySyncTime()
 
     closesocket(sock);
     return true;
+}
+
+bool WebManager::TryCheckUrl(const std::string& url)
+{
+    ResetCurlGlobal();
+
+    Debug::Print("=== TryCheckUrl ===\nURL: %s\n", url.c_str());
+
+    CURL* curl = curl_easy_init();
+    if (!curl)
+    {
+        Debug::Print("TryCheckUrl: curl_easy_init failed\n");
+        return false;
+    }
+
+    ApplyCommonOptions(curl);
+
+    curl_easy_setopt(curl, CURLOPT_URL,            url.c_str());
+    curl_easy_setopt(curl, CURLOPT_NOBODY,         1L);   // HEAD
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_MAXREDIRS,      5L);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);  // DNS + TCP handshake
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT,        20L);  // total including redirects
+    curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 0L);  // disable stall detection for checks
+    curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME,  0L);
+
+    bool isGitHub = (url.find("raw.githubusercontent.com") != std::string::npos ||
+                     url.find("github.com")                != std::string::npos);
+    if (isGitHub)
+        curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
+
+    CURLcode res = curl_easy_perform(curl);
+
+    long http_code = 0;
+    if (res == CURLE_OK)
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+
+    // 405 = server doesn't allow HEAD — retry with GET Range: bytes=0-0 (fetches 1 byte only)
+    if (res == CURLE_OK && http_code == 405)
+    {
+        Debug::Print("TryCheckUrl: HEAD returned 405, retrying with GET range\n");
+        curl_easy_setopt(curl, CURLOPT_NOBODY,          0L);
+        curl_easy_setopt(curl, CURLOPT_HTTPGET,         1L);
+        curl_easy_setopt(curl, CURLOPT_RANGE,           "0-0");
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION,   NullWriteCallback);
+        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT,  10L);
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT,         20L);
+        res = curl_easy_perform(curl);
+        http_code = 0;
+        if (res == CURLE_OK)
+            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+        curl_easy_setopt(curl, CURLOPT_RANGE, NULL);
+    }
+
+    curl_easy_cleanup(curl);
+
+    bool ok = (res == CURLE_OK && http_code >= 200 && http_code < 400);
+    Debug::Print("TryCheckUrl: CURLcode=%d HTTP=%ld result=%s\n",
+        (int)res, http_code, ok ? "OK" : "FAILED");
+
+    return ok;
 }

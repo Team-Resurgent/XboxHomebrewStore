@@ -10,6 +10,7 @@ public:
 
     static bool Init();
     static bool TryDownloadWebData(const std::string url, const std::string filePath, std::string* outFinalFileName = nullptr, DownloadProgressFn progressFn = nullptr, void* progressUserData = nullptr, volatile bool* pCancelRequested = nullptr);
+    static bool TryCheckUrl(const std::string& url);  // HEAD request — returns false if 4xx/5xx or unreachable
     static bool TryDownloadApiData(const std::string url, const std::string filePath, DownloadProgressFn progressFn = nullptr, void* progressUserData = nullptr, volatile bool* pCancelRequested = nullptr, std::string* outHeaders = nullptr, std::string* outContentType = nullptr);
     static bool TryDownloadCover(const std::string id, int32_t width, int32_t height, const std::string filePath, DownloadProgressFn progressFn = nullptr, void* progressUserData = nullptr, volatile bool* pCancelRequested = nullptr);
     static bool TryDownloadScreenshot(const std::string id, int32_t width, int32_t height, const std::string filePath, DownloadProgressFn progressFn = nullptr, void* progressUserData = nullptr, volatile bool* pCancelRequested = nullptr);

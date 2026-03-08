@@ -12,6 +12,7 @@
 #include "..\String.h"
 #include "..\InputManager.h"
 #include "..\TextureHelper.h"
+#include "..\Network.h"
 #include "..\StoreManager.h"
 #include "..\StoreList.h"
 #include "..\ViewState.h"
@@ -47,9 +48,17 @@ void StoreScene::OnResume()
 
 void StoreScene::RenderHeader()
 {
-    Drawing::DrawTexturedRect(TextureHelper::GetHeader(), 0xffffffff, 0, 0, Context::GetScreenWidth(), ASSET_HEADER_HEIGHT);
+    float screenW = (float)Context::GetScreenWidth();
+
+    Drawing::DrawTexturedRect(TextureHelper::GetHeader(), 0xffffffff, 0, 0, screenW, ASSET_HEADER_HEIGHT);
     Font::DrawText(FONT_LARGE, "Xbox Homebrew Store", COLOR_WHITE, 60, 12);
     Drawing::DrawTexturedRect(TextureHelper::GetStore(), 0x8fe386, 16, 12, ASSET_STORE_ICON_WIDTH, ASSET_STORE_ICON_HEIGHT);
+
+    // FTP IP top-right
+    std::string ipStr = std::string("FTP: ") + Network::GetIP();
+    float ipW = 0.0f;
+    Font::MeasureText(FONT_NORMAL, ipStr.c_str(), &ipW);
+    Font::DrawText(FONT_NORMAL, ipStr.c_str(), COLOR_TEXT_GRAY, screenW - ipW - 16.0f, 20.0f);
 }
 
 void StoreScene::DrawFooterControl(float& x, float footerY, const char* iconName, const char* label)

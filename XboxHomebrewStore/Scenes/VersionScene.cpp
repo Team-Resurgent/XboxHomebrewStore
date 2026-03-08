@@ -15,6 +15,7 @@
 #include "..\ViewState.h"
 #include "..\FileSystem.h"
 #include "..\AppSettings.h"
+#include "..\StoreList.h"
 
 // ==========================================================================
 // InstallPathScene callback
@@ -56,6 +57,8 @@ VersionScene::VersionScene(const StoreVersions& storeVersions)
     mProgressIndex = 0;
     mProgressCount = 0;
     mShowFailedOverlay = false;
+    mFailedMessage     = "";
+    mCheckingLinks     = false;
 
     mWaitingForInstallPath = false;
     mShowAfterInstallDialog = false;
@@ -88,7 +91,7 @@ VersionScene::~VersionScene()
 }
 
 // ==========================================================================
-// SetPendingInstallPath  – called by static callback from InstallPathScene
+// SetPendingInstallPath called by static callback from InstallPathScene
 // ==========================================================================
 void VersionScene::SetPendingInstallPath(const std::string& path)
 {
@@ -96,22 +99,19 @@ void VersionScene::SetPendingInstallPath(const std::string& path)
 }
 
 // ==========================================================================
-// OnResume  – called when InstallPathScene pops back to us
+// OnResume called when InstallPathScene pops back to us
 // ==========================================================================
 void VersionScene::OnResume()
 {
     mWaitingForInstallPath = false;
 
     if (!mPendingInstallPath.empty())
-    {
         StartDownload();
-        mPendingInstallPath = "";
-    }
-    // If mPendingInstallPath is empty the user cancelled — do nothing
+    // If mPendingInstallPath is empty the user cancelled do nothing
 }
 
 // ==========================================================================
-// BrowseInstallPath  – push InstallPathScene pre-filled with last-used path
+// BrowseInstallPath  push InstallPathScene pre-filled with last-used path
 // ==========================================================================
 void VersionScene::BrowseInstallPath()
 {
@@ -126,7 +126,7 @@ void VersionScene::BrowseInstallPath()
 }
 
 // ==========================================================================
-// StartDownload  – called after install path is confirmed
+// StartDownload  called after install path is confirmed
 // ==========================================================================
 void VersionScene::StartDownload()
 {
@@ -144,14 +144,13 @@ void VersionScene::StartDownload()
     // Build download path from settings
     std::string downloadsRoot = AppSettings::GetDownloadPath();
 
-    // Ensure the downloads root folder exists — it may have been deleted
+    // Ensure the downloads root folder exists it may have been deleted
     bool rootExists = false;
     FileSystem::DirectoryExists(downloadsRoot, rootExists);
     if (!rootExists)
     {
         if (!FileSystem::DirectoryCreate(downloadsRoot))
         {
-            // Can't create root — show error and bail
             mShowFailedOverlay = true;
             return;
         }
@@ -159,9 +158,9 @@ void VersionScene::StartDownload()
 
     mDownloadPath = FileSystem::CombinePath(downloadsRoot, ver->folderName);
 
-    // Install path was chosen by the user via InstallPathScene
-    // Append the app folder name so each app gets its own subfolder
-    mInstallPath = FileSystem::CombinePath(mPendingInstallPath, ver->folderName);
+    // Capture install path before clearing — clear after so re-entry can't double-fire
+    mInstallPath        = FileSystem::CombinePath(mPendingInstallPath, ver->folderName);
+    mPendingInstallPath = "";
 
     mDownloadCancelRequested = false;
     mDownloadCurrent = 0;
@@ -178,7 +177,7 @@ void VersionScene::StartDownload()
 }
 
 // ==========================================================================
-// HandleAfterInstall  – called from thread after successful install
+// HandleAfterInstall  called from thread after successful install
 // ==========================================================================
 void VersionScene::HandleAfterInstall()
 {
@@ -245,6 +244,41 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
     const std::string& installPath  = scene->mInstallPath;
 
     FileSystem::DirectoryCreate(downloadPath);
+
+    // Check all URLs are reachable before downloading
+    scene->mCheckingLinks = true;
+    for (size_t f = 0; f < ver->downloadFiles.size(); f++)
+    {
+        const std::string& entry = ver->downloadFiles[f];
+        bool isUrl =
+            (entry.size() >= 8 && entry.compare(0, 8, "https://") == 0) ||
+            (entry.size() >= 7 && entry.compare(0, 7, "http://")  == 0);
+
+        std::string checkUrl;
+        if (isUrl)
+        {
+            checkUrl = entry;
+        }
+        else
+        {
+            // Store API file — build the same URL TryDownloadVersionFile uses
+            checkUrl = StoreList::GetActiveUrl() + "/api/Download/" + versionId
+                     + String::Format("?fileIndex=%d", (int)f);
+        }
+
+        if (!WebManager::TryCheckUrl(checkUrl))
+        {
+            scene->mCheckingLinks     = false;
+            scene->mFailedMessage     = "One or more download links are unavailable.\nPlease try again later or contact the store.";
+            scene->mShowFailedOverlay = true;
+            scene->mDownloading       = false;
+            scene->mNeedsUpdate       = false;
+            return 0;
+        }
+    }
+    scene->mCheckingLinks = false;
+
+    scene->mProgressIndex = 1;  // reset after checks — counts from 1 of N for downloads
 
     std::vector<std::string> downloadedFileNames(ver->downloadFiles.size());
     bool downloadSucceeded = !ver->downloadFiles.empty();
@@ -350,16 +384,28 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
 
     if (downloadSucceeded && unpackSucceeded)
     {
+        // FIX: explicitly clear failed overlay and suppress re-fetch on success
+        scene->mShowFailedOverlay = false;
+        scene->mNeedsUpdate = false;
         UserState::TrySave(ver->appId, ver->versionId, &downloadPath, &installPath);
         scene->HandleAfterInstall();
     }
 
     bool cancelled = scene->mDownloadCancelRequested || scene->mUnpackCancelRequested;
     bool failed    = !downloadSucceeded || !unpackSucceeded;
-    scene->mShowFailedOverlay = (failed && !cancelled);
+    if (failed && !cancelled)
+    {
+        scene->mFailedMessage     = "Download or install failed.\nCheck your network and storage, then try again.";
+        scene->mShowFailedOverlay = true;
+    }
 
-    scene->mDownloading  = false;
-    scene->mNeedsUpdate  = true;
+    // Only wipe folder on cancel (user backed out intentionally)
+    if (cancelled)
+        FileSystem::DirectoryDelete(downloadPath, true);
+
+    scene->mDownloading = false;
+    // FIX: only trigger a re-fetch on failure (so the UI can refresh state), not on success
+    scene->mNeedsUpdate = (failed && !cancelled);
 
     return 0;
 }
@@ -369,7 +415,8 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
 // ==========================================================================
 void VersionScene::Render()
 {
-    if (mNeedsUpdate)
+    // FIX: don't re-fetch while a download is active — avoids clobbering version data mid-download
+    if (mNeedsUpdate && !mDownloading)
     {
         mNeedsUpdate = false;
         if (mStoreVersions.cover != NULL)     mStoreVersions.cover->Release();
@@ -385,7 +432,8 @@ void VersionScene::Render()
     RenderVersionSidebar();
     RenderListView();
 
-    if (mDownloading)            RenderDownloadOverlay();
+    if (mCheckingLinks)          RenderCheckingLinksOverlay();
+    else if (mDownloading)       RenderDownloadOverlay();
     if (mShowFailedOverlay)      RenderFailedOverlay();
     if (mShowAfterInstallDialog) RenderAfterInstallDialog();
 }
@@ -426,7 +474,11 @@ void VersionScene::RenderFooter()
     Drawing::DrawTexturedRect(TextureHelper::GetFooter(), 0xffffffff,
         0.0f, footerY, (float)Context::GetScreenWidth(), ASSET_FOOTER_HEIGHT);
 
-    if (mShowAfterInstallDialog)
+    if (mCheckingLinks)
+    {
+        // no controls shown while link check is running
+    }
+    else if (mShowAfterInstallDialog)
     {
         DrawFooterControl(x, footerY, "ButtonA", "Delete");
         DrawFooterControl(x, footerY, "ButtonB", "Keep");
@@ -639,6 +691,28 @@ void VersionScene::RenderListView()
 }
 
 // --------------------------------------------------------------------------
+void VersionScene::RenderCheckingLinksOverlay()
+{
+    const float w = (float)Context::GetScreenWidth();
+    const float h = (float)Context::GetScreenHeight();
+
+    Drawing::DrawFilledRect(0xCC000000, 0.0f, 0.0f, w, h);
+
+    const float panelW = 320.0f;
+    const float panelH = 70.0f;
+    float px = (w - panelW) * 0.5f;
+    float py = (h - panelH) * 0.5f;
+
+    Drawing::DrawFilledRect(COLOR_CARD_BG, px, py, panelW, panelH);
+    Drawing::DrawFilledRect(COLOR_FOCUS_HIGHLIGHT, px, py, panelW, 4.0f);
+
+    std::string msg = mProgressCount > 0
+        ? String::Format("Verifying %d download links...", mProgressCount)
+        : "Verifying download links...";
+    Font::DrawText(FONT_NORMAL, msg, COLOR_WHITE, px + 20.0f, py + 22.0f);
+}
+
+// --------------------------------------------------------------------------
 void VersionScene::RenderDownloadOverlay()
 {
     const float w = (float)Context::GetScreenWidth();
@@ -700,15 +774,19 @@ void VersionScene::RenderDownloadOverlay()
         Font::DrawText(FONT_NORMAL, prog, COLOR_TEXT_GRAY, px + 20.0f, barY + barH + 8.0f);
     }
 
-    // Cancel hint
-    float hx = px + 20.0f;
-    float hy = py + panelH - 28.0f;
+    // Cancel hint — centred
+    float iW    = (float)ASSET_CONTROLLER_ICON_WIDTH;
+    float iH    = (float)ASSET_CONTROLLER_ICON_HEIGHT;
+    float lblW  = 0.0f;
+    Font::MeasureText(FONT_NORMAL, "Cancel", &lblW);
+    float pairW = iW + 4.0f + lblW;
+    float hx    = px + (panelW - pairW) * 0.5f;
+    float hy    = py + panelH - 28.0f;
     D3DTexture* iconB = TextureHelper::GetControllerIcon("ButtonB");
     if (iconB != NULL)
     {
-        Drawing::DrawTexturedRect(iconB, 0xffffffff, hx, hy - 2.0f,
-            ASSET_CONTROLLER_ICON_WIDTH, ASSET_CONTROLLER_ICON_HEIGHT);
-        hx += ASSET_CONTROLLER_ICON_WIDTH + 4.0f;
+        Drawing::DrawTexturedRect(iconB, 0xffffffff, hx, hy - 2.0f, iW, iH);
+        hx += iW + 4.0f;
     }
     Font::DrawText(FONT_NORMAL, "Cancel", COLOR_WHITE, hx, hy);
 }
@@ -721,25 +799,31 @@ void VersionScene::RenderFailedOverlay()
 
     Drawing::DrawFilledRect(0xCC000000, 0.0f, 0.0f, w, h);
 
-    const float panelW = 400.0f;
-    const float panelH = 100.0f;
+    const float panelW = 440.0f;
+    const float panelH = 120.0f;
     float px = (w - panelW) * 0.5f;
     float py = (h - panelH) * 0.5f;
 
     Drawing::DrawFilledRect(COLOR_CARD_BG, px, py, panelW, panelH);
     Drawing::DrawFilledRect(0xFFEF5350, px, py, panelW, 4.0f);
 
-    Font::DrawText(FONT_NORMAL, "Download / Install failed", COLOR_WHITE,
-                   px + 20.0f, py + 24.0f);
+    float msgMaxWidth = panelW - 40.0f;
+    Font::DrawTextWrapped(FONT_NORMAL, mFailedMessage, COLOR_WHITE,
+                          px + 20.0f, py + 18.0f, msgMaxWidth);
 
-    float hx = px + 20.0f;
-    float hy = py + panelH - 32.0f;
+    // Close button — centred
+    float iW   = (float)ASSET_CONTROLLER_ICON_WIDTH;
+    float iH   = (float)ASSET_CONTROLLER_ICON_HEIGHT;
+    float lblW = 0.0f;
+    Font::MeasureText(FONT_NORMAL, "Close", &lblW);
+    float pairW = iW + 4.0f + lblW;
+    float hx    = px + (panelW - pairW) * 0.5f;
+    float hy    = py + panelH - 32.0f;
     D3DTexture* iconA = TextureHelper::GetControllerIcon("ButtonA");
     if (iconA != NULL)
     {
-        Drawing::DrawTexturedRect(iconA, 0xffffffff, hx, hy - 2.0f,
-            ASSET_CONTROLLER_ICON_WIDTH, ASSET_CONTROLLER_ICON_HEIGHT);
-        hx += ASSET_CONTROLLER_ICON_WIDTH + 4.0f;
+        Drawing::DrawTexturedRect(iconA, 0xffffffff, hx, hy - 2.0f, iW, iH);
+        hx += iW + 4.0f;
     }
     Font::DrawText(FONT_NORMAL, "Close", COLOR_TEXT_GRAY, hx, hy);
 }
@@ -803,13 +887,12 @@ void VersionScene::Update()
     {
         if (InputManager::ControllerPressed(ControllerA, -1))
         {
-            // Delete the downloads folder
             FileSystem::DirectoryDelete(mDownloadPath, true);
             mShowAfterInstallDialog = false;
         }
         else if (InputManager::ControllerPressed(ControllerB, -1))
         {
-            // Keep — do nothing
+            // Keep do nothing
             mShowAfterInstallDialog = false;
         }
         return;
@@ -819,7 +902,10 @@ void VersionScene::Update()
     if (mShowFailedOverlay)
     {
         if (InputManager::ControllerPressed(ControllerA, -1))
+        {
             mShowFailedOverlay = false;
+            FileSystem::DirectoryDelete(mDownloadPath, true);
+        }
         return;
     }
 
@@ -836,7 +922,7 @@ void VersionScene::Update()
         return;
     }
 
-    // ---- Waiting for path browser to return — block all input ----
+    // ---- Waiting for path browser to return block all input ----
     if (mWaitingForInstallPath) return;
 
     // ---- Normal browse mode ----
@@ -861,7 +947,6 @@ void VersionScene::Update()
         }
         else if (InputManager::ControllerPressed(ControllerA, -1))
         {
-            // Open install path browser before starting download
             BrowseInstallPath();
         }
         else if (InputManager::ControllerPressed(ControllerB, -1))

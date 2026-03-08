@@ -27,6 +27,7 @@ private:
     void RenderVersionSidebar();
     void RenderListView();
     void RenderDownloadOverlay();
+    void RenderCheckingLinksOverlay();
     void RenderFailedOverlay();
     void RenderAfterInstallDialog();
 
@@ -64,7 +65,9 @@ private:
     volatile int      mProgressIndex;
     volatile int      mProgressCount;
     bool     mDownloadSuccess;
-    bool     mShowFailedOverlay;
+    bool        mShowFailedOverlay;
+    std::string mFailedMessage;
+    bool        mCheckingLinks;
     HANDLE   mDownloadThread;
     bool     mUnpacking;
     volatile bool mUnpackCancelRequested;

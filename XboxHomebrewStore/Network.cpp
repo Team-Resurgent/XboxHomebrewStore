@@ -1,6 +1,8 @@
 #include "Network.h"
 #include "Debug.h"
 
+char Network::mIP[16] = "0.0.0.0";
+
 int Network::Init()
 {
     XNetStartupParams xnsp;
@@ -21,7 +23,6 @@ int Network::Init()
     xnsp.cfgSockDefaultRecvBufsizeInK = 64;
     xnsp.cfgSockDefaultSendBufsizeInK = 64;
 
-
     XNetStartup(&xnsp);
     WSAStartup(MAKEWORD(2, 2), &wsaData);
 
@@ -40,11 +41,18 @@ int Network::Init()
         return -1;
     }
 
-    Debug::Print("Network ready. IP: %d.%d.%d.%d\n",
+    sprintf(mIP, "%d.%d.%d.%d",
         xna.ina.S_un.S_un_b.s_b1,
         xna.ina.S_un.S_un_b.s_b2,
         xna.ina.S_un.S_un_b.s_b3,
         xna.ina.S_un.S_un_b.s_b4);
 
+    Debug::Print("Network ready. IP: %s\n", mIP);
+
     return 0;
+}
+
+const char* Network::GetIP()
+{
+    return mIP;
 }
