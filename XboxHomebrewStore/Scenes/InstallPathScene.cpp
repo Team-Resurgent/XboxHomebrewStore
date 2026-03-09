@@ -552,7 +552,7 @@ void InstallPathScene::RenderList() {
 
     if (itemIcon != NULL) {
       uint32_t colIcon = mCurrentPath.empty() ? colMain : colFolder;
-      Drawing::DrawTexturedRect(itemIcon, col, 24.0f, iconY, iconW, iconH);
+      Drawing::DrawTexturedRect(itemIcon, colIcon, 24.0f, iconY, iconW, iconH);
     }
 
     Font::DrawText(FONT_NORMAL, GetDisplayName(idx).c_str(), colMain, 54.0f,

@@ -8,6 +8,7 @@
 #include "String.h"
 #include "TextureHelper.h"
 #include "WebManager.h"
+
 static uint32_t CRC32(const void *data, size_t size) {
   static uint32_t s_table[256];
   static int32_t s_tableInit = 0;
@@ -84,9 +85,8 @@ bool ImageDownloader::IsScreenshotCached(const std::string appId) {
 
 #define CACHE_FILE_LIMIT STORE_CACHE_FILE_LIMIT
 
-static void
-CollectFileWithTime(const char *dir,
-    std::vector<std::pair<std::string, ULONGLONG>> *out) {
+static void CollectFileWithTime(const char *dir, std::vector<std::pair<std::string, ULONGLONG>> *out) {
+
   std::string pattern = std::string(dir) + "\\*";
   WIN32_FIND_DATAA fd;
   HANDLE h = FindFirstFileA(pattern.c_str(), &fd);
