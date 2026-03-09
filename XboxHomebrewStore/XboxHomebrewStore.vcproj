@@ -354,7 +354,7 @@
 				RelativePath=".\SocketUtility.cpp">
 			</File>
 			<File
-				RelativePath=".\Storelist.cpp">
+				RelativePath=".\StoreList.cpp">
 			</File>
 			<File
 				RelativePath=".\StoreManager.cpp">
@@ -610,7 +610,7 @@
 				RelativePath=".\stb_image.h">
 			</File>
 			<File
-				RelativePath=".\Storelist.h">
+				RelativePath=".\StoreList.h">
 			</File>
 			<File
 				RelativePath=".\StoreManager.h">
