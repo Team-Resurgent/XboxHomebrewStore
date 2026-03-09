@@ -1,6 +1,7 @@
 *.suo
 *.user
 *.ncb
+Thumbs.db
 
 [Dd]ebug/
 [Rr]elease/
