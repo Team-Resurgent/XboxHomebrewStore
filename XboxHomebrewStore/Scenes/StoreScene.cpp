@@ -10,6 +10,7 @@
 #include "..\Drawing.h"
 #include "..\Font.h"
 #include "..\String.h"
+#include "..\ImageDownloader.h"
 #include "..\InputManager.h"
 #include "..\TextureHelper.h"
 #include "..\Network.h"
@@ -17,28 +18,54 @@
 #include "..\StoreList.h"
 #include "..\ViewState.h"
 #include "..\Debug.h"
+#include "..\AppSettings.h"
 
 StoreScene::StoreScene()
 {
-    mImageDownloader = new ImageDownloader();
-    mSideBarFocused = true;
+    mImageDownloader          = new ImageDownloader();
+    mSideBarFocused           = true;
     mHighlightedCategoryIndex = 0;
-    mStoreIndex = 0;
+    mStoreIndex               = 0;
+    mSavedStoreIndex          = 0;
+    mSavedWindowOffset        = 0;
+    mHasSavedPosition         = false;
+    mShowInfoOverlay          = false;
+    mInfoOverlayMessage       = "";
+    mIdleFrames               = 0;
 }
 
 StoreScene::~StoreScene()
 {
+    StoreManager::StopIdleWarmer();
 }
 
 void StoreScene::OnResume()
 {
+    StoreManager::StopIdleWarmer();
+    mIdleFrames = 0;
+
     if (StoreList::WasStoreChanged())
     {
         StoreList::ClearStoreChangedFlag();
         mStoreIndex               = 0;
         mHighlightedCategoryIndex = 0;
         mSideBarFocused           = false;
+        mHasSavedPosition         = false;
         StoreManager::Reset();
+        return;
+    }
+
+    if (mHasSavedPosition)
+    {
+        // Restore window to the page we were on, then restore cursor
+        StoreManager::LoadAtOffset(mSavedWindowOffset);
+
+        // Clamp in case items were added/removed while we were in VersionScene
+        int32_t maxIndex = StoreManager::GetWindowStoreItemOffset() + StoreManager::GetWindowStoreItemCount() - 1;
+        if (maxIndex < 0) maxIndex = 0;
+        mStoreIndex       = mSavedStoreIndex > maxIndex ? maxIndex : mSavedStoreIndex;
+        mHasSavedPosition = false;
+        mImageDownloader->CancelAll();
         return;
     }
 
@@ -52,12 +79,24 @@ void StoreScene::RenderHeader()
 
     Drawing::DrawTexturedRect(TextureHelper::GetHeader(), 0xffffffff, 0, 0, screenW, ASSET_HEADER_HEIGHT);
     Font::DrawText(FONT_LARGE, "Xbox Homebrew Store", COLOR_WHITE, 60, 12);
-    Drawing::DrawTexturedRect(TextureHelper::GetStore(), 0x8fe386, 16, 12, ASSET_STORE_ICON_WIDTH, ASSET_STORE_ICON_HEIGHT);
+    Drawing::DrawTexturedRect(TextureHelper::GetStore(), 0xFFFFFFFF, 16, 12, ASSET_STORE_ICON_WIDTH, ASSET_STORE_ICON_HEIGHT);
 
-    // Version — FONT_NORMAL next to the title, vertically nudged to sit near the baseline
+    // Version -- sit beside the title aligned to top of FONT_LARGE
     float titleW = 0.0f;
     Font::MeasureText(FONT_LARGE, "Xbox Homebrew Store", &titleW);
     Font::DrawText(FONT_NORMAL, APP_VERSION, COLOR_TEXT_GRAY, 60.0f + titleW + 10.0f, 20.0f);
+
+    // Idle warmer indicator -- shown next to version when running
+    if (StoreManager::IsIdleWarmerRunning())
+    {
+        float versionW = 0.0f;
+        Font::MeasureText(FONT_NORMAL, APP_VERSION, &versionW);
+        int32_t cached = ImageDownloader::GetCachedCoverCount();
+        int32_t total  = StoreManager::GetSelectedCategoryTotal();
+        std::string cachingStr = String::Format("Caching... %d/%d", cached, total);
+        Font::DrawText(FONT_NORMAL, cachingStr.c_str(), 0xFF88CC88,
+                       60.0f + titleW + 10.0f + versionW + 10.0f, 20.0f);
+    }
 
     // FTP IP top-right
     std::string ipStr = std::string("FTP: ") + Network::GetIP();
@@ -95,6 +134,8 @@ void StoreScene::RenderFooter()
 
     DrawFooterControl(x, footerY, "ButtonA", "Select");
     DrawFooterControl(x, footerY, "Dpad", "Navigate");
+    DrawFooterControl(x, footerY, "ButtonWhite", "First");
+    DrawFooterControl(x, footerY, "ButtonBlack", "Last");
     DrawFooterControl(x, footerY, "Start", "Settings");
 }
 
@@ -264,6 +305,8 @@ void StoreScene::RenderMainGrid()
         float x = cardX + col * ( cardWidth + CARD_GAP);
         float y = cardY + row * ( cardHeight + CARD_GAP);
         StoreItem* storeItem = StoreManager::GetWindowStoreItem(currentSlot);
+        if (storeItem == NULL)
+            continue;
         DrawStoreItem(storeItem, x, y, currentSlot == (mStoreIndex - StoreManager::GetWindowStoreItemOffset()), currentSlot);
     }
 
@@ -271,7 +314,7 @@ void StoreScene::RenderMainGrid()
     float pageStrWidth = 0.0f;
     Font::MeasureText(FONT_NORMAL, pageStr, &pageStrWidth);
     float pageStrX = Context::GetScreenWidth() - 16.0f - pageStrWidth;
-    Font::DrawText(FONT_NORMAL, pageStr.c_str(), (uint32_t)COLOR_TEXT_GRAY, (int)pageStrX, Context::GetScreenHeight() - 30);
+    Font::DrawText(FONT_NORMAL, pageStr.c_str(), (uint32_t)COLOR_TEXT_GRAY, (int)pageStrX, (int)(Context::GetScreenHeight() - 30.0f));
 }
 
 void StoreScene::Render()
@@ -282,14 +325,98 @@ void StoreScene::Render()
     RenderFooter();
     RenderCategorySidebar();
     RenderMainGrid();
+
+    if (mShowInfoOverlay)
+        RenderInfoOverlay();
+}
+
+void StoreScene::RenderInfoOverlay()
+{
+    const float w = (float)Context::GetScreenWidth();
+    const float h = (float)Context::GetScreenHeight();
+
+    Drawing::DrawFilledRect(0xCC000000, 0.0f, 0.0f, w, h);
+
+    const float panelW = 440.0f;
+    const float panelH = 120.0f;
+    float px = (w - panelW) * 0.5f;
+    float py = (h - panelH) * 0.5f;
+
+    Drawing::DrawFilledRect(COLOR_CARD_BG, px, py, panelW, panelH);
+    Drawing::DrawFilledRect(0xFFEF5350, px, py, panelW, 4.0f);
+
+    float msgMaxWidth = panelW - 40.0f;
+    Font::DrawTextWrapped(FONT_NORMAL, mInfoOverlayMessage, COLOR_WHITE,
+                          px + 20.0f, py + 18.0f, msgMaxWidth);
+
+    float iW   = (float)ASSET_CONTROLLER_ICON_WIDTH;
+    float iH   = (float)ASSET_CONTROLLER_ICON_HEIGHT;
+    float lblW = 0.0f;
+    Font::MeasureText(FONT_NORMAL, "Close", &lblW);
+    float pairW = iW + 4.0f + lblW;
+    float hx    = px + (panelW - pairW) * 0.5f;
+    float hy    = py + panelH - 32.0f;
+    D3DTexture* iconA = TextureHelper::GetControllerIcon("ButtonA");
+    if (iconA != NULL)
+    {
+        Drawing::DrawTexturedRect(iconA, 0xFFFFFFFF, hx, hy - 2.0f, iW, iH);
+        hx += iW + 4.0f;
+    }
+    Font::DrawText(FONT_NORMAL, "Close", COLOR_TEXT_GRAY, hx, hy);
 }
 
 void StoreScene::Update()
 {
+    if (mShowInfoOverlay)
+    {
+        if (InputManager::ControllerPressed(ControllerA, -1) ||
+            InputManager::ControllerPressed(ControllerB, -1))
+            mShowInfoOverlay = false;
+        return;
+    }
+
     if (InputManager::ControllerPressed(ControllerStart, -1))
     {
         Context::GetSceneManager()->PushScene(new SettingsScene());
         return;
+    }
+
+    // Idle pre-cache logic -- only on All Apps (category 0)
+    bool anyInput = InputManager::ControllerPressed(ControllerDpadUp,    -1) ||
+                    InputManager::ControllerPressed(ControllerDpadDown,  -1) ||
+                    InputManager::ControllerPressed(ControllerDpadLeft,  -1) ||
+                    InputManager::ControllerPressed(ControllerDpadRight, -1) ||
+                    InputManager::ControllerPressed(ControllerA,         -1) ||
+                    InputManager::ControllerPressed(ControllerB,         -1) ||
+                    InputManager::ControllerPressed(ControllerX,         -1) ||
+                    InputManager::ControllerPressed(ControllerY,         -1) ||
+                    InputManager::ControllerPressed(ControllerStart,     -1) ||
+                    InputManager::ControllerPressed(ControllerBlack,     -1) ||
+                    InputManager::ControllerPressed(ControllerWhite,     -1);
+    if (anyInput)
+    {
+        if (StoreManager::IsIdleWarmerRunning())
+        {
+            StoreManager::StopIdleWarmer();
+            Debug::Print("IdleWarmer: cancelled by input\n");
+        }
+        mIdleFrames = 0;
+    }
+    else if (AppSettings::GetPreCacheOnIdle() && StoreManager::GetCategoryIndex() == 0)
+    {
+        if (!StoreManager::IsIdleWarmerRunning())
+        {
+            mIdleFrames++;
+            if (mIdleFrames >= IDLE_THRESHOLD)
+            {
+                Debug::Print("IdleWarmer: idle threshold reached, starting\n");
+                StoreManager::StartIdleWarmer();
+            }
+        }
+    }
+    else
+    {
+        mIdleFrames = 0;
     }
 
     if (mSideBarFocused)
@@ -360,14 +487,48 @@ void StoreScene::Update()
         }
         else if (InputManager::ControllerPressed(ControllerA, -1))
         {
-            StoreItem* storeItem = StoreManager::GetWindowStoreItem(mStoreIndex - StoreManager::GetWindowStoreItemOffset());
+            int32_t slotIndex = mStoreIndex - StoreManager::GetWindowStoreItemOffset();
+            StoreItem* storeItem = StoreManager::GetWindowStoreItem(slotIndex);
+
+            if (storeItem == NULL)
+                return;
 
             StoreVersions storeVersions;
             ViewState::TrySave(storeItem->appId, storeItem->latestVersion);
             if (StoreManager::TryGetStoreVersions(storeItem->appId, &storeVersions))
             {
+                // Save position so OnResume can restore it
+                mSavedStoreIndex   = mStoreIndex;
+                mSavedWindowOffset = StoreManager::GetWindowStoreItemOffset();
+                mHasSavedPosition  = true;
+
                 SceneManager* sceneManager = Context::GetSceneManager();
                 sceneManager->PushScene(new VersionScene(storeVersions));
+            }
+            else
+            {
+                mInfoOverlayMessage = "No downloads are available\nfor this app at this time.";
+                mShowInfoOverlay    = true;
+            }
+        }
+        else if (InputManager::ControllerPressed(ControllerWhite, -1))
+        {
+            // Jump to first item in category
+            mImageDownloader->CancelAll();
+            StoreManager::LoadAtOffset(0);
+            mStoreIndex = 0;
+        }
+        else if (InputManager::ControllerPressed(ControllerBlack, -1))
+        {
+            // Jump to last item in category
+            int32_t total = StoreManager::GetSelectedCategoryTotal();
+            if (total > 0)
+            {
+                int32_t cells        = Context::GetGridCells();
+                int32_t lastPageStart = ((total - 1) / cells) * cells;
+                mImageDownloader->CancelAll();
+                StoreManager::LoadAtOffset(lastPageStart);
+                mStoreIndex = total - 1;
             }
         }
     }

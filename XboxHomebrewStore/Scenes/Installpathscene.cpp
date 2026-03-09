@@ -12,6 +12,7 @@
 #include "..\DriveMount.h"
 #include "..\FileSystem.h"
 #include "..\OnScreenKeyboard.h"
+#include "..\AppSettings.h"
 
 // ==========================================================================
 // Auto-repeat timing
@@ -95,16 +96,15 @@ void InstallPathScene::RefreshList(const std::string& selectName)
 
     if (mCurrentPath.empty())
     {
-        // Drives to exclude: DVD-ROM (can't install to optical),
-        // X/Y/Z cache partitions (wiped on boot / by games)
+        bool showCache = AppSettings::GetShowCachePartitions();
         std::vector<std::string> drives = DriveMount::GetMountedDrives();
         for (size_t i = 0; i < drives.size(); i++)
         {
             const std::string& d = drives[i];
-            // Skip DVD-ROM
+            // Always skip DVD-ROM — can't install to optical disc
             if (String::EqualsIgnoreCase(d, "DVD-ROM")) continue;
-            // Skip X/Y/Z cache on any HDD (ends with -X, -Y, or -Z)
-            if (d.size() >= 2)
+            // Skip X/Y/Z cache partitions unless user has enabled them in settings
+            if (!showCache && d.size() >= 2)
             {
                 char last = (char)toupper(d[d.size() - 1]);
                 char prev = d[d.size() - 2];

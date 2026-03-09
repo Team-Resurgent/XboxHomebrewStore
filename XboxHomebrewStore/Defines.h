@@ -20,7 +20,7 @@
 
 #define CARD_GAP            16.0f
 
-#define STORE_CACHE_FILE_LIMIT  100
+#define STORE_CACHE_FILE_LIMIT  2000
 
 #define ASSET_HEADER_HEIGHT 56.0f
 #define ASSET_SIDEBAR_Y 76.0f

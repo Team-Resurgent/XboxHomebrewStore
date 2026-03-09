@@ -3,7 +3,6 @@
 #include "Debug.h"
 
 #define SETTINGS_PATH "T:\\Settings.bin"
-
 #define DEFAULT_DOWNLOAD_PATH  "HDD0-E:\\XHS Downloads\\"
 
 AppSettingsData AppSettings::mData;
@@ -14,7 +13,9 @@ void AppSettings::ApplyDefaults()
 {
     memset(&mData, 0, sizeof(AppSettingsData));
     strncpy(mData.downloadPath, DEFAULT_DOWNLOAD_PATH, sizeof(mData.downloadPath) - 1);
-    mData.afterInstallAction = (uint32_t)AfterInstallAsk;
+    mData.afterInstallAction  = (uint32_t)AfterInstallAsk;
+    mData.showCachePartitions = 0;
+    mData.preCacheOnIdle      = 1;  // on by default
 }
 
 // ==========================================================================
@@ -92,6 +93,18 @@ AfterInstallAction AppSettings::GetAfterInstallAction()
     return (AfterInstallAction)mData.afterInstallAction;
 }
 
+bool AppSettings::GetShowCachePartitions()
+{
+    if (!mLoaded) Load();
+    return mData.showCachePartitions != 0;
+}
+
+bool AppSettings::GetPreCacheOnIdle()
+{
+    if (!mLoaded) Load();
+    return mData.preCacheOnIdle != 0;
+}
+
 // ==========================================================================
 // Mutators
 // ==========================================================================
@@ -106,4 +119,16 @@ void AppSettings::SetAfterInstallAction(AfterInstallAction action)
 {
     if (!mLoaded) Load();
     mData.afterInstallAction = (uint32_t)action;
+}
+
+void AppSettings::SetShowCachePartitions(bool show)
+{
+    if (!mLoaded) Load();
+    mData.showCachePartitions = show ? 1 : 0;
+}
+
+void AppSettings::SetPreCacheOnIdle(bool enabled)
+{
+    if (!mLoaded) Load();
+    mData.preCacheOnIdle = enabled ? 1 : 0;
 }

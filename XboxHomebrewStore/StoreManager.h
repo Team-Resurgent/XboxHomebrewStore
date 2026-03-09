@@ -57,7 +57,7 @@ class StoreManager
 {
 public:
     static bool Init();
-    static bool Reset();   // Re-fetch from active store URL (call after switching stores)
+    static bool Reset();
     static int32_t GetCategoryCount();
     static int32_t GetCategoryIndex();
     static void SetCategoryIndex(int32_t categoryIndex);
@@ -71,9 +71,18 @@ public:
     static bool HasNext();
     static bool LoadPrevious();
     static bool LoadNext();
+    static bool LoadAtOffset(int32_t offset);
     static bool TryGetStoreVersions(std::string appId, StoreVersions* storeVersions);
+    static void CancelPrefetch();      // cancels both next and prev prefetch
+    static void StartIdleWarmer();     // begin background idle cover pre-cache
+    static void StopIdleWarmer();      // cancel idle warmer thread
+    static bool IsIdleWarmerRunning();
 private:
     static bool LoadCategories();
     static bool LoadApplications(void* dest, int32_t offset, int32_t count, int32_t* loadedCount);
     static bool RefreshApplications();
+    static void KickPrefetch();        // starts background fetch of next AND prev rows
+    static DWORD WINAPI PrefetchNextThreadProc(LPVOID param);
+    static DWORD WINAPI PrefetchPrevThreadProc(LPVOID param);
+    static DWORD WINAPI IdleWarmerThreadProc(LPVOID param);
 };

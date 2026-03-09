@@ -12,6 +12,7 @@
 #include "..\TextureHelper.h"
 #include "..\AppSettings.h"
 #include "..\StoreList.h"
+#include "..\FileSystem.h"
 
 // ==========================================================================
 // Path browser callback
@@ -39,9 +40,14 @@ SettingsScene::SettingsScene()
     : mSelectedRow(0)
     , mPickerOpen(false)
     , mPickerSel(0)
+    , mClearCacheConfirmOpen(false)
+    , mClearCacheDone(false)
+    , mScrollOffset(0.0f)
 {
-    mDownloadPath       = AppSettings::GetDownloadPath();
-    mAfterInstallAction = AppSettings::GetAfterInstallAction();
+    mDownloadPath        = AppSettings::GetDownloadPath();
+    mAfterInstallAction  = AppSettings::GetAfterInstallAction();
+    mShowCachePartitions = AppSettings::GetShowCachePartitions();
+    mPreCacheOnIdle      = AppSettings::GetPreCacheOnIdle();
 }
 
 SettingsScene::~SettingsScene() {}
@@ -58,6 +64,8 @@ void SettingsScene::SaveAndPop()
 {
     AppSettings::SetDownloadPath(mDownloadPath);
     AppSettings::SetAfterInstallAction(mAfterInstallAction);
+    AppSettings::SetShowCachePartitions(mShowCachePartitions);
+    AppSettings::SetPreCacheOnIdle(mPreCacheOnIdle);
     AppSettings::Save();
     Context::GetSceneManager()->PopScene();
 }
@@ -69,6 +77,17 @@ void SettingsScene::OpenPathBrowser()
 {
     Context::GetSceneManager()->PushScene(
         new InstallPathScene(OnDownloadPathConfirmed, this, "Download Path"));
+}
+
+// ==========================================================================
+// ClearImageCache -- deletes and recreates covers + screenshots dirs
+// ==========================================================================
+static void ClearImageCache()
+{
+    FileSystem::DirectoryDelete("T:\\Cache\\Covers",      true);
+    FileSystem::DirectoryDelete("T:\\Cache\\Screenshots", true);
+    FileSystem::DirectoryCreate("T:\\Cache\\Covers");
+    FileSystem::DirectoryCreate("T:\\Cache\\Screenshots");
 }
 
 // ==========================================================================
@@ -103,6 +122,25 @@ void SettingsScene::Update()
         return;
     }
 
+    // ---- Clear cache confirm dialog ----
+    if (mClearCacheConfirmOpen)
+    {
+        if (InputManager::ControllerPressed(ControllerY, -1))
+        {
+            ClearImageCache();
+            mClearCacheDone        = true;
+            mClearCacheConfirmOpen = false;
+            return;
+        }
+        if (InputManager::ControllerPressed(ControllerB, -1) ||
+            InputManager::ControllerPressed(ControllerA, -1))
+        {
+            mClearCacheConfirmOpen = false;
+            return;
+        }
+        return;
+    }
+
     if (InputManager::ControllerPressed(ControllerB, -1) ||
         InputManager::ControllerPressed(ControllerStart, -1))
     {
@@ -112,12 +150,23 @@ void SettingsScene::Update()
 
     if (InputManager::ControllerPressed(ControllerDpadUp, -1))
     {
+        int32_t prev = mSelectedRow;
         mSelectedRow = (mSelectedRow > 0) ? mSelectedRow - 1 : ROW_COUNT - 1;
+        if (mSelectedRow < prev)
+            mScrollOffset -= (ROW_H + 2.0f);
+        else
+            mScrollOffset = 999.0f; // wrapped to bottom -- clamp will fix in Render
+        if (mScrollOffset < 0.0f) mScrollOffset = 0.0f;
         return;
     }
     if (InputManager::ControllerPressed(ControllerDpadDown, -1))
     {
+        int32_t prev = mSelectedRow;
         mSelectedRow = (mSelectedRow < ROW_COUNT - 1) ? mSelectedRow + 1 : 0;
+        if (mSelectedRow > prev)
+            mScrollOffset += (ROW_H + 2.0f);
+        else
+            mScrollOffset = 0.0f; // wrapped to top
         return;
     }
 
@@ -134,6 +183,16 @@ void SettingsScene::Update()
         case 2:
             mPickerSel  = (int)mAfterInstallAction;
             mPickerOpen = true;
+            break;
+        case 3:
+            mShowCachePartitions = !mShowCachePartitions;
+            break;
+        case 4:
+            mPreCacheOnIdle = !mPreCacheOnIdle;
+            break;
+        case 5:
+            mClearCacheDone         = false;
+            mClearCacheConfirmOpen  = true;
             break;
         }
         return;
@@ -237,18 +296,35 @@ void SettingsScene::Render()
     // ---- Header ----
     Drawing::DrawTexturedRect(TextureHelper::GetHeader(), 0xffffffff,
         0, 0, screenW, ASSET_HEADER_HEIGHT);
-    Drawing::DrawTexturedRect(TextureHelper::GetStore(), 0x8fe386,
+    Drawing::DrawTexturedRect(TextureHelper::GetStore(), 0xFFFFFFFF,
         16, 12, ASSET_STORE_ICON_WIDTH, ASSET_STORE_ICON_HEIGHT);
     Font::DrawText(FONT_LARGE, "Xbox Homebrew Store", COLOR_WHITE, 60, 12);
 
-    // Settings (top-right)
-	const char* sub = "Settings";
+    // Version beside title
+    float titleW = 0.0f;
+    Font::MeasureText(FONT_LARGE, "Xbox Homebrew Store", &titleW);
+    Font::DrawText(FONT_NORMAL, APP_VERSION, COLOR_TEXT_GRAY, 60.0f + titleW + 10.0f, 20.0f);
+
+    // Settings label (top-right)
+    const char* sub = "Settings";
     float sw = 0.0f;
     Font::MeasureText(FONT_NORMAL, sub, &sw);
     Font::DrawText(FONT_NORMAL, sub, COLOR_TEXT_GRAY, screenW - sw - 16.0f, 20.0f);
 
     // ---- Body ----
-    float y = BODY_TOP;
+    float contentH = (SEC_HEAD_H + ROW_H + 2.0f)
+                   + (SEC_GAP + SEC_HEAD_H + ROW_H + 2.0f)
+                   + (SEC_GAP + SEC_HEAD_H + ROW_H + 2.0f)
+                   + (SEC_GAP + SEC_HEAD_H + 3.0f * (ROW_H + 2.0f));
+    float visibleH  = footerY - BODY_TOP;
+    float maxScroll = contentH - visibleH;
+    if (maxScroll < 0.0f) maxScroll = 0.0f;
+    if (mScrollOffset > maxScroll) mScrollOffset = maxScroll;
+    if (mScrollOffset < 0.0f)      mScrollOffset = 0.0f;
+
+    float y = BODY_TOP - mScrollOffset;
+
+    Drawing::BeginStencil(0.0f, BODY_TOP, screenW, visibleH);
 
     // Store section (first)
     DrawSection(rowX, y, rowW, "Store");
@@ -283,9 +359,33 @@ void SettingsScene::Render()
             mSelectedRow == 2 ? "[ Change ]" : NULL);
     y += ROW_H + 2.0f;
 
+    // Advanced section (fourth)
+    y += SEC_GAP;
+    DrawSection(rowX, y, rowW, "Advanced");
+    y += SEC_HEAD_H;
+    DrawRow(rowX, y, rowW, mSelectedRow == 3,
+            "Show Cache Partitions (X/Y/Z)",
+            mShowCachePartitions ? "Enabled" : "Disabled",
+            mSelectedRow == 3 ? "[ Toggle ]" : NULL);
+    y += ROW_H + 2.0f;
+    DrawRow(rowX, y, rowW, mSelectedRow == 4,
+            "Pre-cache Covers on Idle",
+            mPreCacheOnIdle ? "Enabled" : "Disabled",
+            mSelectedRow == 4 ? "[ Toggle ]" : NULL);
+    y += ROW_H + 2.0f;
+    DrawRow(rowX, y, rowW, mSelectedRow == 5,
+            "Clear Image Cache",
+            mClearCacheDone ? "Cleared!" : "Deletes all cached covers and screenshots",
+            mSelectedRow == 5 ? "[ Clear ]" : NULL);
+    y += ROW_H + 2.0f;
+
+    Drawing::EndStencil();
+
     // Unsaved changes hint (above footer)
     bool dirty = (mDownloadPath != AppSettings::GetDownloadPath()) ||
-                 ((int)mAfterInstallAction != (int)AppSettings::GetAfterInstallAction());
+                 ((int)mAfterInstallAction != (int)AppSettings::GetAfterInstallAction()) ||
+                 (mShowCachePartitions != AppSettings::GetShowCachePartitions()) ||
+                 (mPreCacheOnIdle != AppSettings::GetPreCacheOnIdle());
     if (dirty)
     {
         const char* hint = "* Unsaved changes";
@@ -318,6 +418,14 @@ void SettingsScene::Render()
     {
         DRAW_CTRL("ButtonA", "Change");
     }
+    else if (mSelectedRow == 3 || mSelectedRow == 4)
+    {
+        DRAW_CTRL("ButtonA", "Toggle");
+    }
+    else if (mSelectedRow == 5)
+    {
+        DRAW_CTRL("ButtonA", "Clear Cache");
+    }
     else
     {
         DRAW_CTRL("ButtonA", mSelectedRow == 0 ? "Manage Stores" : "Browse");
@@ -327,7 +435,8 @@ void SettingsScene::Render()
 
 #undef DRAW_CTRL
 
-    if (mPickerOpen) RenderPicker();
+    if (mPickerOpen)            RenderPicker();
+    if (mClearCacheConfirmOpen) RenderClearCacheConfirm();
 }
 
 // ==========================================================================
@@ -390,4 +499,47 @@ void SettingsScene::RenderPicker()
     D3DTexture* iconB = TextureHelper::GetControllerIcon("ButtonB");
     if (iconB) { Drawing::DrawTexturedRect(iconB, 0xffffffff, hx, hy, iW, iH); hx += iW + 4.0f; }
     Font::DrawText(FONT_NORMAL, "Cancel", COLOR_TEXT_GRAY, (int)hx, (int)(hy + 2.0f));
+}
+
+// ==========================================================================
+// RenderClearCacheConfirm
+// ==========================================================================
+void SettingsScene::RenderClearCacheConfirm()
+{
+    float screenW = (float)Context::GetScreenWidth();
+    float screenH = (float)Context::GetScreenHeight();
+
+    Drawing::DrawFilledRect(0xCC000000, 0.0f, 0.0f, screenW, screenH);
+
+    const float panelW = 440.0f;
+    const float panelH = 130.0f;
+    float px = (screenW - panelW) * 0.5f;
+    float py = (screenH - panelH) * 0.5f;
+
+    Drawing::DrawFilledRect(COLOR_CARD_BG, px, py, panelW, panelH);
+    Drawing::DrawFilledRect(0xFFEF5350, px, py, panelW, 4.0f);
+
+    Font::DrawText(FONT_NORMAL, "Clear Image Cache?", COLOR_WHITE, px + 20.0f, py + 18.0f);
+    Font::DrawTextWrapped(FONT_NORMAL,
+        "This will delete all cached covers and screenshots.\nThey will be re-downloaded on next use.",
+        COLOR_TEXT_GRAY, px + 20.0f, py + 44.0f, panelW - 40.0f);
+
+    // Hints centred at bottom
+    float iW    = (float)ASSET_CONTROLLER_ICON_WIDTH;
+    float iH    = (float)ASSET_CONTROLLER_ICON_HEIGHT;
+    float confW = 0.0f;
+    float canW  = 0.0f;
+    Font::MeasureText(FONT_NORMAL, "Confirm", &confW);
+    Font::MeasureText(FONT_NORMAL, "Cancel",  &canW);
+    float hintW = (iW + 4.0f + confW) + 16.0f + (iW + 4.0f + canW);
+    float hx    = px + (panelW - hintW) * 0.5f;
+    float hy    = py + panelH - iH - 10.0f;
+
+    D3DTexture* iconY = TextureHelper::GetControllerIcon("ButtonY");
+    if (iconY) { Drawing::DrawTexturedRect(iconY, 0xFFFFFFFF, hx, hy, iW, iH); hx += iW + 4.0f; }
+    Font::DrawText(FONT_NORMAL, "Confirm", COLOR_TEXT_GRAY, hx, hy + 2.0f);
+    hx += confW + 16.0f;
+    D3DTexture* iconB = TextureHelper::GetControllerIcon("ButtonB");
+    if (iconB) { Drawing::DrawTexturedRect(iconB, 0xFFFFFFFF, hx, hy, iW, iH); hx += iW + 4.0f; }
+    Font::DrawText(FONT_NORMAL, "Cancel", COLOR_TEXT_GRAY, hx, hy + 2.0f);
 }

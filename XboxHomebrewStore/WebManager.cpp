@@ -15,6 +15,20 @@ static const char* ntp_server = "167.160.187.12";
 static const int32_t ntp_port = 123;
 static const unsigned long ntp_epoch_offset = 2208988800UL;
 
+// ==========================================================================
+// Global network lock -- serialises all curl operations across threads.
+// curl_global_cleanup/init is not thread-safe; Xbox has one network
+// connection anyway so true parallelism buys nothing here.
+// ==========================================================================
+static CRITICAL_SECTION gNetworkLock;
+static bool             gNetworkLockInit = false;
+
+struct NetworkLockScope
+{
+    NetworkLockScope()  { if (gNetworkLockInit) EnterCriticalSection(&gNetworkLock); }
+    ~NetworkLockScope() { if (gNetworkLockInit) LeaveCriticalSection(&gNetworkLock); }
+};
+
 extern "C" {
     LONG WINAPI NtSetSystemTime(LPFILETIME SystemTime, LPFILETIME PreviousTime);
 }
@@ -217,6 +231,11 @@ static void ApplyCommonOptions(CURL* curl)
 
 bool WebManager::Init()
 {
+    if (!gNetworkLockInit)
+    {
+        InitializeCriticalSection(&gNetworkLock);
+        gNetworkLockInit = true;
+    }
     return curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK;
 }
 
@@ -607,6 +626,7 @@ static bool HandleHtmlResponse(const std::string& url, const std::string& filePa
 
 bool WebManager::TryDownloadWebData(const std::string url, const std::string filePath, std::string* outFinalFileName, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
 {
+    NetworkLockScope lock;
     Debug::Print("\n=== TryDownloadWebData START ===\n");
     Debug::Print("URL: %s\nFilePath: %s\n", url.c_str(), filePath.c_str());
 
@@ -657,6 +677,7 @@ bool WebManager::TryDownloadWebData(const std::string url, const std::string fil
 
 bool WebManager::TryGetApps(AppsResponse& result, int32_t offset, int32_t count, const std::string category, const std::string name)
 {
+    NetworkLockScope lock;
     result.items.clear();
 	ResetCurlGlobal();
 
@@ -704,6 +725,7 @@ bool WebManager::TryGetApps(AppsResponse& result, int32_t offset, int32_t count,
 
 bool WebManager::TryGetCategories(CategoriesResponse& result)
 {
+    NetworkLockScope lock;
     result.clear();
 	ResetCurlGlobal();
 
@@ -742,6 +764,7 @@ bool WebManager::TryGetCategories(CategoriesResponse& result)
 
 bool WebManager::TryGetVersions(const std::string id, VersionsResponse& result)
 {
+    NetworkLockScope lock;
     result.id.clear();
     result.name.clear();
     result.author.clear();
@@ -872,6 +895,7 @@ bool WebManager::TryDownloadApiData(const std::string url, const std::string fil
 
 bool WebManager::TryDownloadCover(const std::string id, int32_t width, int32_t height, const std::string filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
 {
+    NetworkLockScope lock;
     if (id.empty()) {
         return false;
     }
@@ -881,6 +905,7 @@ bool WebManager::TryDownloadCover(const std::string id, int32_t width, int32_t h
 
 bool WebManager::TryDownloadScreenshot(const std::string id, int32_t width, int32_t height, const std::string filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
 {
+    NetworkLockScope lock;
     if (id.empty()) {
         return false;
     }
@@ -890,6 +915,7 @@ bool WebManager::TryDownloadScreenshot(const std::string id, int32_t width, int3
 
 bool WebManager::TryDownloadApp(const std::string id, const std::string filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
 {
+    NetworkLockScope lock;
     if (id.empty()) {
         return false;
     }
@@ -899,6 +925,7 @@ bool WebManager::TryDownloadApp(const std::string id, const std::string filePath
 
 bool WebManager::TryDownloadVersionFile(const std::string versionId, int32_t fileIndex, const std::string filePath, DownloadProgressFn progressFn, void* progressUserData, volatile bool* pCancelRequested)
 {
+    NetworkLockScope lock;
     if (versionId.empty()) {
         return false;
     }
@@ -908,6 +935,7 @@ bool WebManager::TryDownloadVersionFile(const std::string versionId, int32_t fil
 
 bool WebManager::TrySyncTime()
 {
+    NetworkLockScope lock;
     SOCKET sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sock == INVALID_SOCKET) {
         return false;
@@ -949,6 +977,7 @@ bool WebManager::TrySyncTime()
 
 bool WebManager::TryCheckUrl(const std::string& url)
 {
+    NetworkLockScope lock;
     ResetCurlGlobal();
 
     Debug::Print("=== TryCheckUrl ===\nURL: %s\n", url.c_str());
@@ -1010,6 +1039,7 @@ bool WebManager::TryCheckUrl(const std::string& url)
 
 bool WebManager::TryGetLatestRelease(std::string& outTag, std::string& outZipUrl)
 {
+    NetworkLockScope lock;
     outTag.clear();
     outZipUrl.clear();
 

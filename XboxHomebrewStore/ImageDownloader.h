@@ -20,6 +20,7 @@ public:
     ~ImageDownloader();
 
     void Queue(D3DTexture** pOutTexture, const std::string appId, ImageDownloadType type);
+    void WarmCache(const std::string appId, ImageDownloadType type);  // download to disk only, no texture
     void CancelAll();
 
 
@@ -27,6 +28,7 @@ public:
     static bool IsCoverCached( const std::string appId );
     static std::string GetScreenshotCachePath( const std::string appId );
     static bool IsScreenshotCached( const std::string appId );
+    static int32_t GetCachedCoverCount();  // number of covers currently on disk
 
 private:
 

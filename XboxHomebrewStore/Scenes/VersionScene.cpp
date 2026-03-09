@@ -16,6 +16,7 @@
 #include "..\FileSystem.h"
 #include "..\AppSettings.h"
 #include "..\StoreList.h"
+#include "..\Network.h"
 
 // ==========================================================================
 // InstallPathScene callback
@@ -158,7 +159,7 @@ void VersionScene::StartDownload()
 
     mDownloadPath = FileSystem::CombinePath(downloadsRoot, ver->folderName);
 
-    // Capture install path before clearing — clear after so re-entry can't double-fire
+    // Capture install path before clearing ? clear after so re-entry can't double-fire
     mInstallPath        = FileSystem::CombinePath(mPendingInstallPath, ver->folderName);
     mPendingInstallPath = "";
 
@@ -261,7 +262,7 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
         }
         else
         {
-            // Store API file — build the same URL TryDownloadVersionFile uses
+            // Store API file ? build the same URL TryDownloadVersionFile uses
             checkUrl = StoreList::GetActiveUrl() + "/api/Download/" + versionId
                      + String::Format("?fileIndex=%d", (int)f);
         }
@@ -278,7 +279,7 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
     }
     scene->mCheckingLinks = false;
 
-    scene->mProgressIndex = 1;  // reset after checks — counts from 1 of N for downloads
+    scene->mProgressIndex = 1;  // reset after checks ? counts from 1 of N for downloads
 
     std::vector<std::string> downloadedFileNames(ver->downloadFiles.size());
     bool downloadSucceeded = !ver->downloadFiles.empty();
@@ -415,7 +416,7 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
 // ==========================================================================
 void VersionScene::Render()
 {
-    // FIX: don't re-fetch while a download is active — avoids clobbering version data mid-download
+    // FIX: don't re-fetch while a download is active ? avoids clobbering version data mid-download
     if (mNeedsUpdate && !mDownloading)
     {
         mNeedsUpdate = false;
@@ -441,11 +442,24 @@ void VersionScene::Render()
 // --------------------------------------------------------------------------
 void VersionScene::RenderHeader()
 {
+    float screenW = (float)Context::GetScreenWidth();
+
     Drawing::DrawTexturedRect(TextureHelper::GetHeader(), 0xffffffff,
-        0, 0, (float)Context::GetScreenWidth(), ASSET_HEADER_HEIGHT);
+        0, 0, screenW, ASSET_HEADER_HEIGHT);
     Font::DrawText(FONT_LARGE, "Xbox Homebrew Store", COLOR_WHITE, 60, 12);
-    Drawing::DrawTexturedRect(TextureHelper::GetStore(), 0x8fe386,
+    Drawing::DrawTexturedRect(TextureHelper::GetStore(), 0xFFFFFFFF,
         16, 12, ASSET_STORE_ICON_WIDTH, ASSET_STORE_ICON_HEIGHT);
+
+    // Version beside title
+    float titleW = 0.0f;
+    Font::MeasureText(FONT_LARGE, "Xbox Homebrew Store", &titleW);
+    Font::DrawText(FONT_NORMAL, APP_VERSION, COLOR_TEXT_GRAY, 60.0f + titleW + 10.0f, 20.0f);
+
+    // FTP IP top-right
+    std::string ipStr = std::string("FTP: ") + Network::GetIP();
+    float ipW = 0.0f;
+    Font::MeasureText(FONT_NORMAL, ipStr.c_str(), &ipW);
+    Font::DrawText(FONT_NORMAL, ipStr.c_str(), COLOR_TEXT_GRAY, screenW - ipW - 16.0f, 20.0f);
 }
 
 // --------------------------------------------------------------------------
@@ -774,7 +788,7 @@ void VersionScene::RenderDownloadOverlay()
         Font::DrawText(FONT_NORMAL, prog, COLOR_TEXT_GRAY, px + 20.0f, barY + barH + 8.0f);
     }
 
-    // Cancel hint — centred
+    // Cancel hint ? centred
     float iW    = (float)ASSET_CONTROLLER_ICON_WIDTH;
     float iH    = (float)ASSET_CONTROLLER_ICON_HEIGHT;
     float lblW  = 0.0f;
@@ -811,7 +825,7 @@ void VersionScene::RenderFailedOverlay()
     Font::DrawTextWrapped(FONT_NORMAL, mFailedMessage, COLOR_WHITE,
                           px + 20.0f, py + 18.0f, msgMaxWidth);
 
-    // Close button — centred
+    // Close button ? centred
     float iW   = (float)ASSET_CONTROLLER_ICON_WIDTH;
     float iH   = (float)ASSET_CONTROLLER_ICON_HEIGHT;
     float lblW = 0.0f;
