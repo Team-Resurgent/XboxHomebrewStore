@@ -345,7 +345,7 @@
 				RelativePath=".\Network.cpp">
 			</File>
 			<File
-				RelativePath=".\Onscreenkeyboard.cpp">
+				RelativePath=".\OnScreenKeyboard.cpp">
 			</File>
 			<File
 				RelativePath=".\parson.c">
@@ -517,7 +517,7 @@
 				Name="Scenes"
 				Filter="">
 				<File
-					RelativePath=".\Scenes\Installpathscene.cpp">
+					RelativePath=".\Scenes\InstallPathScene.cpp">
 				</File>
 				<File
 					RelativePath=".\Scenes\LoadingScene.cpp">
@@ -526,10 +526,10 @@
 					RelativePath=".\Scenes\SceneManager.cpp">
 				</File>
 				<File
-					RelativePath=".\Scenes\Settingsscene.cpp">
+					RelativePath=".\Scenes\SettingsScene.cpp">
 				</File>
 				<File
-					RelativePath=".\Scenes\Storemanagerscene.cpp">
+					RelativePath=".\Scenes\StoreManagerScene.cpp">
 				</File>
 				<File
 					RelativePath=".\Scenes\StoreScene.cpp">
@@ -592,7 +592,7 @@
 				RelativePath=".\Network.h">
 			</File>
 			<File
-				RelativePath=".\Onscreenkeyboard.h">
+				RelativePath=".\OnScreenKeyboard.h">
 			</File>
 			<File
 				RelativePath=".\parson.h">
@@ -665,7 +665,7 @@
 				Name="Scenes"
 				Filter="">
 				<File
-					RelativePath=".\Scenes\Installpathscene.h">
+					RelativePath=".\Scenes\InstallPathScene.h">
 				</File>
 				<File
 					RelativePath=".\Scenes\LoadingScene.h">
@@ -677,10 +677,10 @@
 					RelativePath=".\Scenes\SceneManager.h">
 				</File>
 				<File
-					RelativePath=".\Scenes\Settingsscene.h">
+					RelativePath=".\Scenes\SettingsScene.h">
 				</File>
 				<File
-					RelativePath=".\Scenes\Storemanagerscene.h">
+					RelativePath=".\Scenes\StoreManagerScene.h">
 				</File>
 				<File
 					RelativePath=".\Scenes\StoreScene.h">

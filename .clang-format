@@ -1,0 +1,22 @@
+# Don't wrap lines (keep statements on one line)
+ColumnLimit: 0
+
+# Pack function call args and params onto as few lines as possible (single line)
+BinPackArguments: true
+BinPackParameters: true
+# Don't align after ( — avoids forcing multi-line
+AlignAfterOpenBracket: false
+# Strongly discourage breaking before first argument (keeps call on one line when possible)
+PenaltyBreakBeforeFirstCallParameter: 10000
+
+# Brace on same line as if/for/while (opening brace on first line)
+BreakBeforeBraces: Attach
+
+# Always use braces for if/for/while (clang-format 15+)
+InsertBraces: true
+
+# Never use bare single-statement form (if (x) foo();)
+AllowShortIfStatementsOnASingleLine: false
+
+# Allow short blocks on one line: if (x) { return; }
+AllowShortBlocksOnASingleLine: true
