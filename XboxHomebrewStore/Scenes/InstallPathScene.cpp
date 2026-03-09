@@ -25,9 +25,9 @@
 #define IP_TRIG_INTV_SLOW_MS 180
 #define IP_TRIG_DEADZONE 4
 
-#define FIRE_ON_HOLD(btnPress, btnDown, nextTs)                                  \
-  ((btnPress) ? ((nextTs = GetTickCount() + IP_REPEAT_INITIAL_MS), 1)            \
-              : ((btnDown) && ((GetTickCount() - (nextTs)) >= 0)                 \
+#define FIRE_ON_HOLD(btnPress, btnDown, nextTs)                               \
+  ((btnPress) ? ((nextTs = GetTickCount() + IP_REPEAT_INITIAL_MS), 1)          \
+              : ((btnDown) && ((int)(GetTickCount() - (nextTs)) >= 0)           \
                         ? ((nextTs = GetTickCount() + IP_REPEAT_INTERVAL_MS), 1) \
                         : 0))
 
