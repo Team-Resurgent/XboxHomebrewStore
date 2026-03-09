@@ -3,298 +3,326 @@
 //=============================================================================
 
 #include "ImageDownloader.h"
-#include "Debug.h"
 #include "Defines.h"
-#include "String.h"
-#include "TextureHelper.h"
 #include "WebManager.h"
-
-static uint32_t CRC32(const void *data, size_t size) {
-  static uint32_t s_table[256];
-  static int32_t s_tableInit = 0;
-  if (!s_tableInit) {
-    for (uint32_t i = 0; i < 256; i++) {
-      uint32_t c = i;
-      for (int32_t k = 0; k < 8; k++) {
-        c = (c & 1) ? (0xEDB88320U ^ (c >> 1)) : (c >> 1);
-      }
-      s_table[i] = c;
+#include "TextureHelper.h"
+#include "Debug.h"
+#include "String.h"
+static uint32_t CRC32( const void* data, size_t size )
+{
+    static uint32_t s_table[256];
+    static int32_t s_tableInit = 0;
+    if( !s_tableInit )
+    {
+        for( uint32_t i = 0; i < 256; i++ )
+        {
+            uint32_t c = i;
+            for( int32_t k = 0; k < 8; k++ )
+                c = (c & 1) ? (0xEDB88320U ^ (c >> 1)) : (c >> 1);
+            s_table[i] = c;
+        }
+        s_tableInit = 1;
     }
-    s_tableInit = 1;
-  }
-  uint32_t crc = 0xFFFFFFFFU;
-  const uint8_t *p = (const uint8_t *)data;
-  for (size_t i = 0; i < size; i++) {
-    crc = s_table[(crc ^ p[i]) & 0xFF] ^ (crc >> 8);
-  }
-  return crc ^ 0xFFFFFFFFU;
+    uint32_t crc = 0xFFFFFFFFU;
+    const uint8_t* p = (const uint8_t*)data;
+    for( size_t i = 0; i < size; i++ )
+        crc = s_table[(crc ^ p[i]) & 0xFF] ^ (crc >> 8);
+    return crc ^ 0xFFFFFFFFU;
 }
 
-static std::string CachePathFor(const std::string appId,
-    ImageDownloadType type) {
-  uint32_t crc = CRC32(appId.c_str(), appId.size());
-  if (type == IMAGE_COVER) {
-    return String::Format("T:\\Cache\\Covers\\%08X.jpg", crc);
-  }
-  return String::Format("T:\\Cache\\Screenshots\\%08X.jpg", crc);
+static std::string CachePathFor( const std::string appId, ImageDownloadType type )
+{
+    uint32_t crc = CRC32( appId.c_str(), appId.size() );
+    if( type == IMAGE_COVER ) {
+        return String::Format( "T:\\Cache\\Covers\\%08X.jpg", crc );
+    }
+    return String::Format( "T:\\Cache\\Screenshots\\%08X.jpg", crc );
 }
 
-static bool FileExists(const char *path) {
-  DWORD att = GetFileAttributesA(path);
-  if (att == (DWORD)-1) {
-    return false; /* path missing or error */
-  }
-  if (att & FILE_ATTRIBUTE_DIRECTORY) {
-    return false;
-  }
-  return true; /* exists and is a file (not a directory) */
+static bool FileExists( const char* path )
+{
+    DWORD att = GetFileAttributesA( path );
+    if( att == (DWORD)-1 ) {
+        return false;  /* path missing or error */
+    }
+    if( att & FILE_ATTRIBUTE_DIRECTORY ) {
+        return false;
+    }
+    return true;  /* exists and is a file (not a directory) */
 }
 
-/** Returns true only if the file exists and does not have
- * FILE_ATTRIBUTE_TEMPORARY (i.e. download finished and attribute cleared). */
-static bool FileExistsAndAvailable(const char *path) {
-  DWORD att = GetFileAttributesA(path);
-  if (att == (DWORD)-1) {
-    return false;
-  }
-  if (att & FILE_ATTRIBUTE_DIRECTORY) {
-    return false;
-  }
-  if (att & FILE_ATTRIBUTE_ARCHIVE) {
-    return false; /* still downloading / not yet renamed with attribute cleared
-                   */
-  }
-  return true;
+/** Returns true only if the file exists and does not have FILE_ATTRIBUTE_TEMPORARY (i.e. download finished and attribute cleared). */
+static bool FileExistsAndAvailable( const char* path )
+{
+    DWORD att = GetFileAttributesA( path );
+    if( att == (DWORD)-1 ) {
+        return false;
+    }
+    if( att & FILE_ATTRIBUTE_DIRECTORY ) {
+        return false;
+    }
+    if( att & FILE_ATTRIBUTE_ARCHIVE ) {
+        return false;  /* still downloading / not yet renamed with attribute cleared */
+    }
+    return true;
 }
 
-std::string ImageDownloader::GetCoverCachePath(const std::string appId) {
-  return CachePathFor(appId, IMAGE_COVER);
+std::string ImageDownloader::GetCoverCachePath( const std::string appId )
+{
+    return CachePathFor( appId, IMAGE_COVER );
 }
 
-bool ImageDownloader::IsCoverCached(const std::string appId) {
-  return FileExistsAndAvailable(GetCoverCachePath(appId).c_str());
+bool ImageDownloader::IsCoverCached( const std::string appId )
+{
+    return FileExistsAndAvailable( GetCoverCachePath( appId ).c_str() );
 }
 
-std::string ImageDownloader::GetScreenshotCachePath(const std::string appId) {
-  return CachePathFor(appId, IMAGE_SCREENSHOT);
+std::string ImageDownloader::GetScreenshotCachePath( const std::string appId )
+{
+    return CachePathFor( appId, IMAGE_SCREENSHOT );
 }
 
-bool ImageDownloader::IsScreenshotCached(const std::string appId) {
-  return FileExistsAndAvailable(GetScreenshotCachePath(appId).c_str());
+bool ImageDownloader::IsScreenshotCached( const std::string appId )
+{
+    return FileExistsAndAvailable( GetScreenshotCachePath( appId ).c_str() );
 }
 
 #define CACHE_FILE_LIMIT STORE_CACHE_FILE_LIMIT
 
-static void CollectFileWithTime(const char *dir, std::vector<std::pair<std::string, ULONGLONG>> *out) {
-
-  std::string pattern = std::string(dir) + "\\*";
-  WIN32_FIND_DATAA fd;
-  HANDLE h = FindFirstFileA(pattern.c_str(), &fd);
-  if (h == INVALID_HANDLE_VALUE) {
-    return;
-  }
-  do {
-    if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-      continue;
+static void CollectFileWithTime( const char* dir, std::vector<std::pair<std::string, ULONGLONG> >* out )
+{
+    std::string pattern = std::string( dir ) + "\\*";
+    WIN32_FIND_DATAA fd;
+    HANDLE h = FindFirstFileA( pattern.c_str(), &fd );
+    if( h == INVALID_HANDLE_VALUE ) {
+        return;
     }
-    ULARGE_INTEGER u;
-    u.LowPart = fd.ftLastWriteTime.dwLowDateTime;
-    u.HighPart = fd.ftLastWriteTime.dwHighDateTime;
-    out->push_back(
-        std::make_pair(std::string(dir) + "\\" + fd.cFileName, u.QuadPart));
-  } while (FindNextFileA(h, &fd));
-  FindClose(h);
+    do
+    {
+        if( fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) {
+            continue;
+        }
+        ULARGE_INTEGER u;
+        u.LowPart = fd.ftLastWriteTime.dwLowDateTime;
+        u.HighPart = fd.ftLastWriteTime.dwHighDateTime;
+        out->push_back( std::make_pair( std::string( dir ) + "\\" + fd.cFileName, u.QuadPart ) );
+    } while( FindNextFileA( h, &fd ) );
+    FindClose( h );
 }
 
-static int32_t CountCacheFiles() {
-  std::vector<std::pair<std::string, ULONGLONG>> files;
-  CollectFileWithTime("T:\\Cache\\Covers", &files);
-  CollectFileWithTime("T:\\Cache\\Screenshots", &files);
-  return (int32_t)files.size();
+static int32_t CountCacheFiles()
+{
+    std::vector<std::pair<std::string, ULONGLONG> > files;
+    CollectFileWithTime( "T:\\Cache\\Covers", &files );
+    CollectFileWithTime( "T:\\Cache\\Screenshots", &files );
+    return (int32_t)files.size();
 }
 
-int32_t ImageDownloader::GetCachedCoverCount() {
-  std::vector<std::pair<std::string, ULONGLONG>> files;
-  CollectFileWithTime("T:\\Cache\\Covers", &files);
-  return (int32_t)files.size();
+int32_t ImageDownloader::GetCachedCoverCount()
+{
+    std::vector<std::pair<std::string, ULONGLONG> > files;
+    CollectFileWithTime( "T:\\Cache\\Covers", &files );
+    return (int32_t)files.size();
 }
 
-static std::string FindOldestCacheFile() {
-  std::vector<std::pair<std::string, ULONGLONG>> files;
-  CollectFileWithTime("T:\\Cache\\Covers", &files);
-  CollectFileWithTime("T:\\Cache\\Screenshots", &files);
-  if (files.empty()) {
-    return std::string();
-  }
-  size_t oldest = 0;
-  for (size_t i = 1; i < files.size(); i++) {
-    if (files[i].second < files[oldest].second) {
-      oldest = i;
+static std::string FindOldestCacheFile()
+{
+    std::vector<std::pair<std::string, ULONGLONG> > files;
+    CollectFileWithTime( "T:\\Cache\\Covers", &files );
+    CollectFileWithTime( "T:\\Cache\\Screenshots", &files );
+    if( files.empty() ) return std::string();
+    size_t oldest = 0;
+    for( size_t i = 1; i < files.size(); i++ ) {
+        if( files[i].second < files[oldest].second ) {
+            oldest = i;
+        }
     }
-  }
-  return files[oldest].first;
+    return files[oldest].first;
 }
 
-static void EnforceCacheLimit() {
-  while (CountCacheFiles() >= CACHE_FILE_LIMIT) {
-    std::string old = FindOldestCacheFile();
-    if (old.empty()) {
-      break;
+static void EnforceCacheLimit()
+{
+    while( CountCacheFiles() >= CACHE_FILE_LIMIT )
+    {
+        std::string old = FindOldestCacheFile();
+        if( old.empty() ) {
+            break;
+        }
+        DeleteFileA( old.c_str() );
     }
-    DeleteFileA(old.c_str());
-  }
 }
 
 ImageDownloader::ImageDownloader()
-    : m_thread(nullptr), m_quit(false), m_cancelRequested(false) {
-  InitializeCriticalSection(&m_queueLock);
-  m_thread = CreateThread(nullptr, 0, ThreadProc, this, 0, nullptr);
+    : m_thread( nullptr )
+    , m_quit( false )
+    , m_cancelRequested( false )
+{
+    InitializeCriticalSection( &m_queueLock );
+    m_thread = CreateThread( nullptr, 0, ThreadProc, this, 0, nullptr );
 }
 
-ImageDownloader::~ImageDownloader() {
-  m_quit = true;
-  if (m_thread) {
-    WaitForSingleObject(m_thread, INFINITE);
-    CloseHandle(m_thread);
-  }
-  DeleteCriticalSection(&m_completedLock);
-  DeleteCriticalSection(&m_queueLock);
+ImageDownloader::~ImageDownloader()
+{
+    m_quit = true;
+    if( m_thread )
+    {
+        WaitForSingleObject( m_thread, INFINITE );
+        CloseHandle( m_thread );
+    }
+    DeleteCriticalSection( &m_completedLock );
+    DeleteCriticalSection( &m_queueLock );
 }
 
-void ImageDownloader::Queue(D3DTexture **pOutTexture, const std::string appId,
-    ImageDownloadType type) {
-  if (!pOutTexture || appId.empty()) {
-    return;
-  }
+void ImageDownloader::Queue( D3DTexture** pOutTexture, const std::string appId, ImageDownloadType type)
+{
+    if( !pOutTexture || appId.empty() ) return;
 
-  for (uint32_t i = 0; i < m_queue.size(); i++) {
-    Request *item = &m_queue[i];
-    if (item->appId == appId && item->type == type) {
-      return;
+    for (uint32_t i = 0; i < m_queue.size(); i++) {
+        Request* item = &m_queue[i];
+        if (item->appId == appId && item->type == type) {
+            return;
+        }
     }
-  }
 
-  Request r;
-  r.pOutTexture = pOutTexture;
-  r.appId = appId;
-  r.type = type;
+    Request r;
+    r.pOutTexture = pOutTexture;
+    r.appId = appId;
+    r.type = type;
 
-  EnterCriticalSection(&m_queueLock);
-  m_queue.push_back(r);
-  LeaveCriticalSection(&m_queueLock);
+    EnterCriticalSection( &m_queueLock );
+    m_queue.push_back( r );
+    LeaveCriticalSection( &m_queueLock );
 }
 
-void ImageDownloader::WarmCache(const std::string appId,
-    ImageDownloadType type) {
-  if (appId.empty()) {
-    return;
-  }
+void ImageDownloader::WarmCache( const std::string appId, ImageDownloadType type )
+{
+    if( appId.empty() ) return;
 
-  // Skip if already cached on disk
-  if (type == IMAGE_COVER && IsCoverCached(appId)) {
-    return;
-  }
-  if (type == IMAGE_SCREENSHOT && IsScreenshotCached(appId)) {
-    return;
-  }
+    // Skip if already cached on disk
+    if( type == IMAGE_COVER && IsCoverCached( appId ) ) return;
+    if( type == IMAGE_SCREENSHOT && IsScreenshotCached( appId ) ) return;
 
-  EnterCriticalSection(&m_queueLock);
+    EnterCriticalSection( &m_queueLock );
 
-  // Skip if already queued
-  for (uint32_t i = 0; i < m_queue.size(); i++) {
-    if (m_queue[i].appId == appId && m_queue[i].type == type) {
-      LeaveCriticalSection(&m_queueLock);
-      return;
+    // Skip if already queued
+    for( uint32_t i = 0; i < m_queue.size(); i++ )
+    {
+        if( m_queue[i].appId == appId && m_queue[i].type == type )
+        {
+            LeaveCriticalSection( &m_queueLock );
+            return;
+        }
     }
-  }
 
-  Request r;
-  r.pOutTexture = NULL; // cache-warm only -- no texture to fill
-  r.appId = appId;
-  r.type = type;
-  m_queue.push_back(r);
+    Request r;
+    r.pOutTexture = NULL;  // cache-warm only -- no texture to fill
+    r.appId       = appId;
+    r.type        = type;
+    m_queue.push_back( r );
 
-  LeaveCriticalSection(&m_queueLock);
+    LeaveCriticalSection( &m_queueLock );
 }
 
-void ImageDownloader::CancelAll() {
-  m_cancelRequested = true;
-  EnterCriticalSection(&m_queueLock);
-  m_queue.clear();
-  LeaveCriticalSection(&m_queueLock);
+void ImageDownloader::CancelAll()
+{
+    m_cancelRequested = true;
+    EnterCriticalSection( &m_queueLock );
+    m_queue.clear();
+    LeaveCriticalSection( &m_queueLock );
 }
 
-DWORD WINAPI ImageDownloader::ThreadProc(LPVOID param) {
-  ImageDownloader *p = (ImageDownloader *)param;
-  if (p) {
-    p->WorkerLoop();
-  }
-  return 0;
+DWORD WINAPI ImageDownloader::ThreadProc( LPVOID param )
+{
+    ImageDownloader* p = (ImageDownloader*)param;
+    if( p ) {
+        p->WorkerLoop();
+    }
+    return 0;
 }
 
-void ImageDownloader::WorkerLoop() {
-  while (!m_quit) {
-    if (m_quit) {
-      break;
+void ImageDownloader::WorkerLoop()
+{
+    while( !m_quit )
+    {
+        if( m_quit ) {
+            break;
+        }
+
+        Request req;
+        bool haveRequest = false;
+
+        EnterCriticalSection( &m_queueLock );
+
+        if( !m_queue.empty() )
+        {
+            req = m_queue.front();
+            m_queue.pop_front();
+            haveRequest = true;
+        }
+
+        if( m_queue.empty() )
+            m_cancelRequested = false;
+
+        LeaveCriticalSection( &m_queueLock );
+
+        if( !haveRequest )
+        {
+            Sleep(10);
+            continue;
+        }
+
+        std::string path = CachePathFor( req.appId, req.type );
+
+        // Unique key so cover/screenshot are tracked separately
+        std::string failKey = req.appId;
+        if( req.type == IMAGE_COVER )
+            failKey += "_cover";
+        else
+            failKey += "_screenshot";
+
+        bool haveFile = FileExists( path.c_str() );
+        bool previouslyFailed = ( m_failed.find( failKey ) != m_failed.end() );
+
+        if( !haveFile && !previouslyFailed )
+        {
+            EnforceCacheLimit();
+
+            bool ok = false;
+
+            if( req.type == IMAGE_COVER )
+            {
+                ok = WebManager::TryDownloadCover(
+                    req.appId,
+                    144,
+                    204,
+                    path,
+                    NULL,
+                    NULL,
+                    &m_cancelRequested );
+            }
+            else
+            {
+                ok = WebManager::TryDownloadScreenshot(
+                    req.appId,
+                    640,
+                    360,
+                    path,
+                    NULL,
+                    NULL,
+                    &m_cancelRequested );
+            }
+
+            if( m_cancelRequested || m_quit )
+            {
+                continue;
+            }
+
+            if( !ok )
+            {
+                // Mark as failed so we don't retry forever
+                m_failed.insert( failKey );
+                continue;
+            }
+        }
     }
-
-    Request req;
-    bool haveRequest = false;
-
-    EnterCriticalSection(&m_queueLock);
-
-    if (!m_queue.empty()) {
-      req = m_queue.front();
-      m_queue.pop_front();
-      haveRequest = true;
-    }
-
-    if (m_queue.empty()) {
-      m_cancelRequested = false;
-    }
-
-    LeaveCriticalSection(&m_queueLock);
-
-    if (!haveRequest) {
-      Sleep(10);
-      continue;
-    }
-
-    std::string path = CachePathFor(req.appId, req.type);
-
-    // Unique key so cover/screenshot are tracked separately
-    std::string failKey = req.appId;
-    if (req.type == IMAGE_COVER) {
-      failKey += "_cover";
-    } else {
-      failKey += "_screenshot";
-    }
-
-    bool haveFile = FileExists(path.c_str());
-    bool previouslyFailed = (m_failed.find(failKey) != m_failed.end());
-
-    if (!haveFile && !previouslyFailed) {
-      EnforceCacheLimit();
-
-      bool ok = false;
-
-      if (req.type == IMAGE_COVER) {
-        ok = WebManager::TryDownloadCover(req.appId, 144, 204, path, NULL, NULL,
-            &m_cancelRequested);
-      } else {
-        ok = WebManager::TryDownloadScreenshot(req.appId, 640, 360, path, NULL,
-            NULL, &m_cancelRequested);
-      }
-
-      if (m_cancelRequested || m_quit) {
-        continue;
-      }
-
-      if (!ok) {
-        // Mark as failed so we don't retry forever
-        m_failed.insert(failKey);
-        continue;
-      }
-    }
-  }
 }
