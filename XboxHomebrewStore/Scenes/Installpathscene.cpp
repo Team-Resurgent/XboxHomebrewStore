@@ -28,7 +28,7 @@
 #define FIRE_ON_HOLD(btnPress, btnDown, nextTs) \
     ( (btnPress) \
         ? ( (nextTs = GetTickCount() + IP_REPEAT_INITIAL_MS), 1 ) \
-        : ( (btnDown) && ((int)(GetTickCount() - (nextTs)) >= 0) \
+        : ( (btnDown) && ((GetTickCount() - (nextTs)) >= 0) \
             ? ( (nextTs = GetTickCount() + IP_REPEAT_INTERVAL_MS), 1 ) \
             : 0 ) )
 
@@ -55,7 +55,7 @@ static DWORD IP_TrigInterval(BYTE p)
 static int IP_FireTrigger(bool pressed, bool down, BYTE p, DWORD* ts, DWORD now)
 {
     if (pressed)                        { *ts = now + IP_TrigInitDelay(p); return 1; }
-    if (down && (int)(now - *ts) >= 0) { *ts = now + IP_TrigInterval(p);  return 1; }
+    if (down && (now - *ts) >= 0) { *ts = now + IP_TrigInterval(p);  return 1; }
     return 0;
 }
 
@@ -494,12 +494,12 @@ void InstallPathScene::RenderList()
 
     // Scene title (e.g. "Select Install Path" or "Download Path")
     Font::DrawText(FONT_NORMAL, mTitle.c_str(), COLOR_WHITE,
-                   16, (int)(listTop + 6));
+                   16, (listTop + 6));
 
     // Breadcrumb path underneath when inside a drive
     if (!mCurrentPath.empty())
         Font::DrawText(FONT_NORMAL, mCurrentPath.c_str(), COLOR_TEXT_GRAY,
-                       16, (int)(listTop + 22));
+                       16, (listTop + 22));
 
     const float itemsTop   = listTop + 50.0f;
     const float itemsH     = listBot - itemsTop;
@@ -512,7 +512,7 @@ void InstallPathScene::RenderList()
         Font::DrawText(FONT_NORMAL, "No folders found.", COLOR_TEXT_GRAY, 24, yc);
         if (!mCurrentPath.empty())
             Font::DrawText(FONT_NORMAL, "Press Y to create a new folder here.",
-                           COLOR_TEXT_GRAY, 24, (int)(yc + 30.0f));
+                           COLOR_TEXT_GRAY, 24, (yc + 30.0f));
         return;
     }
 
@@ -559,7 +559,7 @@ void InstallPathScene::RenderList()
     float cw = 0.0f;
     Font::MeasureText(FONT_NORMAL, counter, &cw);
     Font::DrawText(FONT_NORMAL, counter.c_str(), COLOR_TEXT_GRAY,
-                   (int)(screenW - 16.0f - cw), (int)(listBot - 18.0f));
+                   (screenW - 16.0f - cw), (listBot - 18.0f));
 }
 
 // --------------------------------------------------------------------------
@@ -579,11 +579,11 @@ void InstallPathScene::RenderDeleteConfirm()
     Drawing::DrawFilledRect(0xFFEF5350,    px, py, panelW, 4.0f);
 
     Font::DrawText(FONT_NORMAL, "Delete Folder?", COLOR_WHITE,
-                   (int)(px + 16.0f), (int)(py + 16.0f));
+                   (px + 16.0f), (py + 16.0f));
 
     std::string msg = String::Format("'%s'  -  This cannot be undone.", mDeleteName.c_str());
     Font::DrawText(FONT_NORMAL, msg.c_str(), COLOR_TEXT_GRAY,
-                   (int)(px + 16.0f), (int)(py + 46.0f));
+                   (px + 16.0f), (py + 46.0f));
 
     float iW    = (float)ASSET_CONTROLLER_ICON_WIDTH;
     float iH    = (float)ASSET_CONTROLLER_ICON_HEIGHT;
@@ -597,9 +597,9 @@ void InstallPathScene::RenderDeleteConfirm()
 
     D3DTexture* iconA = TextureHelper::GetControllerIcon("ButtonA");
     if (iconA) { Drawing::DrawTexturedRect(iconA, 0xffffffff, hx, hy, iW, iH); hx += iW + 4.0f; }
-    Font::DrawText(FONT_NORMAL, "Delete", 0xFFEF5350, (int)hx, (int)hy); hx += delW + 24.0f;
+    Font::DrawText(FONT_NORMAL, "Delete", 0xFFEF5350, hx, hy); hx += delW + 24.0f;
 
     D3DTexture* iconB = TextureHelper::GetControllerIcon("ButtonB");
     if (iconB) { Drawing::DrawTexturedRect(iconB, 0xffffffff, hx, hy, iW, iH); hx += iW + 4.0f; }
-    Font::DrawText(FONT_NORMAL, "Cancel", COLOR_WHITE, (int)hx, (int)hy);
+    Font::DrawText(FONT_NORMAL, "Cancel", COLOR_WHITE, hx, hy);
 }

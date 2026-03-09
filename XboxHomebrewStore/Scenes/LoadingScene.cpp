@@ -105,8 +105,8 @@ static DWORD WINAPI UpdateThreadProc(LPVOID param)
             NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
         if (hTest == INVALID_HANDLE_VALUE)
         {
-            Debug::Print("UpdateThread: zip not found at %s (err %d)\n",
-                zipPath.c_str(), (int)GetLastError());
+            Debug::Print("UpdateThread: zip not found at %s (err %lu)\n",
+                zipPath.c_str(), GetLastError());
             scene->mUpdateStatus = LoadingScene::UPDATE_FAILED;
             return 0;
         }
@@ -213,7 +213,7 @@ void LoadingScene::Update()
         memset(&launchData, 0, sizeof(launchData));
         XLaunchNewImage("D:\\XboxHomebrewStore.xbe", &launchData);
         // Should never reach here — if it does, path was wrong or XBE missing
-        Debug::Print("LoadingScene: XLaunchNewImage returned! err=%d falling back to store\n", (int)GetLastError());
+        Debug::Print("LoadingScene: XLaunchNewImage returned! err=%lu falling back to store\n", GetLastError());
         ProceedToStore();  // fallback if launch fails
         return;
     }

@@ -297,8 +297,8 @@ static void DrawKey(float x, float y, float w, float h,
     Font::MeasureText(FONT_NORMAL, label, &lw);
     uint32_t col = selected ? 0xFFFFFFFF : textCol;
     Font::DrawText(FONT_NORMAL, label, col,
-        (int)(x + (w - lw) * 0.5f),
-        (int)(y + (h - 16.0f) * 0.5f));
+        (x + (w - lw) * 0.5f),
+        (y + (h - 16.0f) * 0.5f));
 }
 
 // ==========================================================================
@@ -319,7 +319,6 @@ void OnScreenKeyboard::Render()
     float hintY, hx;
     float sel0w, sel1w, sel2w, ltrtW, totalHintW, itemGap;
     float lw, mstrW, stickIconW, stickGap, modeContentW, modeStartX;
-    float hintTw;
     int row, col;
     bool modeActive, modeSel, keySel;
     uint32_t modeBg, modeTextCol, drawBg, tc, textCol, keyBg;
@@ -350,13 +349,13 @@ void OnScreenKeyboard::Render()
 
     // Title (left) + counter (right)
     Font::DrawText(FONT_NORMAL, mTitle.c_str(), COLOR_WHITE,
-        (int)(px + MARGIN), (int)(py + 10.0f));
+        (px + MARGIN), (py + 10.0f));
 
     counter = String::Format("%d / %d", mLength, mMaxLength);
     cw = 0.0f;
     Font::MeasureText(FONT_NORMAL, counter, &cw);
     Font::DrawText(FONT_NORMAL, counter.c_str(), COLOR_TEXT_GRAY,
-        (int)(px + PANEL_W - MARGIN - cw), (int)(py + 10.0f));
+        (px + PANEL_W - MARGIN - cw), (py + 10.0f));
 
     // Input box
     inputX = px + MARGIN;
@@ -384,7 +383,7 @@ void OnScreenKeyboard::Render()
         tx = inputX + 8.0f;
 
     Font::DrawText(FONT_NORMAL, display.c_str(), COLOR_WHITE,
-        (int)tx, (int)(inputY + 10.0f));
+        tx, (inputY + 10.0f));
 
     // ---- Key grid ----
     gridTop    = inputY + INPUT_H + KEY_GAP + 4.0f;
@@ -436,7 +435,7 @@ void OnScreenKeyboard::Render()
             modeContentW = mstrW + stickGap + stickIconW;
             modeStartX   = modeX + (MODE_COL_W - modeContentW) * 0.5f;
 
-            Font::DrawText(FONT_NORMAL, modeStr, tc, (int)modeStartX, (int)ky);
+            Font::DrawText(FONT_NORMAL, modeStr, tc, modeStartX, ky);
             if (stickIcon)
                 Drawing::DrawTexturedRect(stickIcon, 0xffffffff,
                     modeStartX + mstrW + stickGap,
@@ -448,7 +447,7 @@ void OnScreenKeyboard::Render()
             lw = 0.0f;
             Font::MeasureText(FONT_NORMAL, modeLabels[row], &lw);
             Font::DrawText(FONT_NORMAL, modeLabels[row], tc,
-                (int)(modeX + (MODE_COL_W - lw) * 0.5f), (int)ky);
+                (modeX + (MODE_COL_W - lw) * 0.5f), ky);
         }
 
         // Character keys
@@ -502,7 +501,7 @@ void OnScreenKeyboard::Render()
             ASSET_CONTROLLER_ICON_WIDTH, ASSET_CONTROLLER_ICON_HEIGHT);
         hbx += iW + iGap;
     }
-    Font::DrawText(FONT_NORMAL, "Backspace", COLOR_TEXT_GRAY, (int)hbx, (int)(stripY + 2.0f));
+    Font::DrawText(FONT_NORMAL, "Backspace", COLOR_TEXT_GRAY, hbx, (stripY + 2.0f));
 
     spx     = pairStart + bsTotalW + pairGap;
     iconYsp = TextureHelper::GetControllerIcon("ButtonY");
@@ -512,7 +511,7 @@ void OnScreenKeyboard::Render()
             ASSET_CONTROLLER_ICON_WIDTH, ASSET_CONTROLLER_ICON_HEIGHT);
         spx += iW + iGap;
     }
-    Font::DrawText(FONT_NORMAL, "Space", COLOR_TEXT_GRAY, (int)spx, (int)(stripY + 2.0f));
+    Font::DrawText(FONT_NORMAL, "Space", COLOR_TEXT_GRAY, spx, (stripY + 2.0f));
 
     // ---- Footer hints — measured and centred ----
     hintY = py + PANEL_H - 32.0f;
@@ -540,7 +539,7 @@ void OnScreenKeyboard::Render()
     if (fi) { Drawing::DrawTexturedRect(fi, 0xffffffff, hx, hintY,
         ASSET_CONTROLLER_ICON_WIDTH, ASSET_CONTROLLER_ICON_HEIGHT);
         hx += iW + iGap; }
-    Font::DrawText(FONT_NORMAL, "Select", COLOR_TEXT_GRAY, (int)hx, (int)hintY);
+    Font::DrawText(FONT_NORMAL, "Select", COLOR_TEXT_GRAY, hx, hintY);
     hx += sel0w + itemGap;
 
     // B Cancel
@@ -548,7 +547,7 @@ void OnScreenKeyboard::Render()
     if (fi) { Drawing::DrawTexturedRect(fi, 0xffffffff, hx, hintY,
         ASSET_CONTROLLER_ICON_WIDTH, ASSET_CONTROLLER_ICON_HEIGHT);
         hx += iW + iGap; }
-    Font::DrawText(FONT_NORMAL, "Cancel", COLOR_TEXT_GRAY, (int)hx, (int)hintY);
+    Font::DrawText(FONT_NORMAL, "Cancel", COLOR_TEXT_GRAY, hx, hintY);
     hx += sel1w + itemGap;
 
     // Start Done
@@ -556,7 +555,7 @@ void OnScreenKeyboard::Render()
     if (fi) { Drawing::DrawTexturedRect(fi, 0xffffffff, hx, hintY,
         ASSET_CONTROLLER_ICON_WIDTH, ASSET_CONTROLLER_ICON_HEIGHT);
         hx += iW + iGap; }
-    Font::DrawText(FONT_NORMAL, "Done", COLOR_TEXT_GRAY, (int)hx, (int)hintY);
+    Font::DrawText(FONT_NORMAL, "Done", COLOR_TEXT_GRAY, hx, hintY);
     hx += sel2w + itemGap;
 
     // [LT][RT] Move Cursor
@@ -568,5 +567,5 @@ void OnScreenKeyboard::Render()
     if (fi) { Drawing::DrawTexturedRect(fi, 0xffffffff, hx, hintY,
         ASSET_CONTROLLER_ICON_WIDTH, ASSET_CONTROLLER_ICON_HEIGHT);
         hx += iW + iGap; }
-    Font::DrawText(FONT_NORMAL, "Move Cursor", COLOR_TEXT_GRAY, (int)hx, (int)hintY);
+    Font::DrawText(FONT_NORMAL, "Move Cursor", COLOR_TEXT_GRAY, hx, hintY);
 }

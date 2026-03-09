@@ -166,7 +166,7 @@ void VersionScene::StartDownload()
     mDownloadCancelRequested = false;
     mDownloadCurrent = 0;
     mDownloadTotal   = 0;
-    mProgressCount   = (int)ver->downloadFiles.size();
+    mProgressCount   = ver->downloadFiles.size();
     mProgressIndex   = (mProgressCount > 0) ? 1 : 0;
     mShowFailedOverlay      = false;
     mShowAfterInstallDialog = false;
@@ -264,7 +264,7 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
         {
             // Store API file ? build the same URL TryDownloadVersionFile uses
             checkUrl = StoreList::GetActiveUrl() + "/api/Download/" + versionId
-                     + String::Format("?fileIndex=%d", (int)f);
+                     + String::Format("?fileIndex=%d", f);
         }
 
         if (!WebManager::TryCheckUrl(checkUrl))
@@ -289,7 +289,7 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
     {
         if (scene->mDownloadCancelRequested) { downloadSucceeded = false; break; }
 
-        scene->mProgressIndex  = (int)f + 1;
+        scene->mProgressIndex  = f + 1;
         scene->mDownloadCurrent = 0;
         scene->mDownloadTotal   = 0;
 
@@ -354,7 +354,7 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
         scene->mUnpackCancelRequested = false;
         scene->mUnpackCurrent        = 0;
         scene->mUnpackTotal          = 0;
-        scene->mProgressCount        = (int)downloadedFileNames.size();
+        scene->mProgressCount        = downloadedFileNames.size();
         scene->mProgressIndex        = 0;
 
         for (size_t f = 0; unpackSucceeded && f < downloadedFileNames.size(); f++)
@@ -362,7 +362,7 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param)
             const std::string& localName = downloadedFileNames[f];
             std::string srcPath = FileSystem::CombinePath(downloadPath, localName);
 
-            scene->mProgressIndex = (int)f + 1;
+            scene->mProgressIndex = f + 1;
 
             if (EndsWithZip(localName))
             {
@@ -879,7 +879,7 @@ void VersionScene::RenderAfterInstallDialog()
         Drawing::DrawTexturedRect(iconA, 0xffffffff, hx, hy - 2.0f, iW, iH);
         hx += iW + 4.0f;
     }
-    Font::DrawText(FONT_NORMAL, "Delete", 0xFFEF5350, (int)hx, (int)hy);
+    Font::DrawText(FONT_NORMAL, "Delete", 0xFFEF5350, hx, hy);
     hx += delW + 24.0f;
 
     D3DTexture* iconB = TextureHelper::GetControllerIcon("ButtonB");
@@ -888,7 +888,7 @@ void VersionScene::RenderAfterInstallDialog()
         Drawing::DrawTexturedRect(iconB, 0xffffffff, hx, hy - 2.0f, iW, iH);
         hx += iW + 4.0f;
     }
-    Font::DrawText(FONT_NORMAL, "Keep", COLOR_WHITE, (int)hx, (int)hy);
+    Font::DrawText(FONT_NORMAL, "Keep", COLOR_WHITE, hx, hy);
 }
 
 // ==========================================================================

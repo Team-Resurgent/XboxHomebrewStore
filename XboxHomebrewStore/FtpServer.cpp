@@ -25,7 +25,7 @@ sockaddr_in saiListen;
 HANDLE mListenThreadHandle;
 
 int incrementConnections() {
-    return (int)_InterlockedIncrement(&activeConnections);
+    return _InterlockedIncrement(&activeConnections);
 }
 
 void decrementConnections() {
@@ -842,7 +842,7 @@ bool WINAPI FtpServer::ListenThread(LPVOID lParam) {
     while (mStopRequested == false) {
         const int result = SocketUtility::GetReadStatus(sListen);
         if (result == SOCKET_ERROR) {
-            Debug::Print("Error: Socket status failed: %i\n", WSAGetLastError());
+            Debug::Print("Error: Socket status failed: %lu\n", WSAGetLastError());
             break;
         }
 
@@ -1085,7 +1085,7 @@ bool FtpServer::ReceiveSocketFile(uint64_t sCmd, uint64_t sData, uint32_t fileHa
         uint32_t bytesWritten = 0;
         uint32_t bytesToWrite = min((uint32_t)driveSectorBufferSize, totalBytesToWrite);
         if (!FileSystem::FileWrite(fileHandle, combinedBuffer, bytesToWrite, bytesWritten)) {
-            Debug::Print("Error: WriteFile failed: %i", GetLastError());
+            Debug::Print("Error: WriteFile failed: %lu\n", GetLastError());
             free(combinedBuffer);
             return false;
         }
@@ -1104,7 +1104,7 @@ bool FtpServer::SendSocketFile(uint64_t sCmd, uint64_t sData, uint32_t fileHandl
     while (true) {
         uint32_t bytesRead;
         if (FileSystem::FileRead(fileHandle, szBuffer, bufferSize, bytesRead) == false) {
-            Debug::Print("Error: ReadFile failed: %i", GetLastError());
+            Debug::Print("Error: ReadFile failed: %lu\n", GetLastError());
             free(szBuffer);
             return false;
         }
@@ -1136,7 +1136,7 @@ bool FtpServer::SendSocketFile(uint64_t sCmd, uint64_t sData, uint32_t fileHandl
                 }
             }
             bytesToSend -= sent;
-            bufferOffset += (int)sent;
+            bufferOffset += sent;
             if (sent < 1) {
                 free(szBuffer);
                 return false;

@@ -465,7 +465,7 @@ void SettingsScene::RenderPicker()
     {
         float iy  = py + PAD + (float)i * ITEM_H;
         bool  sel = (mPickerSel == i);
-        bool  cur = ((int)mAfterInstallAction == i);
+        bool  cur = (mAfterInstallAction == i);
 
         if (sel)
             Drawing::DrawFilledRect(0xFF2E2E2E, px, iy, panelW, ITEM_H - 2.0f);
@@ -474,11 +474,11 @@ void SettingsScene::RenderPicker()
 
         uint32_t col = sel ? COLOR_WHITE : COLOR_TEXT_GRAY;
         Font::DrawText(FONT_NORMAL, opts[i], col,
-            (int)(px + 16.0f), (int)(iy + 11.0f));
+            (px + 16.0f), (iy + 11.0f));
 
         if (cur)
             Font::DrawText(FONT_LARGE, "*", COLOR_FOCUS_HIGHLIGHT,
-                (int)(px + panelW - 26.0f), (int)(iy + 6.0f));
+                (px + panelW - 26.0f), (iy + 6.0f));
     }
 
     // Hints centred at bottom of panel
@@ -494,11 +494,11 @@ void SettingsScene::RenderPicker()
 
     D3DTexture* iconA = TextureHelper::GetControllerIcon("ButtonA");
     if (iconA) { Drawing::DrawTexturedRect(iconA, 0xffffffff, hx, hy, iW, iH); hx += iW + 4.0f; }
-    Font::DrawText(FONT_NORMAL, "Select", COLOR_TEXT_GRAY, (int)hx, (int)(hy + 2.0f));
+    Font::DrawText(FONT_NORMAL, "Select", COLOR_TEXT_GRAY, hx, (hy + 2.0f));
     hx += selW + 16.0f;
     D3DTexture* iconB = TextureHelper::GetControllerIcon("ButtonB");
     if (iconB) { Drawing::DrawTexturedRect(iconB, 0xffffffff, hx, hy, iW, iH); hx += iW + 4.0f; }
-    Font::DrawText(FONT_NORMAL, "Cancel", COLOR_TEXT_GRAY, (int)hx, (int)(hy + 2.0f));
+    Font::DrawText(FONT_NORMAL, "Cancel", COLOR_TEXT_GRAY, hx, (hy + 2.0f));
 }
 
 // ==========================================================================

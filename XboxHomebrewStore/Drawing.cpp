@@ -206,7 +206,7 @@ bool Drawing::LoadFont(const std::string filePath, void* context)
 
 bool Drawing::TryGenerateBitmapFont(void* context, const std::string fontName, int32_t fontStyle, int32_t fontSize, int32_t lineHeight, int32_t spacing, int32_t textureDimension, BitmapFont* bitmapFont) 
 {
-    ssfn_select((ssfn_t*)context, SSFN_FAMILY_ANY, fontName.c_str(), (int)fontStyle, (int)fontSize);
+    ssfn_select((ssfn_t*)context, SSFN_FAMILY_ANY, fontName.c_str(), fontStyle, fontSize);
 
     int32_t textureWidth = textureDimension;
     int32_t textureHeight = textureDimension;

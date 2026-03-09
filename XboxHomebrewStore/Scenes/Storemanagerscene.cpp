@@ -246,12 +246,12 @@ void StoreManagerScene::Render()
         Drawing::DrawFilledRect(0xFFEF5350,    px, py, panelW, 4.0f);
 
         Font::DrawText(FONT_NORMAL, "Delete Store?", COLOR_WHITE,
-                       (int)(px + 16.0f), (int)(py + 16.0f));
+                       (px + 16.0f), (py + 16.0f));
 
         std::string msg = String::Format("'%s'  -  This cannot be undone.",
             Font::TruncateText(FONT_NORMAL, storeName, panelW - 32.0f).c_str());
         Font::DrawText(FONT_NORMAL, msg.c_str(), COLOR_TEXT_GRAY,
-                       (int)(px + 16.0f), (int)(py + 46.0f));
+                       (px + 16.0f), (py + 46.0f));
 
         float iW     = (float)ASSET_CONTROLLER_ICON_WIDTH;
         float iH     = (float)ASSET_CONTROLLER_ICON_HEIGHT;
@@ -266,13 +266,13 @@ void StoreManagerScene::Render()
         D3DTexture* iconA = TextureHelper::GetControllerIcon("ButtonA");
         if (iconA) { Drawing::DrawTexturedRect(iconA, 0xffffffff, hx, hy, iW, iH);
             hx += iW + 4.0f; }
-        Font::DrawText(FONT_NORMAL, "Delete", 0xFFEF5350, (int)hx, (int)hy);
+        Font::DrawText(FONT_NORMAL, "Delete", 0xFFEF5350, hx, hy);
         hx += delW + 24.0f;
 
         D3DTexture* iconB = TextureHelper::GetControllerIcon("ButtonB");
         if (iconB) { Drawing::DrawTexturedRect(iconB, 0xffffffff, hx, hy, iW, iH);
             hx += iW + 4.0f; }
-        Font::DrawText(FONT_NORMAL, "Cancel", COLOR_WHITE, (int)hx, (int)hy);
+        Font::DrawText(FONT_NORMAL, "Cancel", COLOR_WHITE, hx, hy);
     }
 }
 

@@ -314,7 +314,7 @@ void StoreScene::RenderMainGrid()
     float pageStrWidth = 0.0f;
     Font::MeasureText(FONT_NORMAL, pageStr, &pageStrWidth);
     float pageStrX = Context::GetScreenWidth() - 16.0f - pageStrWidth;
-    Font::DrawText(FONT_NORMAL, pageStr.c_str(), (uint32_t)COLOR_TEXT_GRAY, (int)pageStrX, (int)(Context::GetScreenHeight() - 30.0f));
+    Font::DrawText(FONT_NORMAL, pageStr.c_str(), (uint32_t)COLOR_TEXT_GRAY, pageStrX, (Context::GetScreenHeight() - 30.0f));
 }
 
 void StoreScene::Render()

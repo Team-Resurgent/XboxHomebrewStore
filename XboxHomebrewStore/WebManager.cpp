@@ -1032,7 +1032,7 @@ bool WebManager::TryCheckUrl(const std::string& url)
 
     bool ok = (res == CURLE_OK && http_code >= 200 && http_code < 400);
     Debug::Print("TryCheckUrl: CURLcode=%d HTTP=%ld result=%s\n",
-        (int)res, http_code, ok ? "OK" : "FAILED");
+        res, http_code, ok ? "OK" : "FAILED");
 
     return ok;
 }
@@ -1078,7 +1078,7 @@ bool WebManager::TryGetLatestRelease(std::string& outTag, std::string& outZipUrl
     fclose(f);
     DeleteFileA(tmpPath);
 
-    Debug::Print("TryGetLatestRelease: got %d bytes of JSON\n", (int)raw.size());
+    Debug::Print("TryGetLatestRelease: got %d bytes of JSON\n", raw.size());
     if (raw.empty()) return false;
 
     JSON_Value* root = json_parse_string(raw.c_str());
