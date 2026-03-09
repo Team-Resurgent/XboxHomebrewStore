@@ -15,6 +15,8 @@ namespace {
     D3DTexture* mUpdateBadge = nullptr;
     std::map<std::string, D3DTexture*> mCategoryIcons;
     std::map<std::string, D3DTexture*> mControllerIcons;
+    D3DTexture* mDriveIcon  = nullptr;
+    D3DTexture* mFolderIcon = nullptr;
     D3DTexture* mScreenshot = nullptr;
     D3DTexture* mCover = nullptr;
 }
@@ -83,6 +85,9 @@ bool TextureHelper::Init()
         } while (FindNextFileA( hController, &fd ));
         FindClose( hController );
     }
+
+    mDriveIcon  = LoadFromFile(String::Format("%s%s", MEDIA_PATH, "Drive.png"));
+    mFolderIcon = LoadFromFile(String::Format("%s%s", MEDIA_PATH, "Folder.png"));
 
     mScreenshot = LoadFromFile(String::Format( "%s%s", MEDIA_PATH, "Screenshot.jpg"));
     result &= mScreenshot == nullptr;
@@ -163,6 +168,16 @@ D3DTexture* TextureHelper::GetSidebar()
 D3DTexture* TextureHelper::GetStore()
 {
     return mStore;
+}
+
+D3DTexture* TextureHelper::GetDriveIcon()
+{
+    return mDriveIcon;
+}
+
+D3DTexture* TextureHelper::GetFolderIcon()
+{
+    return mFolderIcon;
 }
 
 D3DTexture* TextureHelper::GetCategoryHighlight()

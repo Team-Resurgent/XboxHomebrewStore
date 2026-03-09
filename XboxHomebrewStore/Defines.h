@@ -1,5 +1,6 @@
 #pragma once
 
+#define APP_VERSION "v1.0.0"
 #define MEDIA_PATH "D:\\Media\\"
 
 #define COLOR_SIDE_PANEL    0x20D81B60

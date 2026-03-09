@@ -10,7 +10,7 @@ public:
 
     static bool Init();
     static bool TryDownloadWebData(const std::string url, const std::string filePath, std::string* outFinalFileName = nullptr, DownloadProgressFn progressFn = nullptr, void* progressUserData = nullptr, volatile bool* pCancelRequested = nullptr);
-    static bool TryCheckUrl(const std::string& url);  // HEAD request — returns false if 4xx/5xx or unreachable
+    static bool TryCheckUrl(const std::string& url);
     static bool TryDownloadApiData(const std::string url, const std::string filePath, DownloadProgressFn progressFn = nullptr, void* progressUserData = nullptr, volatile bool* pCancelRequested = nullptr, std::string* outHeaders = nullptr, std::string* outContentType = nullptr);
     static bool TryDownloadCover(const std::string id, int32_t width, int32_t height, const std::string filePath, DownloadProgressFn progressFn = nullptr, void* progressUserData = nullptr, volatile bool* pCancelRequested = nullptr);
     static bool TryDownloadScreenshot(const std::string id, int32_t width, int32_t height, const std::string filePath, DownloadProgressFn progressFn = nullptr, void* progressUserData = nullptr, volatile bool* pCancelRequested = nullptr);
@@ -19,5 +19,6 @@ public:
     static bool TryGetApps(AppsResponse& result, int32_t offset, int32_t count, const std::string category = "", const std::string name = "");
     static bool TryGetCategories(CategoriesResponse& result);
     static bool TryGetVersions(const std::string id, VersionsResponse& result);
+    static bool TryGetLatestRelease(std::string& outTag, std::string& outZipUrl);
     static bool TrySyncTime();
 };

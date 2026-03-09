@@ -110,3 +110,22 @@ bool String::EndsWith(const std::string value, const std::string ending)
     }
     return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
 }
+
+bool String::IsNewerVersion(const std::string& current, const std::string& candidate)
+{
+    // Strip leading 'v' or 'V'
+    const char* a = current.c_str();
+    const char* b = candidate.c_str();
+    if (*a == 'v' || *a == 'V') a++;
+    if (*b == 'v' || *b == 'V') b++;
+
+    // Parse up to 3 dot-separated integers
+    int aMaj = 0, aMin = 0, aPat = 0;
+    int bMaj = 0, bMin = 0, bPat = 0;
+    sscanf(a, "%d.%d.%d", &aMaj, &aMin, &aPat);
+    sscanf(b, "%d.%d.%d", &bMaj, &bMin, &bPat);
+
+    if (bMaj != aMaj) return bMaj > aMaj;
+    if (bMin != aMin) return bMin > aMin;
+    return bPat > aPat;
+}

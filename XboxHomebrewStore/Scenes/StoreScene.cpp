@@ -54,6 +54,11 @@ void StoreScene::RenderHeader()
     Font::DrawText(FONT_LARGE, "Xbox Homebrew Store", COLOR_WHITE, 60, 12);
     Drawing::DrawTexturedRect(TextureHelper::GetStore(), 0x8fe386, 16, 12, ASSET_STORE_ICON_WIDTH, ASSET_STORE_ICON_HEIGHT);
 
+    // Version — FONT_NORMAL next to the title, vertically nudged to sit near the baseline
+    float titleW = 0.0f;
+    Font::MeasureText(FONT_LARGE, "Xbox Homebrew Store", &titleW);
+    Font::DrawText(FONT_NORMAL, APP_VERSION, COLOR_TEXT_GRAY, 60.0f + titleW + 10.0f, 20.0f);
+
     // FTP IP top-right
     std::string ipStr = std::string("FTP: ") + Network::GetIP();
     float ipW = 0.0f;

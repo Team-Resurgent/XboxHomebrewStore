@@ -207,11 +207,12 @@ static int ProgressCallback(void* clientp, curl_off_t dltotal, curl_off_t dlnow,
 static void ApplyCommonOptions(CURL* curl)
 {
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 30L);
-    curl_easy_setopt(curl, CURLOPT_BUFFERSIZE, 65536L);       // 64KB receive buffer (default is 16KB)
+    curl_easy_setopt(curl, CURLOPT_BUFFERSIZE, 65536L);
     curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, 1L);
-    curl_easy_setopt(curl, CURLOPT_TCP_NODELAY, 1L);          // Disable Nagle's algorithm
+    curl_easy_setopt(curl, CURLOPT_TCP_NODELAY, 1L);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, "XboxHomebrewStore/1.0");
 }
 
 bool WebManager::Init()
@@ -1005,4 +1006,90 @@ bool WebManager::TryCheckUrl(const std::string& url)
         (int)res, http_code, ok ? "OK" : "FAILED");
 
     return ok;
+}
+
+bool WebManager::TryGetLatestRelease(std::string& outTag, std::string& outZipUrl)
+{
+    outTag.clear();
+    outZipUrl.clear();
+
+    const char* url = "https://api.github.com/repos/Team-Resurgent/XboxHomebrewStore/releases/latest";
+    const char* tmpPath = "T:\\XHSUpdate\\release.json";
+
+    Debug::Print("TryGetLatestRelease: checking %s\n", url);
+
+    FileSystem::DirectoryCreate("T:\\XHSUpdate");
+    DeleteFileA(tmpPath);
+
+    // Use TryDownloadWebData — it handles the GitHub BearSSL/multi-socket workaround
+    bool ok = TryDownloadWebData(url, tmpPath, NULL, NULL, NULL, NULL);
+    if (!ok)
+    {
+        Debug::Print("TryGetLatestRelease: download failed\n");
+        return false;
+    }
+
+    // Read the JSON file back into a string
+    FILE* f = fopen(tmpPath, "rb");
+    if (!f)
+    {
+        Debug::Print("TryGetLatestRelease: could not open temp file\n");
+        return false;
+    }
+    fseek(f, 0, SEEK_END);
+    long sz = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    std::string raw;
+    if (sz > 0)
+    {
+        raw.resize((size_t)sz);
+        fread(&raw[0], 1, (size_t)sz, f);
+    }
+    fclose(f);
+    DeleteFileA(tmpPath);
+
+    Debug::Print("TryGetLatestRelease: got %d bytes of JSON\n", (int)raw.size());
+    if (raw.empty()) return false;
+
+    JSON_Value* root = json_parse_string(raw.c_str());
+    if (!root) { Debug::Print("TryGetLatestRelease: JSON parse failed\n"); return false; }
+
+    JSON_Object* obj = json_value_get_object(root);
+    if (!obj) { json_value_free(root); return false; }
+
+    const char* tag = json_object_get_string(obj, "tag_name");
+
+    // Find first .zip in assets array
+    JSON_Array* assets = json_object_get_array(obj, "assets");
+    const char* zipUrl = NULL;
+    if (assets != NULL)
+    {
+        for (size_t i = 0; i < json_array_get_count(assets); i++)
+        {
+            JSON_Object* asset = json_array_get_object(assets, i);
+            if (asset == NULL) continue;
+            const char* name  = json_object_get_string(asset, "name");
+            const char* dlUrl = json_object_get_string(asset, "browser_download_url");
+            if (name != NULL && dlUrl != NULL)
+            {
+                std::string assetName(name);
+                if (assetName.size() >= 4 &&
+                    assetName.compare(assetName.size() - 4, 4, ".zip") == 0)
+                {
+                    zipUrl = dlUrl;
+                    break;
+                }
+            }
+        }
+    }
+
+    if (tag != NULL)    outTag    = tag;
+    if (zipUrl != NULL) outZipUrl = zipUrl;
+
+    json_value_free(root);
+
+    Debug::Print("TryGetLatestRelease: tag=%s zipUrl=%s\n",
+        outTag.c_str(), outZipUrl.c_str());
+
+    return (!outTag.empty() && !outZipUrl.empty());
 }

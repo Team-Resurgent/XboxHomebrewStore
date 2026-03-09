@@ -95,11 +95,24 @@ void InstallPathScene::RefreshList(const std::string& selectName)
 
     if (mCurrentPath.empty())
     {
+        // Drives to exclude: DVD-ROM (can't install to optical),
+        // X/Y/Z cache partitions (wiped on boot / by games)
         std::vector<std::string> drives = DriveMount::GetMountedDrives();
         for (size_t i = 0; i < drives.size(); i++)
         {
+            const std::string& d = drives[i];
+            // Skip DVD-ROM
+            if (String::EqualsIgnoreCase(d, "DVD-ROM")) continue;
+            // Skip X/Y/Z cache on any HDD (ends with -X, -Y, or -Z)
+            if (d.size() >= 2)
+            {
+                char last = (char)toupper(d[d.size() - 1]);
+                char prev = d[d.size() - 2];
+                if (prev == '-' && (last == 'X' || last == 'Y' || last == 'Z')) continue;
+            }
+
             FileInfoDetail fid;
-            fid.path        = drives[i] + ":\\";
+            fid.path        = d + ":\\";
             fid.isDirectory = true;
             fid.isFile      = false;
             mItems.push_back(fid);
@@ -525,9 +538,19 @@ void InstallPathScene::RenderList()
 
         uint32_t col = sel ? COLOR_WHITE : COLOR_TEXT_GRAY;
 
-        if (sel) Font::DrawText(FONT_NORMAL, ">",    COLOR_WHITE, 8,  (ry + 10));
-        Font::DrawText(FONT_NORMAL, "[D]",           col,         24, (ry + 10));
-        Font::DrawText(FONT_NORMAL, GetDisplayName(idx).c_str(), col, 66, (ry + 10));
+        if (sel) Font::DrawText(FONT_NORMAL, ">", COLOR_WHITE, 8, (ry + 10));
+
+        // Drive icon on root level, folder icon when inside a drive
+        const float iconW = (float)ASSET_CONTROLLER_ICON_WIDTH;
+        const float iconH = (float)ASSET_CONTROLLER_ICON_HEIGHT;
+        float iconY = ry + (rowH - iconH) * 0.5f;
+        D3DTexture* itemIcon = mCurrentPath.empty()
+            ? TextureHelper::GetDriveIcon()
+            : TextureHelper::GetFolderIcon();
+        if (itemIcon != NULL)
+            Drawing::DrawTexturedRect(itemIcon, col, 24.0f, iconY, iconW, iconH);
+
+        Font::DrawText(FONT_NORMAL, GetDisplayName(idx).c_str(), col, 54.0f, (ry + 10));
     }
 
     Drawing::EndStencil();
