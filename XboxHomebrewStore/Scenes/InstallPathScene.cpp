@@ -536,7 +536,8 @@ void InstallPathScene::RenderList() {
       Drawing::DrawFilledRect(0x18ffffff, 0.0f, ry, screenW, rowH - 2.0f);
     }
 
-    uint32_t col = sel ? COLOR_WHITE : COLOR_TEXT_GRAY;
+    uint32_t colMain = sel ? COLOR_WHITE : COLOR_TEXT_GRAY;
+    uint32_t colFolder = sel ? COLOR_FOLDER_SEL : COLOR_FOLDER;
 
     if (sel) {
       Font::DrawText(FONT_NORMAL, ">", COLOR_WHITE, 8, (ry + 10));
@@ -548,11 +549,13 @@ void InstallPathScene::RenderList() {
     D3DTexture *itemIcon = mCurrentPath.empty()
                                ? TextureHelper::GetDriveIcon()
                                : TextureHelper::GetFolderIcon();
+
     if (itemIcon != NULL) {
+      uint32_t colIcon = mCurrentPath.empty() ? colMain : colFolder;
       Drawing::DrawTexturedRect(itemIcon, col, 24.0f, iconY, iconW, iconH);
     }
 
-    Font::DrawText(FONT_NORMAL, GetDisplayName(idx).c_str(), col, 54.0f,
+    Font::DrawText(FONT_NORMAL, GetDisplayName(idx).c_str(), colMain, 54.0f,
         (ry + 10));
   }
 
