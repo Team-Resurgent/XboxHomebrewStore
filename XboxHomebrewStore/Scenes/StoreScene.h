@@ -31,7 +31,7 @@ private:
   int32_t mHighlightedCategoryIndex;
   int32_t mStoreIndex;
 
-  // Saved position � restored when returning from VersionScene
+  // Saved position restored when returning from VersionScene
   int32_t mSavedStoreIndex;
   int32_t mSavedWindowOffset;
   bool mHasSavedPosition;
