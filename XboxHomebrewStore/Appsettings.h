@@ -15,7 +15,7 @@ typedef struct {
   char downloadPath[256];
   uint32_t afterInstallAction;
   uint32_t showCachePartitions; // 0 = hidden (default), 1 = show X/Y/Z cache partitions
-  uint32_t preCacheOnIdle; // 0 = off, 1 = on (default) -- idle cover pre-caching
+  uint32_t preCacheOnIdle; // 0 = off  (default), 1 = on -- idle cover pre-caching
 } AppSettingsData;
 
 class AppSettings {
