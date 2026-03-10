@@ -402,7 +402,7 @@ static uint8_t* _ssfn_c(const ssfn_font_t* font, const char* str, int* len, uint
         }
         s++;
     }
-    *len = (int)(s - (uint8_t*)str);
+    *len = (s - (uint8_t*)str);
     *unicode = u;
     for (ptr = (uint8_t*)font + font->characters_offs, i = 0; i < 0x110000; i++) {
         if (ptr[0] == 0xFF) {
@@ -1345,11 +1345,11 @@ int ssfn_render(ssfn_t* ctx, ssfn_buf_t* dst, const char* str) {
                             if ((ctx->p[i + 1] < a && ctx->p[i + 3] >= a) ||
                                 (ctx->p[i + 3] < a && ctx->p[i + 1] >= a)) {
                                 if ((ctx->p[i + 1] >> SSFN_PREC) == (ctx->p[i + 3] >> SSFN_PREC))
-                                    x = (((int)ctx->p[i] + (int)ctx->p[i + 2]) >> 1);
+                                    x = ((ctx->p[i] + ctx->p[i + 2]) >> 1);
                                 else
-                                    x = ((int)ctx->p[i]) +
-                                        ((a - (int)ctx->p[i + 1]) * ((int)ctx->p[i + 2] - (int)ctx->p[i]) /
-                                            ((int)ctx->p[i + 3] - (int)ctx->p[i + 1]));
+                                    x = (ctx->p[i]) +
+                                        ((a - ctx->p[i + 1]) * (ctx->p[i + 2] - ctx->p[i]) /
+                                            (ctx->p[i + 3] - ctx->p[i + 1]));
                                 x >>= SSFN_PREC;
                                 if (ci)
                                     x += (h - b) / SSFN_ITALIC_DIV;
@@ -1732,7 +1732,7 @@ int ssfn_render(ssfn_t* ctx, ssfn_buf_t* dst, const char* str) {
                                     P -= (tmp[0] & 0x7F) + 1;
                                     tmp += 2 + (tmp[0] & 0x80 ? 0 : tmp[0] & 0x7F);
                                 } else {
-                                    y = (int)((signed char)tmp[1 + ((tmp[0] & 0x80) ? 0 : P)]) * h / ctx->f->height;
+                                    y = ((signed char)tmp[1 + ((tmp[0] & 0x80) ? 0 : P)]) * h / ctx->f->height;
                                     if (x)
                                         dst->x += y;
                                     else
@@ -1982,7 +1982,7 @@ int ssfn_putc(uint32_t unicode) {
                     *p = ssfn_dst.bg;
             }
         } else {
-            o += (int)(ptr[1] - y) * s;
+            o += (ptr[1] - y) * s;
             y = ptr[1];
         }
         k = ((frg[0] & 0x1F) + 1) << 3;

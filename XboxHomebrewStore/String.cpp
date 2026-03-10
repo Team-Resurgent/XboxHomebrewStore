@@ -1,112 +1,127 @@
 #include "String.h"
 
-std::string String::Format(const std::string format, ...)
-{
-    va_list args;
-    va_start(args, format);
-    int length = _vsnprintf(nullptr, 0, format.c_str(), args);
-    if (length < 0)
-    {
-        va_end(args);
-        return "";
-    }
-    char* message = (char*)malloc(length + 1);
-    _vsnprintf(message, length, format.c_str(), args);
-    message[length] = 0;
+std::string String::Format(const std::string format, ...) {
+  va_list args;
+  va_start(args, format);
+  int length = _vsnprintf(nullptr, 0, format.c_str(), args);
+  if (length < 0) {
     va_end(args);
-    std::string result(message);
-    free(message);
-    return result;
+    return "";
+  }
+  char *message = (char *)malloc(length + 1);
+  _vsnprintf(message, length, format.c_str(), args);
+  message[length] = 0;
+  va_end(args);
+  std::string result(message);
+  free(message);
+  return result;
 }
 
-std::string String::FormatSize(uint32_t size) 
-{
-    const uint32_t KB = 1024;
-    const uint32_t MB = KB * KB;
-    const uint32_t GB = KB * KB * KB;
-    if (size < KB) {
-        return Format("%luB", size);
-    } else if (size < MB) {
-        return Format("%luKB", size / KB);
-    } else if (size < GB) {
-        return Format("%luMB", size / MB);
-    } else {
-        return Format("%luGB", size / GB);
-    }
+std::string String::FormatSize(uint32_t size) {
+  const uint32_t KB = 1024;
+  const uint32_t MB = KB * KB;
+  const uint32_t GB = KB * KB * KB;
+  if (size < KB) {
+    return Format("%luB", size);
+  } else if (size < MB) {
+    return Format("%luKB", size / KB);
+  } else if (size < GB) {
+    return Format("%luMB", size / MB);
+  } else {
+    return Format("%luGB", size / GB);
+  }
 }
 
-std::string String::ToUpper(const std::string s)
-{
-    std::string r = s;
-    for (size_t i = 0; i < r.length(); i++)
-    {
-        r[i] = (char)toupper((unsigned char)r[i]);
-    }
-    return r;
+std::string String::ToUpper(const std::string s) {
+  std::string r = s;
+  for (size_t i = 0; i < r.length(); i++) {
+    r[i] = (char)toupper((unsigned char)r[i]);
+  }
+  return r;
 }
 
-std::string String::ToLower(const std::string s)
-{
-    std::string r = s;
-    for (size_t i = 0; i < r.length(); i++)
-    {
-        r[i] = (char)tolower((unsigned char)r[i]);
-    }
-    return r;
+std::string String::ToLower(const std::string s) {
+  std::string r = s;
+  for (size_t i = 0; i < r.length(); i++) {
+    r[i] = (char)tolower((unsigned char)r[i]);
+  }
+  return r;
 }
 
-std::string String::LeftTrim(const std::string s, char ch)
-{
-    size_t start = 0;
-    while (start < s.size() && s[start] == ch) {
-        start++;
-    }
-    return s.substr(start, std::string::npos);
+std::string String::LeftTrim(const std::string s, char ch) {
+  size_t start = 0;
+  while (start < s.size() && s[start] == ch) {
+    start++;
+  }
+  return s.substr(start, std::string::npos);
 }
 
-std::string String::RightTrim(const std::string s, char ch)
-{
-    size_t end = s.size();
-    while (end > 0 && s[end - 1] == ch) {
-        end--;
-    }
-    return s.substr(0, end);
+std::string String::RightTrim(const std::string s, char ch) {
+  size_t end = s.size();
+  while (end > 0 && s[end - 1] == ch) {
+    end--;
+  }
+  return s.substr(0, end);
 }
 
-std::string String::Substring(const std::string s, int32_t start, int32_t length)
-{
-    if (start < 0) {
-        start = 0;
-    }
-    if (length < 0) {
-        length = 0;
-    }
-    if ((size_t)start >= s.size()) {
-        return "";
-    }
-    size_t maxLen = s.size() - (size_t)start;
-    if ((size_t)length > maxLen) {
-        length = (int32_t)maxLen;
-    }
-    return s.substr((size_t)start, (size_t)length);
+std::string String::Substring(const std::string s, int32_t start, int32_t length) {
+  if (start < 0) {
+    start = 0;
+  }
+  if (length < 0) {
+    length = 0;
+  }
+  if ((size_t)start >= s.size()) {
+    return "";
+  }
+  size_t maxLen = s.size() - (size_t)start;
+  if ((size_t)length > maxLen) {
+    length = (int32_t)maxLen;
+  }
+  return s.substr((size_t)start, (size_t)length);
 }
 
-bool String::EqualsIgnoreCase(const std::string a, const std::string b)
-{
-    if (a.size() != b.size())
-        return false;
-    for (size_t i = 0; i < a.size(); i++)
-    {
-        if (toupper((unsigned char)a[i]) != toupper((unsigned char)b[i]))
-            return false;
+bool String::EqualsIgnoreCase(const std::string a, const std::string b) {
+  if (a.size() != b.size()) {
+    return false;
+  }
+  for (size_t i = 0; i < a.size(); i++) {
+    if (toupper((unsigned char)a[i]) != toupper((unsigned char)b[i])) {
+      return false;
     }
-    return true;
+  }
+  return true;
 }
 
-bool String::EndsWith(const std::string value, const std::string ending)
-{
-    if (ending.size() > value.size()) {
-        return false;
-    }
-    return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+bool String::EndsWith(const std::string value, const std::string ending) {
+  if (ending.size() > value.size()) {
+    return false;
+  }
+  return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+}
+
+bool String::IsNewerVersion(const std::string &current, const std::string &candidate) {
+  // Strip leading 'v' or 'V'
+  const char *a = current.c_str();
+  const char *b = candidate.c_str();
+  if (*a == 'v' || *a == 'V') {
+    a++;
+  }
+  if (*b == 'v' || *b == 'V') {
+    b++;
+  }
+
+  // Parse up to 3 dot-separated integers
+  int aMaj = 0, aMin = 0, aPat = 0;
+  int bMaj = 0, bMin = 0, bPat = 0;
+  sscanf(a, "%d.%d.%d", &aMaj, &aMin, &aPat);
+  sscanf(b, "%d.%d.%d", &bMaj, &bMin, &bPat);
+
+  if (bMaj != aMaj) {
+    return bMaj > aMaj;
+  }
+  if (bMin != aMin) {
+    return bMin > aMin;
+  }
+  return bPat > aPat;
 }

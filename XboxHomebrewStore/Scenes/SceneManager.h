@@ -3,24 +3,22 @@
 #include "..\Main.h"
 #include "Scene.h"
 
-class SceneManager
-{
+class SceneManager {
 public:
-    SceneManager();
-    ~SceneManager();
+  SceneManager();
+  ~SceneManager();
 
-    void PushScene( Scene* pScene );
-    void PopScene();
-    bool HasScene() const;
+  void PushScene(Scene *pScene);
+  void PopScene();
+  bool HasScene() const;
 
-    void Render();
-    void Update();
+  void Render();
+  void Update();
 
 private:
-    struct SceneNode
-    {
-        Scene* pScene;
-        SceneNode* pNext;
-    };
-    SceneNode* m_pStack;
+  struct SceneNode {
+    Scene *pScene;
+    SceneNode *pNext;
+  };
+  SceneNode *m_pStack;
 };

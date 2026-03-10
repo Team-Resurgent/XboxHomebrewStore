@@ -2,25 +2,27 @@
 
 #include "Main.h"
 
-class TextureHelper
-{
+class TextureHelper {
 public:
-    static bool Init();
-    static D3DTexture* LoadFromFile(const std::string filePath);
-    static D3DTexture* GetBackground();
-    static D3DTexture* GetHeader();
-    static D3DTexture* GetFooter();
-    static D3DTexture* GetSidebar();
-    static D3DTexture* GetCategoryHighlight();
-    static D3DTexture* GetCard();
-    static D3DTexture* GetCardHighlight();
-    static D3DTexture* GetNewBadge();
-    static D3DTexture* GetUpdateBadge();
-    static D3DTexture* GetStore();
-    static D3DTexture* GetCategoryIcon(const std::string name);
-    static D3DTexture* GetControllerIcon(const std::string name);
-    static D3DTexture* GetScreenshot();
-    static D3DTexture* GetCover();
+  static bool Init();
+  static D3DTexture *LoadFromFile(const std::string filePath);
+  static D3DTexture *GetBackground();
+  static D3DTexture *GetHeader();
+  static D3DTexture *GetFooter();
+  static D3DTexture *GetSidebar();
+  static D3DTexture *GetCategoryHighlight();
+  static D3DTexture *GetCard();
+  static D3DTexture *GetCardHighlight();
+  static D3DTexture *GetNewBadge();
+  static D3DTexture *GetUpdateBadge();
+  static D3DTexture *GetStore();
+  static D3DTexture *GetCategoryIcon(const std::string name);
+  static D3DTexture *GetControllerIcon(const std::string name);
+  static D3DTexture *GetDriveIcon();
+  static D3DTexture *GetFolderIcon();
+  static D3DTexture *GetScreenshot();
+  static D3DTexture *GetCover();
+
 private:
-    static D3DTexture* CopyTexture(D3DTexture* source);
+  static D3DTexture *CopyTexture(D3DTexture *source);
 };

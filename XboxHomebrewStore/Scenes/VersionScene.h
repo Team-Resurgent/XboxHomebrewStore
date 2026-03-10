@@ -2,61 +2,84 @@
 
 #include "Scene.h"
 
+#include "..\AppSettings.h"
+#include "..\ImageDownloader.h"
 #include "..\Main.h"
 #include "..\StoreManager.h"
 #include "..\WebManager.h"
-#include "..\ImageDownloader.h"
 
-class VersionScene : public Scene
-{
+class VersionScene : public Scene {
 public:
-    explicit VersionScene(const StoreVersions& storeVersions);
-    virtual ~VersionScene();
-    virtual void Render();
-    virtual void Update();
+  explicit VersionScene(const StoreVersions &storeVersions);
+  virtual ~VersionScene();
+  virtual void Render();
+  virtual void Update();
+  virtual void OnResume();
+
+  // Called by InstallPathScene callback
+  void SetPendingInstallPath(const std::string &path);
 
 private:
-    void RenderHeader();
-    void RenderFooter();
-    void DrawFooterControl(float& x, float footerY, const char* iconName, const char* label);
-    void RenderVersionSidebar();
-    void RenderListView();
-    void RenderDownloadOverlay();
-    void RenderFailedOverlay();
+  void RenderHeader();
+  void RenderFooter();
+  void DrawFooterControl(float &x, float footerY, const char *iconName,
+      const char *label);
+  void RenderVersionSidebar();
+  void RenderListView();
+  void RenderDownloadOverlay();
+  void RenderCheckingLinksOverlay();
+  void RenderFailedOverlay();
+  void RenderAfterInstallDialog();
 
-    void StartDownload();
-    static void DownloadProgressCb(uint32_t dlNow, uint32_t dlTotal, void* userData);
-    static bool UnpackProgressCb(int currentFile, int totalFiles, const char* currentFileName, void* userData);
-    static DWORD WINAPI DownloadThreadProc(LPVOID param);
+  void BrowseInstallPath();
+  void StartDownload();
+  void HandleAfterInstall();
 
-    ImageDownloader* mImageDownloader;
-    StoreVersions mStoreVersions;
+  static void DownloadProgressCb(uint32_t dlNow, uint32_t dlTotal,
+      void *userData);
+  static bool UnpackProgressCb(int currentFile, int totalFiles,
+      const char *currentFileName, void *userData);
+  static DWORD WINAPI DownloadThreadProc(LPVOID param);
 
-    bool mNeedsUpdate;
+  ImageDownloader *mImageDownloader;
+  StoreVersions mStoreVersions;
 
-    bool mSideBarFocused;
-    int32_t mHighlightedVersionIndex;
-    int32_t mVersionIndex;
+  bool mNeedsUpdate;
+  bool mSideBarFocused;
+  int32_t mHighlightedVersionIndex;
+  int32_t mVersionIndex;
 
-    float mListViewScrollOffset;
-    float mListViewContentHeight;
+  float mListViewScrollOffset;
+  float mListViewContentHeight;
+  float mDescriptionHeight;
+  float mChangeLogHeight;
+  int32_t mLastMeasuredVersionIndex;
 
-    float mDescriptionHeight;
-    float mChangeLogHeight;
-    int32_t mLastMeasuredVersionIndex;
+  // ---- Install path selection ----
+  std::string mPendingInstallPath; // set by callback, cleared after use
+  bool mWaitingForInstallPath;     // true while InstallPathScene is on stack
 
-    /* Download and unpack */
-    bool mDownloading;
-    volatile bool mDownloadCancelRequested;
-    volatile uint32_t mDownloadCurrent;
-    volatile uint32_t mDownloadTotal;
-    volatile int mProgressIndex;   /* 1-based current (download file or unpack archive) */
-    volatile int mProgressCount;   /* total (files to download or zips to unpack) */
-    bool mDownloadSuccess;
-    bool mShowFailedOverlay;
-    HANDLE mDownloadThread;
-    bool mUnpacking;
-    volatile bool mUnpackCancelRequested;
-    volatile int mUnpackCurrent;
-    volatile int mUnpackTotal;
+  // ---- Download / unpack ----
+  bool mDownloading;
+  volatile bool mDownloadCancelRequested;
+  volatile uint32_t mDownloadCurrent;
+  volatile uint32_t mDownloadTotal;
+  volatile int mProgressIndex;
+  volatile int mProgressCount;
+  bool mDownloadSuccess;
+  bool mShowFailedOverlay;
+  std::string mFailedMessage;
+  bool mCheckingLinks;
+  HANDLE mDownloadThread;
+  bool mUnpacking;
+  volatile bool mUnpackCancelRequested;
+  volatile int mUnpackCurrent;
+  volatile int mUnpackTotal;
+
+  // Paths used by the download thread (set before thread launch)
+  std::string mDownloadPath;
+  std::string mInstallPath;
+
+  // ---- After-install "Ask" dialog ----
+  bool mShowAfterInstallDialog;
 };

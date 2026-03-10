@@ -118,10 +118,17 @@ static int32_t CountCacheFiles()
     return (int32_t)files.size();
 }
 
+int32_t ImageDownloader::GetCachedCoverCount()
+{
+    std::vector<std::pair<std::string, ULONGLONG> > files;
+    CollectFileWithTime( "T:\\Cache\\Covers", &files );
+    return (int32_t)files.size();
+}
+
 static std::string FindOldestCacheFile()
 {
     std::vector<std::pair<std::string, ULONGLONG> > files;
-    CollectFileWithTime( "HDD0-E:\\TDAT\\54520099A\\Cache\\Covers", &files );
+    CollectFileWithTime( "T:\\Cache\\Covers", &files );
     CollectFileWithTime( "T:\\Cache\\Screenshots", &files );
     if( files.empty() ) return std::string();
     size_t oldest = 0;
@@ -149,6 +156,7 @@ ImageDownloader::ImageDownloader()
     : m_thread( nullptr )
     , m_quit( false )
     , m_cancelRequested( false )
+    , m_busy( false )
 {
     InitializeCriticalSection( &m_queueLock );
     m_thread = CreateThread( nullptr, 0, ThreadProc, this, 0, nullptr );
@@ -184,6 +192,35 @@ void ImageDownloader::Queue( D3DTexture** pOutTexture, const std::string appId, 
 
     EnterCriticalSection( &m_queueLock );
     m_queue.push_back( r );
+    LeaveCriticalSection( &m_queueLock );
+}
+
+void ImageDownloader::WarmCache( const std::string appId, ImageDownloadType type )
+{
+    if( appId.empty() ) return;
+
+    // Skip if already cached on disk
+    if( type == IMAGE_COVER && IsCoverCached( appId ) ) return;
+    if( type == IMAGE_SCREENSHOT && IsScreenshotCached( appId ) ) return;
+
+    EnterCriticalSection( &m_queueLock );
+
+    // Skip if already queued
+    for( uint32_t i = 0; i < m_queue.size(); i++ )
+    {
+        if( m_queue[i].appId == appId && m_queue[i].type == type )
+        {
+            LeaveCriticalSection( &m_queueLock );
+            return;
+        }
+    }
+
+    Request r;
+    r.pOutTexture = NULL;  // cache-warm only -- no texture to fill
+    r.appId       = appId;
+    r.type        = type;
+    m_queue.push_back( r );
+
     LeaveCriticalSection( &m_queueLock );
 }
 
@@ -235,6 +272,7 @@ void ImageDownloader::WorkerLoop()
             continue;
         }
 
+        m_busy = true;
         std::string path = CachePathFor( req.appId, req.type );
 
         // Unique key so cover/screenshot are tracked separately
@@ -278,6 +316,7 @@ void ImageDownloader::WorkerLoop()
 
             if( m_cancelRequested || m_quit )
             {
+                m_busy = false;
                 continue;
             }
 
@@ -285,8 +324,19 @@ void ImageDownloader::WorkerLoop()
             {
                 // Mark as failed so we don't retry forever
                 m_failed.insert( failKey );
+                m_busy = false;
                 continue;
             }
         }
+
+        m_busy = false;
     }
+}
+
+bool ImageDownloader::HasPendingWork() const
+{
+    EnterCriticalSection( const_cast<CRITICAL_SECTION*>( &m_queueLock ) );
+    bool pending = !m_queue.empty();
+    LeaveCriticalSection( const_cast<CRITICAL_SECTION*>( &m_queueLock ) );
+    return pending || m_busy;
 }

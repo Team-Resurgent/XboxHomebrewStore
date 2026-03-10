@@ -303,6 +303,9 @@
 			Filter="cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx"
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}">
 			<File
+				RelativePath=".\Appsettings.cpp">
+			</File>
+			<File
 				RelativePath=".\Context.cpp">
 			</File>
 			<File
@@ -342,10 +345,16 @@
 				RelativePath=".\Network.cpp">
 			</File>
 			<File
+				RelativePath=".\OnScreenKeyboard.cpp">
+			</File>
+			<File
 				RelativePath=".\parson.c">
 			</File>
 			<File
 				RelativePath=".\SocketUtility.cpp">
+			</File>
+			<File
+				RelativePath=".\StoreList.cpp">
 			</File>
 			<File
 				RelativePath=".\StoreManager.cpp">
@@ -508,10 +517,19 @@
 				Name="Scenes"
 				Filter="">
 				<File
+					RelativePath=".\Scenes\InstallPathScene.cpp">
+				</File>
+				<File
 					RelativePath=".\Scenes\LoadingScene.cpp">
 				</File>
 				<File
 					RelativePath=".\Scenes\SceneManager.cpp">
+				</File>
+				<File
+					RelativePath=".\Scenes\SettingsScene.cpp">
+				</File>
+				<File
+					RelativePath=".\Scenes\StoreManagerScene.cpp">
 				</File>
 				<File
 					RelativePath=".\Scenes\StoreScene.cpp">
@@ -525,6 +543,9 @@
 			Name="Header Files"
 			Filter="h;hpp;hxx;hm;inl;inc;xsd"
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}">
+			<File
+				RelativePath=".\Appsettings.h">
+			</File>
 			<File
 				RelativePath=".\Context.h">
 			</File>
@@ -571,6 +592,9 @@
 				RelativePath=".\Network.h">
 			</File>
 			<File
+				RelativePath=".\OnScreenKeyboard.h">
+			</File>
+			<File
 				RelativePath=".\parson.h">
 			</File>
 			<File
@@ -584,6 +608,9 @@
 			</File>
 			<File
 				RelativePath=".\stb_image.h">
+			</File>
+			<File
+				RelativePath=".\StoreList.h">
 			</File>
 			<File
 				RelativePath=".\StoreManager.h">
@@ -638,6 +665,9 @@
 				Name="Scenes"
 				Filter="">
 				<File
+					RelativePath=".\Scenes\InstallPathScene.h">
+				</File>
+				<File
 					RelativePath=".\Scenes\LoadingScene.h">
 				</File>
 				<File
@@ -645,6 +675,12 @@
 				</File>
 				<File
 					RelativePath=".\Scenes\SceneManager.h">
+				</File>
+				<File
+					RelativePath=".\Scenes\SettingsScene.h">
+				</File>
+				<File
+					RelativePath=".\Scenes\StoreManagerScene.h">
 				</File>
 				<File
 					RelativePath=".\Scenes\StoreScene.h">

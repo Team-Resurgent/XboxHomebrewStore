@@ -2,6 +2,7 @@
 
 void Debug::Print(const std::string format, ...)
 {
+#ifdef _DEBUG
     va_list args;
     va_start(args, format);
     int length = _vsnprintf(nullptr, 0, format.c_str(), args);
@@ -16,4 +17,5 @@ void Debug::Print(const std::string format, ...)
     va_end(args);
     OutputDebugStringA(message);
     free(message);
+#endif
 }
