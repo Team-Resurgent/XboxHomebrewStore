@@ -366,6 +366,9 @@
 				RelativePath=".\String.cpp">
 			</File>
 			<File
+				RelativePath=".\TextureCache.cpp">
+			</File>
+			<File
 				RelativePath=".\TextureHelper.cpp">
 			</File>
 			<File
@@ -623,6 +626,9 @@
 			</File>
 			<File
 				RelativePath=".\String.h">
+			</File>
+			<File
+				RelativePath=".\TextureCache.h">
 			</File>
 			<File
 				RelativePath=".\TextureHelper.h">

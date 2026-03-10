@@ -187,10 +187,7 @@ bool StoreManager::Reset() {
   MetaCache::StopFetch();
 
   for (int32_t i = 0; i < mWindowStoreItemCount; i++) {
-    if (mWindowStoreItems[i].cover != nullptr) {
-      mWindowStoreItems[i].cover->Release();
-      mWindowStoreItems[i].cover = nullptr;
-    }
+    mWindowStoreItems[i].cover = NULL; // view pointer -- TextureCache owns lifetime
   }
   for (int32_t i = 0; i < Context::GetGridCells(); i++) {
     mWindowStoreItems[i].appId = "";
@@ -239,29 +236,32 @@ int32_t StoreManager::GetCategoryCount() { return (int32_t)mCategories.size(); }
 int32_t StoreManager::GetCategoryIndex() { return mCategoryIndex; }
 
 void StoreManager::SetCategoryIndex(int32_t categoryIndex) {
-  if (mCategories.empty() || categoryIndex < 0 ||
-      categoryIndex >= (int32_t)mCategories.size()) {
-    return;
-  }
-
   StopIdleWarmer();
   mIdleWarmerDone = false;
   MetaCache::StopFetch();
 
-  mCategoryIndex = categoryIndex;
-
   // Release covers from current window
   for (int32_t i = 0; i < mWindowStoreItemCount; i++) {
-    if (mWindowStoreItems[i].cover != nullptr) {
-      mWindowStoreItems[i].cover->Release();
-      mWindowStoreItems[i].cover = nullptr;
-    }
+    mWindowStoreItems[i].cover = NULL; // view pointer -- TextureCache owns lifetime
   }
   mWindowStoreItemOffset = 0;
   mWindowStoreItemCount = 0;
 
-  // Purge all cached metadata -- fresh fetch for new category
+  // Purge all cached metadata
   MetaCache::PurgeAll();
+
+  // Re-fetch categories from server so counts are fresh (a new item may have
+  // been published since startup). This is the same thing Reset() does.
+  // If it fails we keep the old mCategories so the UI stays usable.
+  if (!LoadCategories()) {
+    Debug::Print("SetCategoryIndex: LoadCategories failed, using stale counts\n");
+  }
+
+  // Clamp index to new category list size in case it changed
+  if (categoryIndex < 0 || categoryIndex >= (int32_t)mCategories.size()) {
+    categoryIndex = 0;
+  }
+  mCategoryIndex = categoryIndex;
 
   std::string categoryFilter = "";
   if (mCategoryIndex > 0 && mCategoryIndex < (int32_t)mCategories.size()) {
@@ -343,9 +343,8 @@ bool StoreManager::LoadPrevious() {
 
   for (int32_t i = 0; i < itemsToRemove; i++) {
     StoreItem &storeItem = mWindowStoreItems[mWindowStoreItemCount - 1 - i];
-    if (storeItem.cover != nullptr) {
-      storeItem.cover->Release();
-      storeItem.cover = nullptr;
+    if (storeItem.cover != NULL) {
+      storeItem.cover = NULL; // view pointer -- TextureCache owns lifetime
     }
   }
 
@@ -384,9 +383,8 @@ bool StoreManager::LoadNext() {
   int32_t itemsToRemove = Context::GetGridCols();
   for (int32_t i = 0; i < itemsToRemove; i++) {
     StoreItem &storeItem = mWindowStoreItems[i];
-    if (storeItem.cover != nullptr) {
-      storeItem.cover->Release();
-      storeItem.cover = nullptr;
+    if (storeItem.cover != NULL) {
+      storeItem.cover = NULL; // view pointer -- TextureCache owns lifetime
     }
   }
 
@@ -414,10 +412,7 @@ bool StoreManager::LoadNext() {
 
 bool StoreManager::LoadAtOffset(int32_t offset) {
   for (int32_t i = 0; i < mWindowStoreItemCount; i++) {
-    if (mWindowStoreItems[i].cover != nullptr) {
-      mWindowStoreItems[i].cover->Release();
-      mWindowStoreItems[i].cover = nullptr;
-    }
+    mWindowStoreItems[i].cover = NULL; // view pointer -- TextureCache owns lifetime
   }
   for (int32_t i = 0; i < Context::GetGridCells(); i++) {
     mWindowStoreItems[i].appId = "";
@@ -476,8 +471,8 @@ bool StoreManager::TryGetStoreVersions(std::string appId, StoreVersions *storeVe
   storeVersions->author = versionsResponse.author;
   storeVersions->description = versionsResponse.description;
   storeVersions->latestVersion = versionsResponse.latestVersion;
-  storeVersions->cover = nullptr;
-  storeVersions->screenshot = nullptr;
+  storeVersions->cover = NULL;
+  storeVersions->screenshot = NULL;
   storeVersions->versions.clear();
 
   for (int32_t i = 0; i < (int32_t)versionsResponse.versions.size(); i++) {
@@ -585,7 +580,7 @@ bool StoreManager::LoadPage(StoreItem *dest, int32_t offset, int32_t count, int3
     dest[i].state = ViewState::GetViewed(appItem->id, dest[i].latestVersion)
         ? 0
         : appItem->state;
-    dest[i].cover = nullptr;
+    dest[i].cover = NULL;
 
     std::vector<UserSaveState> userStates;
     if (UserState::TryGetByAppId(dest[i].appId, userStates)) {
@@ -613,9 +608,8 @@ bool StoreManager::LoadPage(StoreItem *dest, int32_t offset, int32_t count, int3
 bool StoreManager::RefreshApplications() {
   for (int32_t i = 0; i < mWindowStoreItemCount; i++) {
     StoreItem &storeItem = mWindowStoreItems[i];
-    if (storeItem.cover != nullptr) {
-      storeItem.cover->Release();
-      storeItem.cover = nullptr;
+    if (storeItem.cover != NULL) {
+      storeItem.cover = NULL; // view pointer -- TextureCache owns lifetime
     }
   }
 

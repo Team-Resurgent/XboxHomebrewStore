@@ -5,7 +5,6 @@
 #include "ImageDownloader.h"
 #include "Defines.h"
 #include "WebManager.h"
-#include "TextureHelper.h"
 #include "Debug.h"
 #include "String.h"
 static uint32_t CRC32( const void* data, size_t size )
@@ -69,12 +68,23 @@ static bool FileExistsAndAvailable( const char* path )
 
 std::string ImageDownloader::GetCoverCachePath( const std::string appId )
 {
-    return CachePathFor( appId, IMAGE_COVER );
+    // Return .dxt path if already converted, else .jpg (download target)
+    uint32_t crc = CRC32( appId.c_str(), appId.size() );
+    std::string dxtPath = String::Format( "T:\\Cache\\Covers\\%08X.dxt", crc );
+    if( FileExistsAndAvailable( dxtPath.c_str() ) ) {
+        return dxtPath;
+    }
+    return String::Format( "T:\\Cache\\Covers\\%08X.jpg", crc );
 }
 
 bool ImageDownloader::IsCoverCached( const std::string appId )
 {
-    return FileExistsAndAvailable( GetCoverCachePath( appId ).c_str() );
+    // Check .dxt first (converted), then .jpg (just downloaded)
+    uint32_t crc = CRC32( appId.c_str(), appId.size() );
+    std::string dxtPath = String::Format( "T:\\Cache\\Covers\\%08X.dxt", crc );
+    if( FileExistsAndAvailable( dxtPath.c_str() ) ) return true;
+    std::string jpgPath = String::Format( "T:\\Cache\\Covers\\%08X.jpg", crc );
+    return FileExistsAndAvailable( jpgPath.c_str() );
 }
 
 std::string ImageDownloader::GetScreenshotCachePath( const std::string appId )
@@ -240,6 +250,8 @@ void ImageDownloader::FlushQueue()
     LeaveCriticalSection( &m_queueLock );
 }
 
+
+
 DWORD WINAPI ImageDownloader::ThreadProc( LPVOID param )
 {
     ImageDownloader* p = (ImageDownloader*)param;
@@ -303,8 +315,8 @@ void ImageDownloader::WorkerLoop()
             {
                 ok = WebManager::TryDownloadCover(
                     req.appId,
-                    144,
-                    204,
+                    288,
+                    408,
                     path,
                     NULL,
                     NULL,

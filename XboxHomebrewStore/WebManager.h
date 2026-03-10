@@ -12,6 +12,7 @@ public:
   static bool TryCheckUrl(const std::string &url);
   static bool TryDownloadApiData(const std::string url, const std::string filePath, DownloadProgressFn progressFn = nullptr, void *progressUserData = nullptr, volatile bool *pCancelRequested = nullptr, std::string *outHeaders = nullptr, std::string *outContentType = nullptr);
   static bool TryDownloadCover(const std::string id, int32_t width, int32_t height, const std::string filePath, DownloadProgressFn progressFn = nullptr, void *progressUserData = nullptr, volatile bool *pCancelRequested = nullptr);
+  static bool TryDownloadCoverToMemory(const std::string id, int32_t width, int32_t height, std::string &outBuffer, volatile bool *pCancelRequested = nullptr);
   static bool TryDownloadScreenshot(const std::string id, int32_t width, int32_t height, const std::string filePath, DownloadProgressFn progressFn = nullptr, void *progressUserData = nullptr, volatile bool *pCancelRequested = nullptr);
   static bool TryDownloadApp(const std::string id, const std::string filePath, DownloadProgressFn progressFn, void *progressUserData, volatile bool *pCancelRequested);
   static bool TryDownloadVersionFile(const std::string versionId, int32_t fileIndex, const std::string filePath, DownloadProgressFn progressFn, void *progressUserData, volatile bool *pCancelRequested);

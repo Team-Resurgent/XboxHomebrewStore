@@ -960,6 +960,55 @@ bool WebManager::TryDownloadCover(const std::string id, int32_t width,
       pCancelRequested, nullptr, nullptr);
 }
 
+bool WebManager::TryDownloadCoverToMemory(const std::string id, int32_t width,
+    int32_t height, std::string &outBuffer, volatile bool *pCancelRequested) {
+  NetworkLockScope lock;
+  outBuffer.clear();
+  if (id.empty()) {
+    return false;
+  }
+
+  std::string url = StoreList::GetActiveUrl() + "/api/Cover/" + id +
+                    String::Format("?width=%u&height=%u", width, height);
+
+  ResetCurlGlobal();
+
+  CURL *curl = curl_easy_init();
+  if (curl == nullptr) {
+    return false;
+  }
+
+  ApplyCommonOptions(curl);
+  curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, StringWriteCallback);
+  curl_easy_setopt(curl, CURLOPT_WRITEDATA, &outBuffer);
+  curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+  curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+
+  ProgressContext progCtx;
+  progCtx.fn = NULL;
+  progCtx.userData = NULL;
+  progCtx.pCancelRequested = pCancelRequested;
+  curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+  curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, ProgressCallback);
+  curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &progCtx);
+
+  long http_code = 0;
+  CURLcode res = curl_easy_perform(curl);
+  if (res == CURLE_OK) {
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+  }
+  curl_easy_cleanup(curl);
+
+  if (res != CURLE_OK || http_code != 200) {
+    Debug::Print("TryDownloadCoverToMemory FAILED: CURLcode=%d HTTP=%ld\n", (int)res, http_code);
+    outBuffer.clear();
+    return false;
+  }
+
+  return !outBuffer.empty();
+}
+
 bool WebManager::TryDownloadScreenshot(const std::string id, int32_t width,
     int32_t height,
     const std::string filePath,

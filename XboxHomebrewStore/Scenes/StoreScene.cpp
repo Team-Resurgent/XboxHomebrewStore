@@ -4,6 +4,7 @@
 #include "VersionScene.h"
 
 #include "..\AppSettings.h"
+#include "..\TextureCache.h"
 #include "..\Context.h"
 #include "..\Debug.h"
 #include "..\Defines.h"
@@ -117,7 +118,7 @@ void StoreScene::DrawFooterControl(float &x, float footerY,
   float textWidth = 0.0f;
 
   D3DTexture *icon = TextureHelper::GetControllerIcon(iconName);
-  if (icon != nullptr) {
+  if (icon != NULL) {
     Drawing::DrawTexturedRect(icon, 0xffffffff, x, iconY, iconW, iconH);
     x += iconW + gap;
   }
@@ -237,12 +238,41 @@ void StoreScene::DrawStoreItem(StoreItem *storeItem, float x, float y,
   float iconY = y + 9;
 
   D3DTexture *cover = storeItem->cover;
-  if (cover == nullptr) {
-    if (ImageDownloader::IsCoverCached(storeItem->appId) == true) {
-      storeItem->cover = TextureHelper::LoadFromFile(
-          ImageDownloader::GetCoverCachePath(storeItem->appId));
-      cover = storeItem->cover;
+  if (cover == NULL) {
+    // Check LRU texture cache first -- avoids redundant disk loads on scroll
+    cover = TextureCache::Get(storeItem->appId);
+    if (cover != NULL) {
+      storeItem->cover = cover;
+    } else if (ImageDownloader::IsCoverCached(storeItem->appId)) {
+      std::string path = ImageDownloader::GetCoverCachePath(storeItem->appId);
+      D3DTexture *loaded = NULL;
+
+      // .jpg on disk means it was just downloaded -- convert to .dxt now
+      // (D3DX call, main thread only; .jpg is deleted on success)
+      bool isJpeg = path.size() >= 4 &&
+                    path.substr(path.size() - 4) == ".jpg";
+      if (isJpeg) {
+        std::string dxtPath = path.substr(0, path.size() - 4) + ".dxt";
+        loaded = TextureHelper::ConvertJpegToDxt(path, dxtPath);
+      }
+
+      // .dxt already on disk (subsequent runs) or jpeg conversion failed
+      if (loaded == NULL) {
+        loaded = TextureHelper::LoadFromFile(
+            ImageDownloader::GetCoverCachePath(storeItem->appId));
+      }
+
+      if (loaded != NULL) {
+        TextureCache::Put(storeItem->appId, loaded);
+        storeItem->cover = loaded;
+        cover = loaded;
+      } else {
+        // Load failed -- set placeholder so we don't retry every frame
+        storeItem->cover = TextureHelper::GetCover();
+        cover = storeItem->cover;
+      }
     } else {
+      // Not on disk yet -- queue download, show placeholder this frame
       cover = TextureHelper::GetCover();
       mImageDownloader->Queue(&storeItem->cover, storeItem->appId, IMAGE_COVER);
     }
