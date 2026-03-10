@@ -148,19 +148,24 @@ void StoreManager::CancelPrefetch() {
 
 void StoreManager::StopIdleWarmer() {
   InterlockedExchange((LPLONG)&mIdleWarmerCancel, 1);
-  if (mIdleWarmerThread != NULL) {
-    WaitForSingleObject(mIdleWarmerThread, 5000);
-    CloseHandle(mIdleWarmerThread);
-    mIdleWarmerThread = NULL;
-  }
-  InterlockedExchange((LPLONG)&mIdleWarmerCancel, 0);
-  mIdleWarmerDone = false; // allow restart next idle cycle
   if (mIdleWarmerDownloader != NULL) {
     mIdleWarmerDownloader->CancelAll();
   }
+  if (mIdleWarmerThread == NULL) {
+    // No thread running -- reset cancel immediately so next start works
+    InterlockedExchange((LPLONG)&mIdleWarmerCancel, 0);
+  }
+  // If thread IS running it resets cancel itself on exit.
+  // Always reset done flag -- if downloads were still in progress when
+  // cancelled, we want to re-queue them on the next idle cycle.
+  mIdleWarmerDone = false;
 }
 
 bool StoreManager::IsIdleWarmerRunning() { return mIdleWarmerThread != NULL; }
+bool StoreManager::IsIdleWarmerDone() { return mIdleWarmerDone; }
+bool StoreManager::IsIdleWarmerDownloading() {
+  return mIdleWarmerDownloader != NULL && mIdleWarmerDownloader->HasPendingWork();
+}
 
 void StoreManager::StartIdleWarmer() {
   // Don't start if already running or already finished this session
@@ -181,56 +186,79 @@ void StoreManager::StartIdleWarmer() {
   }
 
   InterlockedExchange((LPLONG)&mIdleWarmerCancel, 0);
-  mIdleWarmerThread =
-      CreateThread(NULL, 0, IdleWarmerThreadProc, NULL, 0, NULL);
+  CancelPrefetch();
+  HANDLE h = CreateThread(NULL, 0, IdleWarmerThreadProc, NULL, 0, NULL);
+  mIdleWarmerThread = h;
+  if (h != NULL) {
+    CloseHandle(h); // detach -- thread sets mIdleWarmerThread=NULL on exit
+  }
 }
 
 DWORD WINAPI StoreManager::IdleWarmerThreadProc(LPVOID param) {
   (void)param;
   Debug::Print("IdleWarmer: started\n");
 
-  const int32_t pageSize = Context::GetGridCols();
+  // Phase 1 -- collect all appIds, paging at 100 (server-side cap)
+  // Far fewer curl resets than paging at GetGridCols()
+  const int32_t fetchPageSize = 100;
+  std::string categoryFilter = "";
   int32_t offset = 0;
+  std::vector<std::string> appIds;
 
   while (mIdleWarmerCancel == 0) {
-    StoreItem *page = new StoreItem[pageSize];
-    int32_t loadedCount = 0;
-
-    bool ok =
-        StoreManager::LoadApplications(page, offset, pageSize, &loadedCount);
-
-    if (!ok || loadedCount == 0) {
-      delete[] page;
+    AppsResponse response;
+    if (!WebManager::TryGetApps(response, offset, fetchPageSize, categoryFilter, "")) {
+      Debug::Print("IdleWarmer: collect failed at offset=%d\n", offset);
       break;
     }
 
-    for (int32_t i = 0; i < loadedCount; i++) {
-      if (mIdleWarmerCancel != 0) {
-        break;
-      }
-      if (mIdleWarmerDownloader != NULL) {
-        mIdleWarmerDownloader->WarmCache(page[i].appId, IMAGE_COVER);
-      }
-    }
-
-    delete[] page;
-
-    if (mIdleWarmerCancel != 0) {
+    int32_t pageCount = (int32_t)response.items.size();
+    if (pageCount == 0) {
       break;
     }
 
-    offset += loadedCount;
+    for (int32_t i = 0; i < pageCount; i++) {
+      appIds.push_back(response.items[i].id);
+    }
 
-    if (loadedCount < pageSize) {
-      // Reached end of catalogue cleanly
-      Debug::Print("IdleWarmer: finished (%d covers queued)\n", offset);
-      mIdleWarmerDone = true;
-      mIdleWarmerThread = NULL;
-      return 0;
+    offset += pageCount;
+
+    if (pageCount < fetchPageSize) {
+      break;
     }
   }
 
-  Debug::Print("IdleWarmer: cancelled (offset=%d)\n", offset);
+  if (mIdleWarmerCancel != 0) {
+    Debug::Print("IdleWarmer: cancelled during collect\n");
+    InterlockedExchange((LPLONG)&mIdleWarmerCancel, 0);
+    mIdleWarmerThread = NULL;
+    return 0;
+  }
+
+  Debug::Print("IdleWarmer: collected %d appIds, queuing covers\n", (int32_t)appIds.size());
+
+  // Phase 2 -- queue only missing covers
+  int32_t queued = 0;
+  for (int32_t i = 0; i < (int32_t)appIds.size(); i++) {
+    if (mIdleWarmerCancel != 0) {
+      break;
+    }
+    if (mIdleWarmerDownloader != NULL) {
+      if (!ImageDownloader::IsCoverCached(appIds[i])) {
+        mIdleWarmerDownloader->WarmCache(appIds[i], IMAGE_COVER);
+        queued++;
+      }
+    }
+  }
+
+  if (mIdleWarmerCancel == 0) {
+    Debug::Print("IdleWarmer: finished (%d missing covers queued)\n", queued);
+    mIdleWarmerDone = true;
+  } else {
+    Debug::Print("IdleWarmer: cancelled during download\n");
+  }
+
+  InterlockedExchange((LPLONG)&mIdleWarmerCancel, 0);
   mIdleWarmerThread = NULL;
   return 0;
 }
@@ -453,6 +481,7 @@ void StoreManager::SetCategoryIndex(int32_t categoryIndex) {
     return;
   }
   StopIdleWarmer();
+  mIdleWarmerDone = false;
   CancelPrefetch();
   mCategoryIndex = categoryIndex;
   RefreshApplications();

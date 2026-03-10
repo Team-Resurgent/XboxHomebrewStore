@@ -156,6 +156,7 @@ ImageDownloader::ImageDownloader()
     : m_thread( nullptr )
     , m_quit( false )
     , m_cancelRequested( false )
+    , m_busy( false )
 {
     InitializeCriticalSection( &m_queueLock );
     m_thread = CreateThread( nullptr, 0, ThreadProc, this, 0, nullptr );
@@ -271,6 +272,7 @@ void ImageDownloader::WorkerLoop()
             continue;
         }
 
+        m_busy = true;
         std::string path = CachePathFor( req.appId, req.type );
 
         // Unique key so cover/screenshot are tracked separately
@@ -314,6 +316,7 @@ void ImageDownloader::WorkerLoop()
 
             if( m_cancelRequested || m_quit )
             {
+                m_busy = false;
                 continue;
             }
 
@@ -321,8 +324,19 @@ void ImageDownloader::WorkerLoop()
             {
                 // Mark as failed so we don't retry forever
                 m_failed.insert( failKey );
+                m_busy = false;
                 continue;
             }
         }
+
+        m_busy = false;
     }
+}
+
+bool ImageDownloader::HasPendingWork() const
+{
+    EnterCriticalSection( const_cast<CRITICAL_SECTION*>( &m_queueLock ) );
+    bool pending = !m_queue.empty();
+    LeaveCriticalSection( const_cast<CRITICAL_SECTION*>( &m_queueLock ) );
+    return pending || m_busy;
 }

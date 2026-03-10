@@ -43,6 +43,7 @@ LONG WINAPI NtSetSystemTime(LPFILETIME SystemTime, LPFILETIME PreviousTime);
 struct ProgressContext {
   WebManager::DownloadProgressFn fn;
   void *userData;
+  volatile bool *pCancelRequested;
 };
 
 struct MultiSocketContext {
@@ -233,8 +234,13 @@ static bool ParseVersionsResponse(const std::string raw,
 static int ProgressCallback(void *clientp, curl_off_t dltotal, curl_off_t dlnow,
     curl_off_t ultotal, curl_off_t ulnow) {
   ProgressContext *ctx = (ProgressContext *)clientp;
-  if (ctx != nullptr && ctx->fn != nullptr) {
-    ctx->fn((uint32_t)dlnow, (uint32_t)dltotal, ctx->userData);
+  if (ctx != nullptr) {
+    if (ctx->pCancelRequested != nullptr && *ctx->pCancelRequested) {
+      return 1; // non-zero aborts the transfer immediately
+    }
+    if (ctx->fn != nullptr) {
+      ctx->fn((uint32_t)dlnow, (uint32_t)dltotal, ctx->userData);
+    }
   }
   return 0;
 }
@@ -899,11 +905,10 @@ bool WebManager::TryDownloadApiData(const std::string url,
   ProgressContext progCtx;
   progCtx.fn = progressFn;
   progCtx.userData = progressUserData;
-  if (progressFn != nullptr || pCancelRequested != nullptr) {
-    curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
-    curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, ProgressCallback);
-    curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &progCtx);
-  }
+  progCtx.pCancelRequested = pCancelRequested;
+  curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+  curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, ProgressCallback);
+  curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &progCtx);
 
   CURLcode res = CURLE_OK;
   long http_code = 0;

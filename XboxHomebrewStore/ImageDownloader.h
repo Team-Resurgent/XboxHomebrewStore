@@ -20,6 +20,7 @@ public:
   void WarmCache(const std::string appId,
       ImageDownloadType type); // download to disk only, no texture
   void CancelAll();
+  bool HasPendingWork() const;
 
   static std::string GetCoverCachePath(const std::string appId);
   static bool IsCoverCached(const std::string appId);
@@ -42,5 +43,6 @@ private:
   HANDLE m_thread;
   volatile bool m_quit;
   volatile bool m_cancelRequested;
+  volatile bool m_busy;
   std::set<std::string> m_failed;
 };

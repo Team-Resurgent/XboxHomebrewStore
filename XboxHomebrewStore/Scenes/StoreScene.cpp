@@ -84,8 +84,8 @@ void StoreScene::RenderHeader() {
   Font::DrawText(FONT_NORMAL, APP_VERSION, COLOR_TEXT_GRAY,
       60.0f + titleW + 10.0f, 20.0f);
 
-  // Idle warmer indicator -- shown next to version when running
-  if (StoreManager::IsIdleWarmerRunning()) {
+  // Idle warmer indicator -- shown while running or covers still downloading
+  if (StoreManager::IsIdleWarmerRunning() || StoreManager::IsIdleWarmerDownloading()) {
     float versionW = 0.0f;
     Font::MeasureText(FONT_NORMAL, APP_VERSION, &versionW);
     int32_t cached = ImageDownloader::GetCachedCoverCount();
@@ -410,18 +410,21 @@ void StoreScene::Update() {
                   InputManager::ControllerPressed(ControllerBlack, -1) ||
                   InputManager::ControllerPressed(ControllerWhite, -1);
   if (anyInput) {
-    if (StoreManager::IsIdleWarmerRunning()) {
+    if (StoreManager::IsIdleWarmerRunning() || StoreManager::IsIdleWarmerDownloading()) {
       StoreManager::StopIdleWarmer();
+      StoreManager::KickPrefetch();
       Debug::Print("IdleWarmer: cancelled by input\n");
     }
     mIdleFrames = 0;
   } else if (AppSettings::GetPreCacheOnIdle() &&
-             StoreManager::GetCategoryIndex() == 0) {
+             StoreManager::GetCategoryIndex() == 0 &&
+             !StoreManager::IsIdleWarmerDone()) {
     if (!StoreManager::IsIdleWarmerRunning()) {
       mIdleFrames++;
       if (mIdleFrames >= IDLE_THRESHOLD) {
         Debug::Print("IdleWarmer: idle threshold reached, starting\n");
         StoreManager::StartIdleWarmer();
+        mIdleFrames = 0;
       }
     }
   } else {
