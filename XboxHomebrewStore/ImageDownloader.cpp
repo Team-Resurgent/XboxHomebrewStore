@@ -170,7 +170,6 @@ ImageDownloader::~ImageDownloader()
         WaitForSingleObject( m_thread, INFINITE );
         CloseHandle( m_thread );
     }
-    DeleteCriticalSection( &m_completedLock );
     DeleteCriticalSection( &m_queueLock );
 }
 
@@ -227,6 +226,15 @@ void ImageDownloader::WarmCache( const std::string appId, ImageDownloadType type
 void ImageDownloader::CancelAll()
 {
     m_cancelRequested = true;
+    EnterCriticalSection( &m_queueLock );
+    m_queue.clear();
+    LeaveCriticalSection( &m_queueLock );
+}
+
+// FlushQueue -- discards pending requests but does NOT abort the current
+// in-flight download. Use on scroll so the active download completes cleanly.
+void ImageDownloader::FlushQueue()
+{
     EnterCriticalSection( &m_queueLock );
     m_queue.clear();
     LeaveCriticalSection( &m_queueLock );

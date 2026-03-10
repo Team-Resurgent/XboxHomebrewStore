@@ -763,6 +763,8 @@ bool WebManager::TryGetApps(AppsResponse &result, int32_t offset, int32_t count,
   curl_easy_cleanup(curl);
 
   if (res != CURLE_OK || http_code != 200) {
+    Debug::Print("TryGetApps FAILED: CURLcode=%d HTTP=%ld err=%s offset/url logged above\n",
+        (int)res, http_code, curl_easy_strerror(res));
     return false;
   }
 

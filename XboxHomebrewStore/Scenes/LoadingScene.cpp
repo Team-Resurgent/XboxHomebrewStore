@@ -259,13 +259,9 @@ void LoadingScene::Update() {
   case 6:
     TextureHelper::Init();
     break;
-  case 7:
-    StoreManager::Init();
-    break;
-  case 8:
-    FtpServer::Init();
-    break;
-  case 9: {
+  case 7: {
+    // Version check runs BEFORE StoreManager::Init so it completes before
+    // MetaCache starts its background fetch -- avoids shared curl collision
     std::string latestTag;
     std::string latestZipUrl;
     if (WebManager::TryGetLatestRelease(latestTag, latestZipUrl)) {
@@ -284,6 +280,12 @@ void LoadingScene::Update() {
         latestTag.c_str());
     break;
   }
+  case 8:
+    StoreManager::Init();
+    break;
+  case 9:
+    FtpServer::Init();
+    break;
   default:
     break;
   }

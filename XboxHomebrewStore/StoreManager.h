@@ -68,8 +68,7 @@ public:
   static bool LoadNext();
   static bool LoadAtOffset(int32_t offset);
   static bool TryGetStoreVersions(std::string appId, StoreVersions *storeVersions);
-  static void CancelPrefetch();  // cancels both next and prev prefetch
-  static void KickPrefetch();    // starts background fetch of next AND prev rows
+  static bool RefreshApplications();
   static void StartIdleWarmer();
   static void StopIdleWarmer();
   static bool IsIdleWarmerRunning();
@@ -78,9 +77,6 @@ public:
 
 private:
   static bool LoadCategories();
-  static bool LoadApplications(void *dest, int32_t offset, int32_t count, int32_t *loadedCount);
-  static bool RefreshApplications();
-  static DWORD WINAPI PrefetchNextThreadProc(LPVOID param);
-  static DWORD WINAPI PrefetchPrevThreadProc(LPVOID param);
+  static bool LoadPage(StoreItem *dest, int32_t offset, int32_t count, int32_t *loadedCount);
   static DWORD WINAPI IdleWarmerThreadProc(LPVOID param);
 };

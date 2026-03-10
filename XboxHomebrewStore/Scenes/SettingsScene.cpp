@@ -342,7 +342,7 @@ void SettingsScene::Render() {
       mShowCachePartitions ? "Enabled" : "Disabled",
       mSelectedRow == 3 ? "[ Toggle ]" : NULL);
   y += ROW_H + 2.0f;
-  DrawRow(rowX, y, rowW, mSelectedRow == 4, "Pre-cache Covers on Idle",
+  DrawRow(rowX, y, rowW, mSelectedRow == 4, "Pre-cache covers only when idle and in the All Apps section.",
       mPreCacheOnIdle ? "Enabled" : "Disabled",
       mSelectedRow == 4 ? "[ Toggle ]" : NULL);
   y += ROW_H + 2.0f;

@@ -14,7 +14,7 @@ void AppSettings::ApplyDefaults() {
   strncpy(mData.downloadPath, DEFAULT_DOWNLOAD_PATH, sizeof(mData.downloadPath) - 1);
   mData.afterInstallAction = (uint32_t)AfterInstallAsk;
   mData.showCachePartitions = 0;
-  mData.preCacheOnIdle = 0; // off by default
+  mData.preCacheOnIdle = 0;
 }
 
 // ==========================================================================

@@ -16,6 +16,7 @@
 #include "..\Network.h"
 #include "..\StoreList.h"
 #include "..\StoreManager.h"
+#include "..\MetaCache.h"
 #include "..\String.h"
 #include "..\TextureHelper.h"
 #include "..\ViewState.h"
@@ -31,6 +32,7 @@ StoreScene::StoreScene() {
   mShowInfoOverlay = false;
   mInfoOverlayMessage = "";
   mIdleFrames = 0;
+  mMetaReady = false;
 }
 
 StoreScene::~StoreScene() { StoreManager::StopIdleWarmer(); }
@@ -38,6 +40,7 @@ StoreScene::~StoreScene() { StoreManager::StopIdleWarmer(); }
 void StoreScene::OnResume() {
   StoreManager::StopIdleWarmer();
   mIdleFrames = 0;
+  mMetaReady = MetaCache::IsReady();
 
   if (StoreList::WasStoreChanged()) {
     StoreList::ClearStoreChangedFlag();
@@ -292,7 +295,10 @@ void StoreScene::RenderMainGrid() {
 
   int32_t count = StoreManager::GetWindowStoreItemCount();
   if (count == 0) {
-    Font::DrawText(FONT_NORMAL, "No apps in this category.",
+    const char *emptyMsg = MetaCache::IsReady()
+        ? "No apps in this category."
+        : "Loading Catalogue...";
+    Font::DrawText(FONT_NORMAL, emptyMsg,
         (uint32_t)COLOR_TEXT_GRAY, gridX, gridY);
     return;
   }
@@ -384,6 +390,18 @@ void StoreScene::RenderInfoOverlay() {
 }
 
 void StoreScene::Update() {
+  // Detect MetaCache becoming ready -- load the window and drop into the store
+  bool metaNowReady = MetaCache::IsReady();
+  if (metaNowReady && !mMetaReady) {
+    mMetaReady = true;
+    StoreManager::RefreshApplications();
+    mStoreIndex = 0;
+    Debug::Print("StoreScene: MetaCache ready, window loaded\n");
+  } else if (!metaNowReady) {
+    mMetaReady = false; // reset when category changes and cache is purged
+    return;             // show loading indicator, block all input
+  }
+
   if (mShowInfoOverlay) {
     if (InputManager::ControllerPressed(ControllerA, -1) ||
         InputManager::ControllerPressed(ControllerB, -1)) {
@@ -412,7 +430,6 @@ void StoreScene::Update() {
   if (anyInput) {
     if (StoreManager::IsIdleWarmerRunning() || StoreManager::IsIdleWarmerDownloading()) {
       StoreManager::StopIdleWarmer();
-      StoreManager::KickPrefetch();
       Debug::Print("IdleWarmer: cancelled by input\n");
     }
     mIdleFrames = 0;
@@ -469,7 +486,7 @@ void StoreScene::Update() {
       if ((mStoreIndex - StoreManager::GetWindowStoreItemOffset()) >=
           Context::GetGridCols()) {
         mStoreIndex -= Context::GetGridCols();
-      } else if (StoreManager::HasPrevious()) {
+      } else if (StoreManager::HasPrevious() && MetaCache::IsReady()) {
         StoreManager::LoadPrevious();
         mStoreIndex = mStoreIndex >= Context::GetGridCols()
                           ? mStoreIndex - Context::GetGridCols()
@@ -480,8 +497,8 @@ void StoreScene::Update() {
           (StoreManager::GetWindowStoreItemOffset() +
               StoreManager::GetWindowStoreItemCount() - Context::GetGridCols())) {
         mStoreIndex += Context::GetGridCols();
-      } else if (StoreManager::HasNext()) {
-        mImageDownloader->CancelAll();
+      } else if (StoreManager::HasNext() && MetaCache::IsReady()) {
+        mImageDownloader->FlushQueue();
         StoreManager::LoadNext();
         mStoreIndex =
             Math::MinInt32(mStoreIndex + Context::GetGridCols(),
@@ -513,7 +530,7 @@ void StoreScene::Update() {
       }
     } else if (InputManager::ControllerPressed(ControllerWhite, -1)) {
       // Jump to first item in category
-      mImageDownloader->CancelAll();
+      mImageDownloader->FlushQueue();
       StoreManager::LoadAtOffset(0);
       mStoreIndex = 0;
     } else if (InputManager::ControllerPressed(ControllerBlack, -1)) {
@@ -522,7 +539,7 @@ void StoreScene::Update() {
       if (total > 0) {
         int32_t cells = Context::GetGridCells();
         int32_t lastPageStart = ((total - 1) / cells) * cells;
-        mImageDownloader->CancelAll();
+        mImageDownloader->FlushQueue();
         StoreManager::LoadAtOffset(lastPageStart);
         mStoreIndex = total - 1;
       }

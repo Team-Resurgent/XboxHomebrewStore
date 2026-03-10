@@ -20,6 +20,7 @@ public:
   void WarmCache(const std::string appId,
       ImageDownloadType type); // download to disk only, no texture
   void CancelAll();
+  void FlushQueue(); // clears pending queue without aborting in-flight download
   bool HasPendingWork() const;
 
   static std::string GetCoverCachePath(const std::string appId);

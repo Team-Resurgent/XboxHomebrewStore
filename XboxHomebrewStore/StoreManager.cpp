@@ -4,16 +4,12 @@
 #include "Defines.h"
 #include "ImageDownloader.h"
 #include "Math.h"
+#include "MetaCache.h"
 #include "Models.h"
 #include "TextureHelper.h"
 #include "UserState.h"
 #include "ViewState.h"
 #include "WebManager.h"
-
-#define PREFETCH_IDLE 0
-#define PREFETCH_RUNNING 1
-#define PREFETCH_READY 2
-#define PREFETCH_FAILED 3
 
 namespace {
 int32_t mCategoryIndex;
@@ -23,33 +19,10 @@ int32_t mWindowStoreItemCount;
 StoreItem *mWindowStoreItems;
 StoreItem *mTempStoreItems;
 
-// Next prefetch -- one row lookahead forward
-StoreItem *mPrefetchItems;
-int32_t mPrefetchOffset;
-int32_t mPrefetchCount;
-int32_t mPrefetchCategory;
-volatile LONG mPrefetchState;
-volatile LONG mPrefetchCancel;
-HANDLE mPrefetchThread;
-
-// Prev prefetch -- one row lookahead backward
-StoreItem *mPrefetchPrevItems;
-int32_t mPrefetchPrevOffset;
-int32_t mPrefetchPrevCount;
-int32_t mPrefetchPrevCategory;
-volatile LONG mPrefetchPrevState;
-volatile LONG mPrefetchPrevCancel;
-HANDLE mPrefetchPrevThread;
-
-// Cover warmer -- background cover cache downloads for prefetched rows
-ImageDownloader *mCoverWarmer;
-
-// Idle warmer -- walks all apps page by page when user is idle
 volatile LONG mIdleWarmerCancel;
 HANDLE mIdleWarmerThread;
-bool mIdleWarmerDone; // true once fully finished -- don't restart
-ImageDownloader
-    *mIdleWarmerDownloader; // dedicated downloader, not shared with prefetch
+bool mIdleWarmerDone;
+ImageDownloader *mIdleWarmerDownloader;
 } // namespace
 
 static void CopyStoreItem(StoreItem &dst, const StoreItem &src) {
@@ -66,7 +39,8 @@ static void CopyStoreItem(StoreItem &dst, const StoreItem &src) {
 }
 
 // ==========================================================================
-// Init
+// Init -- load categories, start MetaCache fetch, return immediately.
+// StoreScene waits for MetaCache::IsReady() before calling RefreshApplications.
 // ==========================================================================
 
 bool StoreManager::Init() {
@@ -77,24 +51,6 @@ bool StoreManager::Init() {
   mWindowStoreItems = new StoreItem[Context::GetGridCells()];
   mTempStoreItems = new StoreItem[Context::GetGridCols()];
 
-  mPrefetchItems = new StoreItem[Context::GetGridCols()];
-  mPrefetchOffset = -1;
-  mPrefetchCount = 0;
-  mPrefetchCategory = -1;
-  mPrefetchState = PREFETCH_IDLE;
-  mPrefetchCancel = 0;
-  mPrefetchThread = NULL;
-
-  mPrefetchPrevItems = new StoreItem[Context::GetGridCols()];
-  mPrefetchPrevOffset = -1;
-  mPrefetchPrevCount = 0;
-  mPrefetchPrevCategory = -1;
-  mPrefetchPrevState = PREFETCH_IDLE;
-  mPrefetchPrevCancel = 0;
-  mPrefetchPrevThread = NULL;
-
-  mCoverWarmer = new ImageDownloader();
-
   mIdleWarmerCancel = 0;
   mIdleWarmerThread = NULL;
   mIdleWarmerDone = false;
@@ -104,46 +60,17 @@ bool StoreManager::Init() {
     return false;
   }
 
-  return RefreshApplications();
+  MetaCache::Init();
+
+  std::string categoryFilter = "";
+  int32_t total = GetSelectedCategoryTotal();
+  MetaCache::StartFetch(categoryFilter, total);
+
+  return true;
 }
 
 // ==========================================================================
-// Prefetch
-// ==========================================================================
-
-void StoreManager::CancelPrefetch() {
-  // Cancel next thread
-  InterlockedExchange((LPLONG)&mPrefetchCancel, 1);
-  if (mPrefetchThread != NULL) {
-    WaitForSingleObject(mPrefetchThread, 3000);
-    CloseHandle(mPrefetchThread);
-    mPrefetchThread = NULL;
-  }
-  mPrefetchState = PREFETCH_IDLE;
-  mPrefetchOffset = -1;
-  mPrefetchCount = 0;
-  InterlockedExchange((LPLONG)&mPrefetchCancel, 0);
-
-  // Cancel prev thread
-  InterlockedExchange((LPLONG)&mPrefetchPrevCancel, 1);
-  if (mPrefetchPrevThread != NULL) {
-    WaitForSingleObject(mPrefetchPrevThread, 3000);
-    CloseHandle(mPrefetchPrevThread);
-    mPrefetchPrevThread = NULL;
-  }
-  mPrefetchPrevState = PREFETCH_IDLE;
-  mPrefetchPrevOffset = -1;
-  mPrefetchPrevCount = 0;
-  InterlockedExchange((LPLONG)&mPrefetchPrevCancel, 0);
-
-  // Cancel any in-flight cover warming
-  if (mCoverWarmer != NULL) {
-    mCoverWarmer->CancelAll();
-  }
-}
-
-// ==========================================================================
-// Idle warmer -- walks all apps from offset 0, caches covers silently
+// Idle Warmer -- waits for MetaCache then downloads missing covers
 // ==========================================================================
 
 void StoreManager::StopIdleWarmer() {
@@ -152,12 +79,9 @@ void StoreManager::StopIdleWarmer() {
     mIdleWarmerDownloader->CancelAll();
   }
   if (mIdleWarmerThread == NULL) {
-    // No thread running -- reset cancel immediately so next start works
     InterlockedExchange((LPLONG)&mIdleWarmerCancel, 0);
+    return;
   }
-  // If thread IS running it resets cancel itself on exit.
-  // Always reset done flag -- if downloads were still in progress when
-  // cancelled, we want to re-queue them on the next idle cycle.
   mIdleWarmerDone = false;
 }
 
@@ -168,7 +92,6 @@ bool StoreManager::IsIdleWarmerDownloading() {
 }
 
 void StoreManager::StartIdleWarmer() {
-  // Don't start if already running or already finished this session
   if (mIdleWarmerThread != NULL) {
     return;
   }
@@ -176,56 +99,47 @@ void StoreManager::StartIdleWarmer() {
     return;
   }
 
-  // Check if everything is already cached -- no point starting at all
-  int32_t cached = ImageDownloader::GetCachedCoverCount();
   int32_t total = GetSelectedCategoryTotal();
-  if (total > 0 && cached >= total) {
+  int32_t cached = ImageDownloader::GetCachedCoverCount();
+  if (cached >= total) {
     Debug::Print("IdleWarmer: all %d covers already cached, skipping\n", total);
     mIdleWarmerDone = true;
     return;
   }
 
   InterlockedExchange((LPLONG)&mIdleWarmerCancel, 0);
-  CancelPrefetch();
+
   HANDLE h = CreateThread(NULL, 0, IdleWarmerThreadProc, NULL, 0, NULL);
   mIdleWarmerThread = h;
   if (h != NULL) {
-    CloseHandle(h); // detach -- thread sets mIdleWarmerThread=NULL on exit
+    CloseHandle(h);
+  } else {
+    Debug::Print("IdleWarmer: CreateThread failed\n");
   }
 }
 
 DWORD WINAPI StoreManager::IdleWarmerThreadProc(LPVOID param) {
   (void)param;
-  Debug::Print("IdleWarmer: started\n");
+  Debug::Print("IdleWarmer: started, waiting for MetaCache\n");
 
-  // Phase 1 -- collect all appIds, paging at 100 (server-side cap)
-  // Far fewer curl resets than paging at GetGridCols()
-  const int32_t fetchPageSize = 100;
-  std::string categoryFilter = "";
-  int32_t offset = 0;
+  // Wait for MetaCache to be ready -- no API calls, read from memory
   std::vector<std::string> appIds;
+  std::string categoryFilter = "";
 
   while (mIdleWarmerCancel == 0) {
-    AppsResponse response;
-    if (!WebManager::TryGetApps(response, offset, fetchPageSize, categoryFilter, "")) {
-      Debug::Print("IdleWarmer: collect failed at offset=%d\n", offset);
+    if (MetaCache::IsReady()) {
+      int32_t total = StoreManager::GetSelectedCategoryTotal();
+      for (int32_t offset = 0; offset < total && mIdleWarmerCancel == 0; offset += 100) {
+        AppsResponse page;
+        if (MetaCache::TryGetPage(categoryFilter, offset, 100, page)) {
+          for (int32_t i = 0; i < (int32_t)page.items.size(); i++) {
+            appIds.push_back(page.items[i].id);
+          }
+        }
+      }
       break;
     }
-
-    int32_t pageCount = (int32_t)response.items.size();
-    if (pageCount == 0) {
-      break;
-    }
-
-    for (int32_t i = 0; i < pageCount; i++) {
-      appIds.push_back(response.items[i].id);
-    }
-
-    offset += pageCount;
-
-    if (pageCount < fetchPageSize) {
-      break;
-    }
+    Sleep(100);
   }
 
   if (mIdleWarmerCancel != 0) {
@@ -235,9 +149,9 @@ DWORD WINAPI StoreManager::IdleWarmerThreadProc(LPVOID param) {
     return 0;
   }
 
-  Debug::Print("IdleWarmer: collected %d appIds, queuing covers\n", (int32_t)appIds.size());
+  Debug::Print("IdleWarmer: collected %d appIds from MetaCache, queuing covers\n", (int32_t)appIds.size());
 
-  // Phase 2 -- queue only missing covers
+  // Queue only missing covers
   int32_t queued = 0;
   for (int32_t i = 0; i < (int32_t)appIds.size(); i++) {
     if (mIdleWarmerCancel != 0) {
@@ -252,171 +166,15 @@ DWORD WINAPI StoreManager::IdleWarmerThreadProc(LPVOID param) {
   }
 
   if (mIdleWarmerCancel == 0) {
-    Debug::Print("IdleWarmer: finished (%d missing covers queued)\n", queued);
+    Debug::Print("IdleWarmer: queued %d covers for download\n", queued);
     mIdleWarmerDone = true;
   } else {
-    Debug::Print("IdleWarmer: cancelled during download\n");
+    Debug::Print("IdleWarmer: cancelled during queue\n");
+    InterlockedExchange((LPLONG)&mIdleWarmerCancel, 0);
   }
 
-  InterlockedExchange((LPLONG)&mIdleWarmerCancel, 0);
   mIdleWarmerThread = NULL;
   return 0;
-}
-
-DWORD WINAPI StoreManager::PrefetchNextThreadProc(LPVOID param) {
-  int32_t *args = (int32_t *)param;
-  int32_t targetOffset = args[0];
-  int32_t targetCategory = args[1];
-  free(param);
-
-  if (mPrefetchCancel != 0) {
-    InterlockedExchange((LPLONG)&mPrefetchState, PREFETCH_FAILED);
-    return 0;
-  }
-
-  int32_t loadedCount = 0;
-  bool ok = StoreManager::LoadApplications(
-      mPrefetchItems, targetOffset, Context::GetGridCols(), &loadedCount);
-
-  if (mPrefetchCancel != 0) {
-    InterlockedExchange((LPLONG)&mPrefetchState, PREFETCH_FAILED);
-    return 0;
-  }
-
-  if (!ok) {
-    Debug::Print("PrefetchNext failed offset=%d\n", targetOffset);
-    InterlockedExchange((LPLONG)&mPrefetchState, PREFETCH_FAILED);
-    return 0;
-  }
-
-  mPrefetchCount = loadedCount;
-  mPrefetchOffset = targetOffset;
-  mPrefetchCategory = targetCategory;
-
-  // Warm covers BEFORE signalling ready -- avoids race where main thread
-  // consumes mPrefetchItems while we're still iterating them here
-  for (int32_t i = 0; i < loadedCount; i++) {
-    mCoverWarmer->WarmCache(mPrefetchItems[i].appId, IMAGE_COVER);
-  }
-
-  InterlockedExchange((LPLONG)&mPrefetchState, PREFETCH_READY);
-  Debug::Print("PrefetchNext ready offset=%d count=%d\n", targetOffset, loadedCount);
-  return 0;
-}
-
-DWORD WINAPI StoreManager::PrefetchPrevThreadProc(LPVOID param) {
-  int32_t *args = (int32_t *)param;
-  int32_t targetOffset = args[0];
-  int32_t targetCategory = args[1];
-  free(param);
-
-  if (mPrefetchPrevCancel != 0) {
-    InterlockedExchange((LPLONG)&mPrefetchPrevState, PREFETCH_FAILED);
-    return 0;
-  }
-
-  int32_t loadedCount = 0;
-  bool ok = StoreManager::LoadApplications(mPrefetchPrevItems, targetOffset, Context::GetGridCols(), &loadedCount);
-
-  if (mPrefetchPrevCancel != 0) {
-    InterlockedExchange((LPLONG)&mPrefetchPrevState, PREFETCH_FAILED);
-    return 0;
-  }
-
-  if (!ok) {
-    Debug::Print("PrefetchPrev failed offset=%d\n", targetOffset);
-    InterlockedExchange((LPLONG)&mPrefetchPrevState, PREFETCH_FAILED);
-    return 0;
-  }
-
-  mPrefetchPrevCount = loadedCount;
-  mPrefetchPrevOffset = targetOffset;
-  mPrefetchPrevCategory = targetCategory;
-
-  // Warm covers BEFORE signalling ready -- avoids race where main thread
-  // consumes mPrefetchPrevItems while we're still iterating them here
-  for (int32_t i = 0; i < loadedCount; i++) {
-    mCoverWarmer->WarmCache(mPrefetchPrevItems[i].appId, IMAGE_COVER);
-  }
-
-  InterlockedExchange((LPLONG)&mPrefetchPrevState, PREFETCH_READY);
-  Debug::Print("PrefetchPrev ready offset=%d count=%d\n", targetOffset, loadedCount);
-  return 0;
-}
-
-void StoreManager::KickPrefetch() {
-  // -- Next direction --
-  if (HasNext()) {
-    int32_t nextRowOffset = mWindowStoreItemOffset +
-                            (Context::GetGridCols() *
-                                Math::MaxInt32(0, Context::GetGridRows() - 1)) +
-                            Context::GetGridCols();
-
-    bool nextAlreadyCovered = (mPrefetchState == PREFETCH_READY ||
-                                  mPrefetchState == PREFETCH_RUNNING) &&
-                              mPrefetchOffset == nextRowOffset &&
-                              mPrefetchCategory == mCategoryIndex;
-
-    if (!nextAlreadyCovered) {
-      InterlockedExchange((LPLONG)&mPrefetchCancel, 1);
-      if (mPrefetchThread != NULL) {
-        WaitForSingleObject(mPrefetchThread, 3000);
-        CloseHandle(mPrefetchThread);
-        mPrefetchThread = NULL;
-      }
-      mPrefetchState = PREFETCH_IDLE;
-      mPrefetchOffset = -1;
-      mPrefetchCount = 0;
-      InterlockedExchange((LPLONG)&mPrefetchCancel, 0);
-
-      int32_t *params = (int32_t *)malloc(sizeof(int32_t) * 2);
-      params[0] = nextRowOffset;
-      params[1] = mCategoryIndex;
-      InterlockedExchange((LPLONG)&mPrefetchState, PREFETCH_RUNNING);
-      mPrefetchThread =
-          CreateThread(NULL, 0, PrefetchNextThreadProc, params, 0, NULL);
-      if (mPrefetchThread == NULL) {
-        free(params);
-        InterlockedExchange((LPLONG)&mPrefetchState, PREFETCH_IDLE);
-        Debug::Print("PrefetchNext: CreateThread failed\n");
-      }
-    }
-  }
-
-  // -- Prev direction --
-  if (HasPrevious()) {
-    int32_t prevRowOffset = mWindowStoreItemOffset - Context::GetGridCols();
-
-    bool prevAlreadyCovered = (mPrefetchPrevState == PREFETCH_READY ||
-                                  mPrefetchPrevState == PREFETCH_RUNNING) &&
-                              mPrefetchPrevOffset == prevRowOffset &&
-                              mPrefetchPrevCategory == mCategoryIndex;
-
-    if (!prevAlreadyCovered) {
-      InterlockedExchange((LPLONG)&mPrefetchPrevCancel, 1);
-      if (mPrefetchPrevThread != NULL) {
-        WaitForSingleObject(mPrefetchPrevThread, 3000);
-        CloseHandle(mPrefetchPrevThread);
-        mPrefetchPrevThread = NULL;
-      }
-      mPrefetchPrevState = PREFETCH_IDLE;
-      mPrefetchPrevOffset = -1;
-      mPrefetchPrevCount = 0;
-      InterlockedExchange((LPLONG)&mPrefetchPrevCancel, 0);
-
-      int32_t *params = (int32_t *)malloc(sizeof(int32_t) * 2);
-      params[0] = prevRowOffset;
-      params[1] = mCategoryIndex;
-      InterlockedExchange((LPLONG)&mPrefetchPrevState, PREFETCH_RUNNING);
-      mPrefetchPrevThread =
-          CreateThread(NULL, 0, PrefetchPrevThreadProc, params, 0, NULL);
-      if (mPrefetchPrevThread == NULL) {
-        free(params);
-        InterlockedExchange((LPLONG)&mPrefetchPrevState, PREFETCH_IDLE);
-        Debug::Print("PrefetchPrev: CreateThread failed\n");
-      }
-    }
-  }
 }
 
 // ==========================================================================
@@ -426,7 +184,7 @@ void StoreManager::KickPrefetch() {
 bool StoreManager::Reset() {
   StopIdleWarmer();
   mIdleWarmerDone = false;
-  CancelPrefetch();
+  MetaCache::StopFetch();
 
   for (int32_t i = 0; i < mWindowStoreItemCount; i++) {
     if (mWindowStoreItems[i].cover != nullptr) {
@@ -434,7 +192,6 @@ bool StoreManager::Reset() {
       mWindowStoreItems[i].cover = nullptr;
     }
   }
-
   for (int32_t i = 0; i < Context::GetGridCells(); i++) {
     mWindowStoreItems[i].appId = "";
     mWindowStoreItems[i].name = "";
@@ -464,7 +221,13 @@ bool StoreManager::Reset() {
     return false;
   }
 
-  return RefreshApplications();
+  MetaCache::PurgeAll();
+
+  std::string categoryFilter = "";
+  int32_t total = GetSelectedCategoryTotal();
+  MetaCache::StartFetch(categoryFilter, total);
+
+  return true;
 }
 
 // ==========================================================================
@@ -480,11 +243,34 @@ void StoreManager::SetCategoryIndex(int32_t categoryIndex) {
       categoryIndex >= (int32_t)mCategories.size()) {
     return;
   }
+
   StopIdleWarmer();
   mIdleWarmerDone = false;
-  CancelPrefetch();
+  MetaCache::StopFetch();
+
   mCategoryIndex = categoryIndex;
-  RefreshApplications();
+
+  // Release covers from current window
+  for (int32_t i = 0; i < mWindowStoreItemCount; i++) {
+    if (mWindowStoreItems[i].cover != nullptr) {
+      mWindowStoreItems[i].cover->Release();
+      mWindowStoreItems[i].cover = nullptr;
+    }
+  }
+  mWindowStoreItemOffset = 0;
+  mWindowStoreItemCount = 0;
+
+  // Purge all cached metadata -- fresh fetch for new category
+  MetaCache::PurgeAll();
+
+  std::string categoryFilter = "";
+  if (mCategoryIndex > 0 && mCategoryIndex < (int32_t)mCategories.size()) {
+    categoryFilter = mCategories[mCategoryIndex].name;
+  }
+  int32_t total = GetSelectedCategoryTotal();
+  MetaCache::StartFetch(categoryFilter, total);
+
+  // StoreScene will see !MetaCache::IsReady() and show loading until done
 }
 
 StoreCategory *StoreManager::GetStoreCategory(int32_t categoryIndex) {
@@ -495,17 +281,16 @@ StoreCategory *StoreManager::GetStoreCategory(int32_t categoryIndex) {
 }
 
 int32_t StoreManager::GetSelectedCategoryTotal() {
-  if (mCategories.empty() || mCategoryIndex < 0 ||
-      mCategoryIndex >= (int32_t)mCategories.size()) {
+  if (mCategories.empty()) {
     return 0;
   }
   return mCategories[mCategoryIndex].count;
 }
 
 std::string StoreManager::GetSelectedCategoryName() {
-  if (mCategories.empty() || mCategoryIndex < 0 ||
+  if (mCategories.empty() || mCategoryIndex <= 0 ||
       mCategoryIndex >= (int32_t)mCategories.size()) {
-    return std::string("");
+    return "";
   }
   return mCategories[mCategoryIndex].name;
 }
@@ -526,25 +311,19 @@ StoreItem *StoreManager::GetWindowStoreItem(int32_t storeItemIndex) {
 }
 
 bool StoreManager::HasPrevious() {
-  if (mCategories.empty()) {
-    return false;
-  }
-  return mWindowStoreItemOffset >= Context::GetGridCols();
+  return mWindowStoreItemOffset > 0;
 }
 
 bool StoreManager::HasNext() {
-  if (mCategories.empty() || mCategoryIndex < 0 ||
-      mCategoryIndex >= (int32_t)mCategories.size()) {
+  if (mCategories.empty()) {
     return false;
   }
   int32_t categoryItemCount = mCategories[mCategoryIndex].count;
-  int32_t windowStoreItemEndOffset =
-      mWindowStoreItemOffset + mWindowStoreItemCount;
-  return windowStoreItemEndOffset < categoryItemCount;
+  return (mWindowStoreItemOffset + mWindowStoreItemCount) < categoryItemCount;
 }
 
 // ==========================================================================
-// LoadPrevious -- synchronous (going back is less common)
+// LoadPrevious -- scroll up one row, read from MetaCache
 // ==========================================================================
 
 bool StoreManager::LoadPrevious() {
@@ -552,30 +331,11 @@ bool StoreManager::LoadPrevious() {
     return false;
   }
 
-  int32_t newWindowStoreItemOffset =
-      mWindowStoreItemOffset - Context::GetGridCols();
+  int32_t newOffset = mWindowStoreItemOffset - Context::GetGridCols();
   int32_t loadedCount = 0;
 
-  if (mPrefetchPrevState == PREFETCH_READY &&
-      mPrefetchPrevOffset == newWindowStoreItemOffset &&
-      mPrefetchPrevCategory == mCategoryIndex && mPrefetchPrevCount > 0) {
-    // Prefetch hit -- swap in instantly
-    Debug::Print("LoadPrevious: prefetch hit offset=%d\n", newWindowStoreItemOffset);
-    loadedCount = mPrefetchPrevCount;
-    for (int32_t i = 0; i < loadedCount; i++) {
-      CopyStoreItem(mTempStoreItems[i], mPrefetchPrevItems[i]);
-    }
-
-    mPrefetchPrevState = PREFETCH_IDLE;
-    mPrefetchPrevOffset = -1;
-    mPrefetchPrevCount = 0;
-  } else {
-    // Prefetch miss -- sync fallback
-    Debug::Print("LoadPrevious: prefetch miss, sync fetch offset=%d\n", newWindowStoreItemOffset);
-    CancelPrefetch();
-    if (!LoadApplications(mTempStoreItems, newWindowStoreItemOffset, Context::GetGridCols(), &loadedCount)) {
-      return false;
-    }
+  if (!LoadPage(mTempStoreItems, newOffset, Context::GetGridCols(), &loadedCount)) {
+    return false;
   }
 
   int32_t remainder = mWindowStoreItemCount % Context::GetGridCols();
@@ -585,6 +345,7 @@ bool StoreManager::LoadPrevious() {
     StoreItem &storeItem = mWindowStoreItems[mWindowStoreItemCount - 1 - i];
     if (storeItem.cover != nullptr) {
       storeItem.cover->Release();
+      storeItem.cover = nullptr;
     }
   }
 
@@ -596,15 +357,14 @@ bool StoreManager::LoadPrevious() {
     CopyStoreItem(mWindowStoreItems[i], mTempStoreItems[i]);
   }
 
-  mWindowStoreItemOffset = newWindowStoreItemOffset;
+  mWindowStoreItemOffset = newOffset;
   mWindowStoreItemCount = mWindowStoreItemCount - itemsToRemove + loadedCount;
 
-  KickPrefetch();
   return true;
 }
 
 // ==========================================================================
-// LoadNext -- uses prefetch if ready, falls back to synchronous
+// LoadNext -- scroll down one row, read from MetaCache
 // ==========================================================================
 
 bool StoreManager::LoadNext() {
@@ -612,33 +372,13 @@ bool StoreManager::LoadNext() {
     return false;
   }
 
-  int32_t newWindowStoreItemOffset =
-      mWindowStoreItemOffset + Context::GetGridCols();
-  int32_t tempOffset =
-      Context::GetGridCols() * Math::MaxInt32(0, Context::GetGridRows() - 1);
-  int32_t fetchOffset = newWindowStoreItemOffset + tempOffset;
+  int32_t newOffset = mWindowStoreItemOffset + Context::GetGridCols();
+  int32_t tempOffset = Context::GetGridCols() * Math::MaxInt32(0, Context::GetGridRows() - 1);
+  int32_t fetchOffset = newOffset + tempOffset;
 
   int32_t loadedCount = 0;
-
-  if (mPrefetchState == PREFETCH_READY && mPrefetchOffset == fetchOffset &&
-      mPrefetchCategory == mCategoryIndex && mPrefetchCount > 0) {
-    // Prefetch hit -- swap in instantly
-    Debug::Print("LoadNext: prefetch hit offset=%d\n", fetchOffset);
-    loadedCount = mPrefetchCount;
-    for (int32_t i = 0; i < loadedCount; i++) {
-      CopyStoreItem(mTempStoreItems[i], mPrefetchItems[i]);
-    }
-
-    mPrefetchState = PREFETCH_IDLE;
-    mPrefetchOffset = -1;
-    mPrefetchCount = 0;
-  } else {
-    // Prefetch miss -- sync fallback
-    Debug::Print("LoadNext: prefetch miss, sync fetch offset=%d\n", fetchOffset);
-    CancelPrefetch();
-    if (!LoadApplications(mTempStoreItems, fetchOffset, Context::GetGridCols(), &loadedCount)) {
-      return false;
-    }
+  if (!LoadPage(mTempStoreItems, fetchOffset, Context::GetGridCols(), &loadedCount)) {
+    return false;
   }
 
   int32_t itemsToRemove = Context::GetGridCols();
@@ -646,6 +386,7 @@ bool StoreManager::LoadNext() {
     StoreItem &storeItem = mWindowStoreItems[i];
     if (storeItem.cover != nullptr) {
       storeItem.cover->Release();
+      storeItem.cover = nullptr;
     }
   }
 
@@ -653,15 +394,17 @@ bool StoreManager::LoadNext() {
     CopyStoreItem(mWindowStoreItems[i - itemsToRemove], mWindowStoreItems[i]);
   }
 
+  int32_t remainingCount = mWindowStoreItemCount - itemsToRemove;
   for (int32_t i = 0; i < loadedCount; i++) {
-    CopyStoreItem(mWindowStoreItems[mWindowStoreItemCount - itemsToRemove + i], mTempStoreItems[i]);
+    int32_t dest = remainingCount + i;
+    if (dest < Context::GetGridCells()) {
+      CopyStoreItem(mWindowStoreItems[dest], mTempStoreItems[i]);
+    }
   }
 
-  mWindowStoreItemOffset = newWindowStoreItemOffset;
-  mWindowStoreItemCount = mWindowStoreItemCount - itemsToRemove + loadedCount;
+  mWindowStoreItemOffset = newOffset;
+  mWindowStoreItemCount = Math::MinInt32(remainingCount + loadedCount, Context::GetGridCells());
 
-  // Immediately kick off prefetch for the next row after this one
-  KickPrefetch();
   return true;
 }
 
@@ -670,8 +413,6 @@ bool StoreManager::LoadNext() {
 // ==========================================================================
 
 bool StoreManager::LoadAtOffset(int32_t offset) {
-  CancelPrefetch();
-
   for (int32_t i = 0; i < mWindowStoreItemCount; i++) {
     if (mWindowStoreItems[i].cover != nullptr) {
       mWindowStoreItems[i].cover->Release();
@@ -692,14 +433,12 @@ bool StoreManager::LoadAtOffset(int32_t offset) {
   mWindowStoreItemOffset = 0;
 
   int32_t loadedCount = 0;
-  if (!LoadApplications(mWindowStoreItems, offset, Context::GetGridCells(), &loadedCount)) {
+  if (!LoadPage(mWindowStoreItems, offset, Context::GetGridCells(), &loadedCount)) {
     return false;
   }
 
   mWindowStoreItemOffset = offset;
   mWindowStoreItemCount = loadedCount;
-
-  KickPrefetch();
   return true;
 }
 
@@ -817,54 +556,53 @@ bool StoreManager::LoadCategories() {
   return true;
 }
 
-bool StoreManager::LoadApplications(void *dest, int32_t offset, int32_t count, int32_t *loadedCount) {
+// LoadPage -- MetaCache only, no API fallback. Only called when IsReady().
+bool StoreManager::LoadPage(StoreItem *dest, int32_t offset, int32_t count, int32_t *loadedCount) {
   std::string categoryFilter = "";
   if (mCategoryIndex > 0 && mCategoryIndex < (int32_t)mCategories.size()) {
     categoryFilter = mCategories[mCategoryIndex].name;
   }
 
   AppsResponse response;
-  if (!WebManager::TryGetApps(response, offset, count, categoryFilter, "")) {
+  if (!MetaCache::TryGetPage(categoryFilter, offset, count, response)) {
+    Debug::Print("LoadPage: MetaCache not ready at offset=%d\n", offset);
     return false;
   }
 
   const int32_t itemCount = (int32_t)response.items.size();
   *loadedCount = itemCount;
 
-  StoreItem *storeItems = (StoreItem *)dest;
   for (int32_t i = 0; i < itemCount; i++) {
     AppItem *appItem = &response.items[i];
-    storeItems[i].appId = appItem->id;
-    storeItems[i].name = appItem->name;
-    storeItems[i].nameScrollState.active = false;
-    storeItems[i].author = appItem->author;
-    storeItems[i].authorScrollState.active = false;
-    storeItems[i].category = appItem->category;
-    storeItems[i].description = appItem->description;
-    storeItems[i].latestVersion = appItem->latestVersion;
-    storeItems[i].state =
-        ViewState::GetViewed(appItem->id, storeItems[i].latestVersion)
-            ? 0
-            : appItem->state;
-    storeItems[i].cover = nullptr;
+    dest[i].appId = appItem->id;
+    dest[i].name = appItem->name;
+    dest[i].nameScrollState.active = false;
+    dest[i].author = appItem->author;
+    dest[i].authorScrollState.active = false;
+    dest[i].category = appItem->category;
+    dest[i].description = appItem->description;
+    dest[i].latestVersion = appItem->latestVersion;
+    dest[i].state = ViewState::GetViewed(appItem->id, dest[i].latestVersion)
+        ? 0
+        : appItem->state;
+    dest[i].cover = nullptr;
 
     std::vector<UserSaveState> userStates;
-    if (UserState::TryGetByAppId(storeItems[i].appId, userStates)) {
+    if (UserState::TryGetByAppId(dest[i].appId, userStates)) {
       bool hasInstalled = false;
       bool hasLatestVersion = false;
       for (size_t j = 0; j < userStates.size(); j++) {
         const UserSaveState &us = userStates[j];
         if (us.installPath[0] != '\0') {
           hasInstalled = true;
-          storeItems[i].state = 0;
+          dest[i].state = 0;
         }
-        if (us.versionId[0] != '\0' &&
-            storeItems[i].latestVersion == us.versionId) {
+        if (us.versionId[0] != '\0' && dest[i].latestVersion == us.versionId) {
           hasLatestVersion = true;
         }
       }
       if (hasInstalled && !hasLatestVersion) {
-        storeItems[i].state = 2;
+        dest[i].state = 2;
       }
     }
   }
@@ -873,14 +611,11 @@ bool StoreManager::LoadApplications(void *dest, int32_t offset, int32_t count, i
 }
 
 bool StoreManager::RefreshApplications() {
-  if (!LoadCategories()) {
-    return false;
-  }
-
   for (int32_t i = 0; i < mWindowStoreItemCount; i++) {
     StoreItem &storeItem = mWindowStoreItems[i];
     if (storeItem.cover != nullptr) {
       storeItem.cover->Release();
+      storeItem.cover = nullptr;
     }
   }
 
@@ -888,13 +623,10 @@ bool StoreManager::RefreshApplications() {
   mWindowStoreItemCount = 0;
 
   int32_t loadedCount = 0;
-  if (!LoadApplications(mWindowStoreItems, 0, Context::GetGridCells(),
-          &loadedCount)) {
+  if (!LoadPage(mWindowStoreItems, 0, Context::GetGridCells(), &loadedCount)) {
     return false;
   }
 
   mWindowStoreItemCount = loadedCount;
-
-  KickPrefetch();
   return true;
 }

@@ -342,6 +342,9 @@
 				RelativePath=".\Math.cpp">
 			</File>
 			<File
+				RelativePath=".\MetaCache.cpp">
+			</File>
+			<File
 				RelativePath=".\Network.cpp">
 			</File>
 			<File
@@ -584,6 +587,9 @@
 			</File>
 			<File
 				RelativePath=".\Math.h">
+			</File>
+			<File
+				RelativePath=".\MetaCache.h">
 			</File>
 			<File
 				RelativePath=".\Models.h">

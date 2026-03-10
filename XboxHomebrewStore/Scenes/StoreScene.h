@@ -31,7 +31,7 @@ private:
   int32_t mHighlightedCategoryIndex;
   int32_t mStoreIndex;
 
-  // Saved position restored when returning from VersionScene
+  // Saved position � restored when returning from VersionScene
   int32_t mSavedStoreIndex;
   int32_t mSavedWindowOffset;
   bool mHasSavedPosition;
@@ -43,4 +43,5 @@ private:
   // Idle pre-cache warmer
   int32_t mIdleFrames;                        // frames since last input
   static const int32_t IDLE_THRESHOLD = 1800; // 30s at 60fps
+  bool mMetaReady; // tracks MetaCache ready state to detect transitions
 };
