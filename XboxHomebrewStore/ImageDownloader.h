@@ -18,6 +18,8 @@ public:
 
   void Queue(D3DTexture **pOutTexture, const std::string appId,
       ImageDownloadType type);
+  void SetVisibleQueue(D3DTexture **pOutTextures[], const std::string appIds[],
+      int32_t count);
   void WarmCache(const std::string appId, ImageDownloadType type);
   void CancelAll();
   void FlushQueue();

@@ -30,6 +30,7 @@ StoreScene::StoreScene() {
   mStoreIndex = 0;
   mSavedStoreIndex = 0;
   mSavedWindowOffset = 0;
+  mLastQueueOffset = -1;
   mHasSavedPosition = false;
   mShowInfoOverlay = false;
   mInfoOverlayMessage = "";
@@ -50,6 +51,7 @@ void StoreScene::OnPause() {
 void StoreScene::OnResume() {
   mMetaReady = MetaCache::IsReady();
   mIdleFrames = 0;
+  mLastQueueOffset = -1; // force SetVisibleQueue to fire on first frame back
 
   if (StoreList::WasStoreChanged()) {
     // Store changed while in Settings -- full reset, refetch everything
@@ -266,9 +268,8 @@ void StoreScene::DrawStoreItem(StoreItem *storeItem, float x, float y,
         cover = TextureHelper::GetCover();
       }
     } else {
-      // Not on disk yet -- queue download, show placeholder this frame
+      // Not on disk yet -- SetVisibleQueue will handle queuing
       cover = TextureHelper::GetCover();
-      mImageDownloader->Queue(&storeItem->cover, storeItem->appId, IMAGE_COVER);
     }
   }
   Drawing::DrawTexturedRect(cover, 0xFFFFFFFF, iconX, iconY, iconW, iconH);
@@ -354,6 +355,14 @@ void StoreScene::RenderMainGrid() {
   int32_t totalSlots = Context::GetGridCells();
   int32_t windowCount = StoreManager::GetWindowStoreItemCount();
   int32_t slotsInView = Math::MinInt32(totalSlots, windowCount);
+
+  // Collect visible items that still need covers, call SetVisibleQueue once.
+  // This replaces stale pending downloads with exactly what's on screen now,
+  // and cancels any in-flight download for an item that has scrolled away.
+  D3DTexture **pendingOut[32];
+  std::string  pendingIds[32];
+  int32_t      pendingCount = 0;
+
   for (int32_t currentSlot = 0; currentSlot < slotsInView; currentSlot++) {
     int32_t row = currentSlot / Context::GetGridCols();
     int32_t col = currentSlot % Context::GetGridCols();
@@ -367,6 +376,23 @@ void StoreScene::RenderMainGrid() {
         currentSlot ==
             (mStoreIndex - StoreManager::GetWindowStoreItemOffset()),
         currentSlot);
+
+    // If cover still missing, add to pending list for SetVisibleQueue
+    if (storeItem->cover == NULL && !storeItem->appId.empty() &&
+        !ImageDownloader::IsCoverCached(storeItem->appId) &&
+        pendingCount < 32) {
+      pendingOut[pendingCount] = &storeItem->cover;
+      pendingIds[pendingCount] = storeItem->appId;
+      pendingCount++;
+    }
+  }
+
+  // Only call SetVisibleQueue when the visible window actually changes (scroll/category).
+  // Calling it every frame caused spurious cancels and double-downloads.
+  int32_t currentOffset = StoreManager::GetWindowStoreItemOffset();
+  if (pendingCount > 0 && currentOffset != mLastQueueOffset) {
+    mLastQueueOffset = currentOffset;
+    mImageDownloader->SetVisibleQueue(pendingOut, pendingIds, pendingCount);
   }
 
   std::string pageStr =
@@ -437,7 +463,10 @@ void StoreScene::Update() {
     Debug::Print("StoreScene: MetaCache ready, window loaded\n");
   } else if (!metaNowReady) {
     mMetaReady = false; // reset when category changes and cache is purged
-    return;             // show loading indicator, block all input
+    if (!MetaCache::IsFailed()) {
+      return; // still loading -- show indicator, block input
+    }
+    // Failed -- fall through so Start/Y inputs still work
   }
 
   if (mShowInfoOverlay) {
@@ -523,6 +552,7 @@ void StoreScene::Update() {
         mImageDownloader->CancelAll();
         StoreManager::SetCategoryIndex(mHighlightedCategoryIndex);
         mStoreIndex = 0;
+        mLastQueueOffset = -1;
       }
     } else if (InputManager::ControllerPressed(ControllerDpadRight, -1)) {
       mSideBarFocused = false;

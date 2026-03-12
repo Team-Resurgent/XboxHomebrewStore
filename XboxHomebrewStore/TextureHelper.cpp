@@ -175,6 +175,7 @@ D3DTexture *TextureHelper::LoadFromFile(const std::string filePath) {
     if (magic != 0x20534444) { // 'DDS '
       Debug::Print("LoadFromFile: bad DDS magic %s\n", filePath.c_str());
       fclose(f);
+      DeleteFileA(filePath.c_str()); // corrupt file -- delete so it re-downloads
       return NULL;
     }
 
@@ -188,6 +189,7 @@ D3DTexture *TextureHelper::LoadFromFile(const std::string filePath) {
     if (width == 0 || height == 0 || dataSize == 0) {
       Debug::Print("LoadFromFile: bad DDS dims %s\n", filePath.c_str());
       fclose(f);
+      DeleteFileA(filePath.c_str()); // corrupt file -- delete so it re-downloads
       return NULL;
     }
 

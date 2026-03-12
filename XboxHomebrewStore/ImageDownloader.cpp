@@ -88,11 +88,17 @@ static bool WriteDxt1DDS( const std::string& path, D3DTexture* tex )
     UINT bh       = (desc.Height + 3) / 4;
     UINT dataSize = bw * bh * 8;
 
-    FILE* f = fopen( path.c_str(), "wb" );
-    if( f == NULL ) { tex->UnlockRect( 0 ); return false; }
-
-    // Mark as in-progress so FileExistsAndAvailable rejects it until we're done
+    // Mark as in-progress BEFORE creating the file so FileExistsAndAvailable
+    // never sees a zero-byte file with NORMAL attributes (bad DDS magic race).
+    // Touch the file first so SetFileAttributesA has something to set.
+    {
+        FILE* touch = fopen( path.c_str(), "wb" );
+        if( touch ) fclose( touch );
+    }
     SetFileAttributesA( path.c_str(), FILE_ATTRIBUTE_ARCHIVE );
+
+    FILE* f = fopen( path.c_str(), "wb" );
+    if( f == NULL ) { tex->UnlockRect( 0 ); DeleteFileA( path.c_str() ); return false; }
 
     DWORD magic = 0x20534444; // 'DDS '
     fwrite( &magic, 4, 1, f );
@@ -111,6 +117,8 @@ static bool WriteDxt1DDS( const std::string& path, D3DTexture* tex )
     hdr[26] = 0x00001000;  // DDSCAPS_TEXTURE
     fwrite( hdr, sizeof(hdr), 1, f );
     fwrite( locked.pBits, dataSize, 1, f );
+    fflush( f );              // flush CRT buffer to OS
+    _commit( _fileno( f ) );  // flush OS write cache to disk before we mark NORMAL
     fclose( f );
     tex->UnlockRect( 0 );
 
@@ -342,12 +350,60 @@ void ImageDownloader::CancelAll()
     EnterCriticalSection( &m_convertLock );
     m_convertQueue.clear();
     LeaveCriticalSection( &m_convertLock );
+
+    // Clear failed set -- cancelled items should be retryable when visible again
+    m_failed.clear();
 }
 
 void ImageDownloader::FlushQueue()
 {
     EnterCriticalSection( &m_queueLock );
     m_queue.clear();
+    LeaveCriticalSection( &m_queueLock );
+}
+
+// ---------------------------------------------------------------------------
+// SetVisibleQueue -- replaces the pending queue with exactly the currently
+// visible items that still need covers. If the in-flight download is for
+// something no longer visible, cancels it so new items start immediately.
+// The download thread clears m_cancelRequested when it picks up the next item.
+// ---------------------------------------------------------------------------
+void ImageDownloader::SetVisibleQueue( D3DTexture** pOutTextures[],
+    const std::string appIds[], int32_t count )
+{
+    EnterCriticalSection( &m_queueLock );
+
+    m_queue.clear();
+
+    // Check if the in-flight download is still needed
+    bool inFlightStillNeeded = false;
+    if( m_busy && !m_busyAppId.empty() )
+    {
+        for( int32_t i = 0; i < count; i++ )
+        {
+            if( appIds[i] == m_busyAppId ) { inFlightStillNeeded = true; break; }
+        }
+    }
+
+    // Cancel in-flight download if it's for an off-screen item
+    if( m_busy && !inFlightStillNeeded )
+        m_cancelRequested = true;
+
+    for( int32_t i = 0; i < count; i++ )
+    {
+        if( appIds[i].empty() ) continue;
+
+        // Skip if already downloading this exact item
+        if( m_busy && m_busyAppId == appIds[i] && m_busyType == IMAGE_COVER )
+            continue;
+
+        Request r;
+        r.pOutTexture = pOutTextures[i];
+        r.appId       = appIds[i];
+        r.type        = IMAGE_COVER;
+        m_queue.push_back( r );
+    }
+
     LeaveCriticalSection( &m_queueLock );
 }
 
@@ -391,8 +447,8 @@ void ImageDownloader::DownloadLoop()
             req = m_queue.front();
             m_queue.pop_front();
             haveRequest = true;
+            m_cancelRequested = false; // new item -- clear any stale cancel
         }
-        if( m_queue.empty() ) m_cancelRequested = false;
         LeaveCriticalSection( &m_queueLock );
 
         if( !haveRequest ) { Sleep(10); continue; }
@@ -421,7 +477,7 @@ void ImageDownloader::DownloadLoop()
             if( req.type == IMAGE_COVER )
             {
                 ok = WebManager::TryDownloadCover(
-                    req.appId, 144, 204, jpgPath, NULL, NULL, &m_cancelRequested );
+                    req.appId, 288, 408, jpgPath, NULL, NULL, &m_cancelRequested );
             }
             else
             {
@@ -431,6 +487,7 @@ void ImageDownloader::DownloadLoop()
 
             if( m_cancelRequested || m_quit )
             {
+                DeleteFileA( jpgPath.c_str() ); // remove partial file
                 EnterCriticalSection( &m_queueLock );
                 m_busyAppId = "";
                 LeaveCriticalSection( &m_queueLock );
@@ -440,6 +497,7 @@ void ImageDownloader::DownloadLoop()
 
             if( !ok )
             {
+                DeleteFileA( jpgPath.c_str() ); // remove partial/corrupt file
                 m_failed.insert( failKey );
                 EnterCriticalSection( &m_queueLock );
                 m_busyAppId = "";
@@ -531,6 +589,7 @@ void ImageDownloader::ConverterLoop()
         {
             Debug::Print( "ConverterLoop: D3DX failed on %s hr=0x%08X\n",
                 jpgPath.c_str(), (unsigned int)hr );
+            DeleteFileA( jpgPath.c_str() ); // corrupt jpg -- delete so it re-downloads
             m_convertBusy = false;
             continue;
         }
@@ -543,6 +602,8 @@ void ImageDownloader::ConverterLoop()
         else
         {
             Debug::Print( "ConverterLoop: WriteDxt1DDS failed %s\n", dxtPath.c_str() );
+            DeleteFileA( jpgPath.c_str() ); // delete jpg so it re-downloads
+            DeleteFileA( dxtPath.c_str() ); // delete partial/0KB dxt so LoadFromFile doesn't choke on it
         }
 
         tex->Release();

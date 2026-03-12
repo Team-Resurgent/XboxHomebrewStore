@@ -31,6 +31,7 @@ private:
   bool mSideBarFocused;
   int32_t mHighlightedCategoryIndex;
   int32_t mStoreIndex;
+  int32_t mLastQueueOffset; // track window offset to avoid spamming SetVisibleQueue every frame
 
   // Saved position restored when returning from VersionScene
   int32_t mSavedStoreIndex;
