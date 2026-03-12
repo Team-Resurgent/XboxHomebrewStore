@@ -62,6 +62,7 @@ public:
   static int32_t GetWindowStoreItemOffset();
   static int32_t GetWindowStoreItemCount();
   static StoreItem *GetWindowStoreItem(int32_t storeItemIndex);
+  static void InvalidateCovers(); // clears TextureCache + nulls all window cover ptrs
   static bool HasPrevious();
   static bool HasNext();
   static bool LoadPrevious();
@@ -73,7 +74,9 @@ public:
   static void StopIdleWarmer();
   static bool IsIdleWarmerRunning();
   static bool IsIdleWarmerDone();
+  static void SetIdleWarmerDone();
   static bool IsIdleWarmerDownloading();
+  static bool IsWarmerQueued();
 
 private:
   static bool LoadCategories();

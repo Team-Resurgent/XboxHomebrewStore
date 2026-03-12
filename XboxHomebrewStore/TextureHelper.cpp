@@ -110,185 +110,137 @@ bool TextureHelper::Init() {
 }
 
 // ---------------------------------------------------------------------------
-// WriteDxt1DDS -- minimal DDS file writer for a single-mip DXT1 texture.
-// 128-byte header (4 magic + 124 DDSURFACEDESC2) followed by raw block data.
+// WriteDxt1DDS -- writes a DXT1 texture to a DDS file. Main thread only.
 // ---------------------------------------------------------------------------
 static bool WriteDxt1DDS(const std::string &path, D3DTexture *tex) {
   D3DSURFACE_DESC desc;
-  if (FAILED(tex->GetLevelDesc(0, &desc))) {
-    return false;
-  }
+  if (FAILED(tex->GetLevelDesc(0, &desc))) return false;
 
   D3DLOCKED_RECT locked;
-  if (FAILED(tex->LockRect(0, &locked, NULL, D3DLOCK_READONLY))) {
-    return false;
-  }
+  if (FAILED(tex->LockRect(0, &locked, NULL, D3DLOCK_READONLY))) return false;
 
-  // DXT1: 4 bits per pixel, blocks of 4x4 = 8 bytes per block
   UINT bw = (desc.Width  + 3) / 4;
   UINT bh = (desc.Height + 3) / 4;
   UINT dataSize = bw * bh * 8;
 
   FILE *f = fopen(path.c_str(), "wb");
-  if (f == NULL) {
-    tex->UnlockRect(0);
-    return false;
-  }
+  if (f == NULL) { tex->UnlockRect(0); return false; }
 
-  // DDS magic 'DDS '
   DWORD magic = 0x20534444;
   fwrite(&magic, 4, 1, f);
 
-  // DDSURFACEDESC2 as 31 DWORDs (124 bytes)
-  // hdr[N] index = byte offset within desc / 4
-  // DDSURFACEDESC2 layout:
-  //   byte  0  hdr[ 0]  dwSize
-  //   byte  4  hdr[ 1]  dwFlags
-  //   byte  8  hdr[ 2]  dwHeight
-  //   byte 12  hdr[ 3]  dwWidth
-  //   byte 16  hdr[ 4]  dwPitchOrLinearSize
-  //   byte 20  hdr[ 5]  dwDepth
-  //   byte 24  hdr[ 6]  dwMipMapCount
-  //   byte 28..71       reserved[11]
-  //   byte 72  hdr[18]  ddpfPixelFormat.dwSize
-  //   byte 76  hdr[19]  ddpfPixelFormat.dwFlags
-  //   byte 80  hdr[20]  ddpfPixelFormat.dwFourCC
-  //   byte 84..100      ddpfPixelFormat bit masks (0 for fourcc)
-  //   byte 104 hdr[26]  ddsCaps.dwCaps1
   DWORD hdr[31];
   memset(hdr, 0, sizeof(hdr));
-  hdr[0]  = 124;            // dwSize
-  hdr[1]  = 0x00081007;     // CAPS|HEIGHT|WIDTH|PIXELFORMAT|LINEARSIZE
+  hdr[0]  = 124;
+  hdr[1]  = 0x00081007;
   hdr[2]  = desc.Height;
   hdr[3]  = desc.Width;
-  hdr[4]  = dataSize;       // dwPitchOrLinearSize = total compressed bytes
-  hdr[6]  = 1;              // dwMipMapCount
-  hdr[18] = 32;             // ddpfPixelFormat.dwSize
-  hdr[19] = 0x00000004;     // ddpfPixelFormat.dwFlags = DDPF_FOURCC
-  hdr[20] = 0x31545844;     // ddpfPixelFormat.dwFourCC = 'DXT1'
-  hdr[26] = 0x00001000;     // ddsCaps.dwCaps1 = DDSCAPS_TEXTURE
+  hdr[4]  = dataSize;
+  hdr[6]  = 1;
+  hdr[18] = 32;
+  hdr[19] = 0x00000004;
+  hdr[20] = 0x31545844;  // 'DXT1'
+  hdr[26] = 0x00001000;
   fwrite(hdr, sizeof(hdr), 1, f);
-
-  // Raw DXT1 block data
   fwrite(locked.pBits, dataSize, 1, f);
-
   fclose(f);
   tex->UnlockRect(0);
 
+  SetFileAttributesA(path.c_str(), FILE_ATTRIBUTE_NORMAL);
   Debug::Print("WriteDxt1DDS: wrote %s (%dx%d %d bytes)\n",
       path.c_str(), desc.Width, desc.Height, dataSize);
-
-  // Clear FILE_ATTRIBUTE_ARCHIVE so FileExistsAndAvailable accepts it
-  SetFileAttributesA(path.c_str(), FILE_ATTRIBUTE_NORMAL);
-
   return true;
 }
 
-D3DTexture *TextureHelper::ConvertJpegToDxt(const std::string jpegPath,
-                                             const std::string dxtPath) {
-  D3DTexture *tex = NULL;
 
-  // Load JPEG from disk, D3DX compresses to DXT1 during decode
-  if (FAILED(D3DXCreateTextureFromFileEx(
-          Context::GetD3dDevice(), jpegPath.c_str(),
-          D3DX_DEFAULT, D3DX_DEFAULT, 1,
-          0, D3DFMT_DXT1, D3DPOOL_DEFAULT,
-          D3DX_DEFAULT, D3DX_DEFAULT,
-          0, NULL, NULL, &tex))) {
-    Debug::Print("ConvertJpegToDxt: D3DX load failed %s\n", jpegPath.c_str());
-    return NULL;
-  }
-
-  // Save DXT1 data as a .dxt sidecar (standard DDS file, .dxt extension)
-  if (WriteDxt1DDS(dxtPath, tex)) {
-    Debug::Print("ConvertJpegToDxt: saved %s\n", dxtPath.c_str());
-    DeleteFileA(jpegPath.c_str()); // remove .jpg now .dxt is written
-  } else {
-    Debug::Print("ConvertJpegToDxt: save failed %s\n", dxtPath.c_str());
-    // Return texture anyway -- .jpg stays, will re-convert next run
-  }
-
-  return tex;
-}
-
-D3DTexture *TextureHelper::LoadFromMemory(const uint8_t *data, int32_t size) {
-  D3DTexture *tex = NULL;
-  if (data == NULL || size <= 0) {
-    return NULL;
-  }
-  if (FAILED(D3DXCreateTextureFromFileInMemoryEx(
-          Context::GetD3dDevice(), data, (UINT)size,
-          D3DX_DEFAULT, D3DX_DEFAULT, D3DX_DEFAULT,
-          0, D3DFMT_UNKNOWN, D3DPOOL_DEFAULT,
-          D3DX_DEFAULT, D3DX_DEFAULT,
-          0, NULL, NULL, &tex))) {
-    return NULL;
-  }
-  return tex;
-}
-
+// ---------------------------------------------------------------------------
+// LoadFromFile -- for .dxt files uses CreateTexture+LockRect+memcpy+UnlockRect
+// (pure GPU upload, no D3DX overhead). Other formats fall back to D3DXCreateTextureFromFileEx.
+// ---------------------------------------------------------------------------
 D3DTexture *TextureHelper::LoadFromFile(const std::string filePath) {
-  D3DTexture *tex = NULL;
-
-  // If the file is a .dxt we know it's a DXT1 DDS -- hint the format
-  // so D3DX doesn't have to sniff it and fail on the Xbox
   bool isDxt = filePath.size() >= 4 &&
                filePath.substr(filePath.size() - 4) == ".dxt";
-  D3DFORMAT fmt = isDxt ? D3DFMT_DXT1 : D3DFMT_UNKNOWN;
 
+  if (isDxt) {
+    // Read the raw DDS file ourselves and upload via LockRect -- fastest possible path
+    FILE *f = fopen(filePath.c_str(), "rb");
+    if (f == NULL) {
+      Debug::Print("LoadFromFile: fopen failed %s\n", filePath.c_str());
+      return NULL;
+    }
+
+    // DDS layout: 4 magic + 124 header = 128 bytes, then raw DXT1 blocks
+    DWORD magic = 0;
+    fread(&magic, 4, 1, f);
+    if (magic != 0x20534444) { // 'DDS '
+      Debug::Print("LoadFromFile: bad DDS magic %s\n", filePath.c_str());
+      fclose(f);
+      return NULL;
+    }
+
+    DWORD hdr[31];
+    fread(hdr, sizeof(hdr), 1, f);
+
+    UINT width    = hdr[3];
+    UINT height   = hdr[2];
+    UINT dataSize = hdr[4];
+
+    if (width == 0 || height == 0 || dataSize == 0) {
+      Debug::Print("LoadFromFile: bad DDS dims %s\n", filePath.c_str());
+      fclose(f);
+      return NULL;
+    }
+
+    void *blocks = malloc(dataSize);
+    if (blocks == NULL) {
+      Debug::Print("LoadFromFile: malloc failed %s\n", filePath.c_str());
+      fclose(f);
+      return NULL;
+    }
+
+    fread(blocks, dataSize, 1, f);
+    fclose(f);
+
+    D3DTexture *tex = NULL;
+    HRESULT hr = Context::GetD3dDevice()->CreateTexture(
+        width, height, 1, 0, D3DFMT_DXT1, D3DPOOL_DEFAULT, &tex);
+    if (FAILED(hr) || tex == NULL) {
+      Debug::Print("LoadFromFile: CreateTexture failed %s hr=0x%08X\n",
+          filePath.c_str(), (unsigned int)hr);
+      free(blocks);
+      return NULL;
+    }
+
+    D3DLOCKED_RECT locked;
+    hr = tex->LockRect(0, &locked, NULL, 0);
+    if (FAILED(hr)) {
+      Debug::Print("LoadFromFile: LockRect failed %s\n", filePath.c_str());
+      tex->Release();
+      free(blocks);
+      return NULL;
+    }
+
+    memcpy(locked.pBits, blocks, dataSize);
+    tex->UnlockRect(0);
+    free(blocks);
+
+    return tex;
+  }
+
+  // Non-DXT (PNG, JPG for UI assets) -- use D3DX as before
+  D3DTexture *tex = NULL;
   HRESULT hr = D3DXCreateTextureFromFileEx(
-          Context::GetD3dDevice(), filePath.c_str(),
-          D3DX_DEFAULT, D3DX_DEFAULT,
-          1, 0, fmt, D3DPOOL_DEFAULT,
-          D3DX_DEFAULT, D3DX_DEFAULT,
-          0, NULL, NULL, &tex);
+      Context::GetD3dDevice(), filePath.c_str(),
+      D3DX_DEFAULT, D3DX_DEFAULT, 1, 0,
+      D3DFMT_UNKNOWN, D3DPOOL_DEFAULT,
+      D3DX_DEFAULT, D3DX_DEFAULT,
+      0, NULL, NULL, &tex);
   if (FAILED(hr)) {
-    Debug::Print("LoadFromFile: FAILED %s hr=0x%08X\n",
+    Debug::Print("LoadFromFile: D3DX failed %s hr=0x%08X\n",
         filePath.c_str(), (unsigned int)hr);
     return NULL;
   }
   return tex;
-}
-
-D3DTexture *TextureHelper::CopyTexture(D3DTexture *source) {
-  LPDIRECT3DSURFACE8 pSrcSurf = NULL;
-  if (FAILED(source->GetSurfaceLevel(0, &pSrcSurf))) {
-    return NULL;
-  }
-  D3DSURFACE_DESC desc;
-  if (FAILED(pSrcSurf->GetDesc(&desc))) {
-    pSrcSurf->Release();
-    return NULL;
-  }
-  pSrcSurf->Release();
-  pSrcSurf = NULL;
-
-  D3DTexture *pDest = NULL;
-  if (FAILED(Context::GetD3dDevice()->CreateTexture(desc.Width, desc.Height, 1,
-          0, desc.Format, D3DPOOL_DEFAULT, &pDest))) {
-    return NULL;
-  }
-  LPDIRECT3DSURFACE8 pDstSurf = NULL;
-  if (FAILED(pDest->GetSurfaceLevel(0, &pDstSurf))) {
-    pDest->Release();
-    return NULL;
-  }
-  if (FAILED(source->GetSurfaceLevel(0, &pSrcSurf))) {
-    pDstSurf->Release();
-    pDest->Release();
-    return NULL;
-  }
-  RECT rect = {0, 0, (LONG)desc.Width, (LONG)desc.Height};
-  POINT point = {0, 0};
-  HRESULT hr =
-      Context::GetD3dDevice()->CopyRects(pSrcSurf, &rect, 1, pDstSurf, &point);
-  pSrcSurf->Release();
-  pDstSurf->Release();
-  if (FAILED(hr)) {
-    pDest->Release();
-    return NULL;
-  }
-  return pDest;
 }
 
 D3DTexture *TextureHelper::GetBackground() { return mBackground; }

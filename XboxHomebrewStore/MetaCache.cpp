@@ -37,6 +37,9 @@ bool MetaCache::mCacheReady = false;
 volatile LONG MetaCache::mFetchCancel = 0;
 HANDLE MetaCache::mFetchThread = NULL;
 CRITICAL_SECTION MetaCache::mCacheLock;
+volatile LONG MetaCache::mFetchFailed = 0;
+volatile LONG MetaCache::mStreamedCount = 0;
+volatile LONG MetaCache::mTotalCount = 0;
 
 // ==========================================================================
 // CRC32
@@ -274,26 +277,8 @@ void MetaCache::Init() {
 }
 
 // ==========================================================================
-// PurgeCategory / PurgeAll
+// PurgeAll
 // ==========================================================================
-
-void MetaCache::PurgeCategory(const std::string &category) {
-  std::string path = CachePath(category);
-  bool exists = false;
-  FileSystem::FileExists(path, exists);
-  if (exists) {
-    FileSystem::FileDelete(path);
-    Debug::Print("MetaCache: purged %s\n", path.c_str());
-  }
-
-  EnterCriticalSection(&mCacheLock);
-  if (mCachedCategory == category) {
-    mCachedItems.clear();
-    mCachedCategory = "";
-    mCacheReady = false;
-  }
-  LeaveCriticalSection(&mCacheLock);
-}
 
 void MetaCache::PurgeAll() {
   bool exists = false;
@@ -356,16 +341,29 @@ void MetaCache::StopFetch() {
   }
 }
 
-bool MetaCache::IsFetching() {
-  return mFetchThread != NULL;
-}
-
 bool MetaCache::IsReady() {
   return mCacheReady;
 }
 
+bool MetaCache::IsFailed() {
+  return mFetchFailed != 0;
+}
+
+int32_t MetaCache::GetStreamedCount() {
+  return (int32_t)mStreamedCount;
+}
+
+int32_t MetaCache::GetTotalCount() {
+  return (int32_t)mTotalCount;
+}
+
 void MetaCache::StartFetch(const std::string &category, int32_t totalCount) {
   StopFetch();
+
+  // Reset progress and failure state
+  InterlockedExchange((LPLONG)&mFetchFailed, 0);
+  InterlockedExchange((LPLONG)&mStreamedCount, 0);
+  InterlockedExchange((LPLONG)&mTotalCount, (LONG)totalCount);
 
   // Clear memory cache for this category -- file was just purged
   EnterCriticalSection(&mCacheLock);
@@ -405,6 +403,7 @@ DWORD WINAPI MetaCache::FetchThreadProc(LPVOID param) {
 
   uint32_t writeHandle = 0;
   if (!MetaCache::OpenForWrite(path, writeHandle)) {
+    InterlockedExchange((LPLONG)&mFetchFailed, 1);
     mFetchThread = NULL;
     return 0;
   }
@@ -415,8 +414,25 @@ DWORD WINAPI MetaCache::FetchThreadProc(LPVOID param) {
 
   while (mFetchCancel == 0) {
     AppsResponse page;
-    if (!WebManager::TryGetApps(page, offset, META_FETCH_SIZE, category, "")) {
-      Debug::Print("MetaCache: API fetch failed at offset=%d\n", offset);
+
+    // Retry each page up to 3 times before giving up
+    bool pageOk = false;
+    int32_t attempts = 0;
+    while (attempts < 3 && mFetchCancel == 0) {
+      if (WebManager::TryGetApps(page, offset, META_FETCH_SIZE, category, "")) {
+        pageOk = true;
+        break;
+      }
+      attempts++;
+      if (attempts < 3 && mFetchCancel == 0) {
+        Debug::Print("MetaCache: page fetch failed at offset=%d, retry %d/3\n",
+            offset, attempts);
+        Sleep(2000);
+      }
+    }
+
+    if (!pageOk) {
+      Debug::Print("MetaCache: API fetch failed at offset=%d after 3 attempts\n", offset);
       fetchOk = false;
       break;
     }
@@ -434,6 +450,7 @@ DWORD WINAPI MetaCache::FetchThreadProc(LPVOID param) {
 
     totalWritten += pageCount;
     offset += pageCount;
+    InterlockedExchange((LPLONG)&mStreamedCount, (LONG)totalWritten);
     Debug::Print("MetaCache: streamed %d/%d items\n", totalWritten, totalCount);
 
     page.items.clear();
@@ -456,6 +473,7 @@ DWORD WINAPI MetaCache::FetchThreadProc(LPVOID param) {
     FileSystem::FileClose(writeHandle);
     FileSystem::FileDelete(path);
     Debug::Print("MetaCache: fetch failed, file deleted\n");
+    InterlockedExchange((LPLONG)&mFetchFailed, 1);
     mFetchThread = NULL;
     return 0;
   }
@@ -464,6 +482,7 @@ DWORD WINAPI MetaCache::FetchThreadProc(LPVOID param) {
   if (!MetaCache::FinaliseWrite(writeHandle, totalWritten)) {
     FileSystem::FileDelete(path);
     Debug::Print("MetaCache: finalise failed\n");
+    InterlockedExchange((LPLONG)&mFetchFailed, 1);
     mFetchThread = NULL;
     return 0;
   }

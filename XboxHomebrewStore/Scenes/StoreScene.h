@@ -13,6 +13,7 @@ public:
   virtual ~StoreScene();
   virtual void Render();
   virtual void Update();
+  virtual void OnPause();
   virtual void OnResume();
 
 private:

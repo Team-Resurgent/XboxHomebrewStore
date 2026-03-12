@@ -24,6 +24,7 @@
 
 StoreScene::StoreScene() {
   mImageDownloader = new ImageDownloader();
+  ImageDownloader::ResetCachedCoverCount(); // one-time scan before converter thread runs
   mSideBarFocused = true;
   mHighlightedCategoryIndex = 0;
   mStoreIndex = 0;
@@ -38,12 +39,20 @@ StoreScene::StoreScene() {
 
 StoreScene::~StoreScene() { StoreManager::StopIdleWarmer(); }
 
-void StoreScene::OnResume() {
+void StoreScene::OnPause() {
+  // Stop everything when covered by another scene (Settings, Version, etc.)
+  // Downloads and converter will pick up incomplete items next time we resume.
   StoreManager::StopIdleWarmer();
+  mImageDownloader->CancelAll();
   mIdleFrames = 0;
+}
+
+void StoreScene::OnResume() {
   mMetaReady = MetaCache::IsReady();
+  mIdleFrames = 0;
 
   if (StoreList::WasStoreChanged()) {
+    // Store changed while in Settings -- full reset, refetch everything
     StoreList::ClearStoreChangedFlag();
     mStoreIndex = 0;
     mHighlightedCategoryIndex = 0;
@@ -53,24 +62,15 @@ void StoreScene::OnResume() {
     return;
   }
 
+  // No store change -- just restore position, no purging
   if (mHasSavedPosition) {
-    // Restore window to the page we were on, then restore cursor
     StoreManager::LoadAtOffset(mSavedWindowOffset);
-
-    // Clamp in case items were added/removed while we were in VersionScene
     int32_t maxIndex = StoreManager::GetWindowStoreItemOffset() +
                        StoreManager::GetWindowStoreItemCount() - 1;
-    if (maxIndex < 0) {
-      maxIndex = 0;
-    }
+    if (maxIndex < 0) maxIndex = 0;
     mStoreIndex = mSavedStoreIndex > maxIndex ? maxIndex : mSavedStoreIndex;
     mHasSavedPosition = false;
-    mImageDownloader->CancelAll();
-    return;
   }
-
-  StoreManager::SetCategoryIndex(StoreManager::GetCategoryIndex());
-  mStoreIndex = 0;
 }
 
 void StoreScene::RenderHeader() {
@@ -138,6 +138,9 @@ void StoreScene::RenderFooter() {
   DrawFooterControl(x, footerY, "Dpad", "Navigate");
   DrawFooterControl(x, footerY, "ButtonWhite", "First");
   DrawFooterControl(x, footerY, "ButtonBlack", "Last");
+  if (MetaCache::IsFailed()) {
+    DrawFooterControl(x, footerY, "ButtonY", "Retry");
+  }
   DrawFooterControl(x, footerY, "Start", "Settings");
 }
 
@@ -245,31 +248,22 @@ void StoreScene::DrawStoreItem(StoreItem *storeItem, float x, float y,
       storeItem->cover = cover;
     } else if (ImageDownloader::IsCoverCached(storeItem->appId)) {
       std::string path = ImageDownloader::GetCoverCachePath(storeItem->appId);
-      D3DTexture *loaded = NULL;
-
-      // .jpg on disk means it was just downloaded -- convert to .dxt now
-      // (D3DX call, main thread only; .jpg is deleted on success)
-      bool isJpeg = path.size() >= 4 &&
-                    path.substr(path.size() - 4) == ".jpg";
-      if (isJpeg) {
-        std::string dxtPath = path.substr(0, path.size() - 4) + ".dxt";
-        loaded = TextureHelper::ConvertJpegToDxt(path, dxtPath);
-      }
-
-      // .dxt already on disk (subsequent runs) or jpeg conversion failed
-      if (loaded == NULL) {
-        loaded = TextureHelper::LoadFromFile(
-            ImageDownloader::GetCoverCachePath(storeItem->appId));
-      }
-
-      if (loaded != NULL) {
-        TextureCache::Put(storeItem->appId, loaded);
-        storeItem->cover = loaded;
-        cover = loaded;
+      bool isDxt = path.size() >= 4 && path.substr(path.size() - 4) == ".dxt";
+      if (isDxt) {
+        // .dxt ready -- fast memcpy upload, no stall
+        D3DTexture *loaded = TextureHelper::LoadFromFile(path);
+        if (loaded != NULL) {
+          TextureCache::Put(storeItem->appId, loaded);
+          storeItem->cover = loaded;
+          cover = loaded;
+        } else {
+          // Load failed (shouldn't happen) -- show placeholder but DON'T
+          // store it in storeItem->cover so we retry next frame
+          cover = TextureHelper::GetCover();
+        }
       } else {
-        // Load failed -- set placeholder so we don't retry every frame
-        storeItem->cover = TextureHelper::GetCover();
-        cover = storeItem->cover;
+        // .jpg present -- converter thread is working on it, show placeholder
+        cover = TextureHelper::GetCover();
       }
     } else {
       // Not on disk yet -- queue download, show placeholder this frame
@@ -325,11 +319,25 @@ void StoreScene::RenderMainGrid() {
 
   int32_t count = StoreManager::GetWindowStoreItemCount();
   if (count == 0) {
-    const char *emptyMsg = MetaCache::IsReady()
-        ? "No apps in this category."
-        : "Loading Catalogue...";
-    Font::DrawText(FONT_NORMAL, emptyMsg,
-        (uint32_t)COLOR_TEXT_GRAY, gridX, gridY);
+    if (MetaCache::IsReady()) {
+      Font::DrawText(FONT_NORMAL, "No apps in this category.",
+          (uint32_t)COLOR_TEXT_GRAY, gridX, gridY);
+    } else if (MetaCache::IsFailed()) {
+      Font::DrawText(FONT_NORMAL, "Failed to load catalogue.",
+          (uint32_t)0xFF4444FF, gridX, gridY);
+    } else {
+      int32_t streamed = MetaCache::GetStreamedCount();
+      int32_t total    = MetaCache::GetTotalCount();
+      std::string loadMsg;
+      if (streamed > 0 && total > 0) {
+        loadMsg = String::Format("Loading Catalogue... %d of %d items",
+            streamed, total);
+      } else {
+        loadMsg = "Loading Catalogue...";
+      }
+      Font::DrawText(FONT_NORMAL, loadMsg.c_str(),
+          (uint32_t)COLOR_TEXT_GRAY, gridX, gridY);
+    }
     return;
   }
 
@@ -440,6 +448,12 @@ void StoreScene::Update() {
     return;
   }
 
+  if (MetaCache::IsFailed() &&
+      InputManager::ControllerPressed(ControllerY, -1)) {
+    StoreManager::Reset();
+    return;
+  }
+
   if (InputManager::ControllerPressed(ControllerStart, -1)) {
     Context::GetSceneManager()->PushScene(new SettingsScene());
     return;
@@ -464,15 +478,29 @@ void StoreScene::Update() {
     }
     mIdleFrames = 0;
   } else if (AppSettings::GetPreCacheOnIdle() &&
-             StoreManager::GetCategoryIndex() == 0 &&
-             !StoreManager::IsIdleWarmerDone()) {
-    if (!StoreManager::IsIdleWarmerRunning()) {
+             StoreManager::GetCategoryIndex() == 0) {
+    bool running     = StoreManager::IsIdleWarmerRunning();
+    bool downloading = StoreManager::IsIdleWarmerDownloading();
+    bool queued      = StoreManager::IsWarmerQueued();
+    bool done        = StoreManager::IsIdleWarmerDone();
+
+    if (running || downloading) {
+      // Warmer active -- wait, reset idle counter
+      mIdleFrames = 0;
+    } else if (queued && !done) {
+      // Thread finished queuing and downloader just drained -- all done
+      StoreManager::SetIdleWarmerDone();
+      Debug::Print("IdleWarmer: all covers downloaded\n");
+    } else if (!done) {
+      // Idle and not started yet (or reset after cancel) -- count frames
       mIdleFrames++;
       if (mIdleFrames >= IDLE_THRESHOLD) {
         Debug::Print("IdleWarmer: idle threshold reached, starting\n");
         StoreManager::StartIdleWarmer();
         mIdleFrames = 0;
       }
+    } else {
+      mIdleFrames = 0;
     }
   } else {
     mIdleFrames = 0;
@@ -492,6 +520,7 @@ void StoreScene::Update() {
       bool needsUpdate =
           StoreManager::GetCategoryIndex() != mHighlightedCategoryIndex;
       if (needsUpdate == true) {
+        mImageDownloader->CancelAll();
         StoreManager::SetCategoryIndex(mHighlightedCategoryIndex);
         mStoreIndex = 0;
       }
@@ -564,13 +593,20 @@ void StoreScene::Update() {
       StoreManager::LoadAtOffset(0);
       mStoreIndex = 0;
     } else if (InputManager::ControllerPressed(ControllerBlack, -1)) {
-      // Jump to last item in category
+      // Jump to last item -- load window so last item lands on the bottom row
       int32_t total = StoreManager::GetSelectedCategoryTotal();
       if (total > 0) {
-        int32_t cells = Context::GetGridCells();
-        int32_t lastPageStart = ((total - 1) / cells) * cells;
+        int32_t cols = Context::GetGridCols();
+        int32_t rows = Context::GetGridRows();
+        int32_t cells = cols * rows;
+        // Row that the last item sits on (0-based within its page)
+        int32_t lastItemRow = ((total - 1) % cells) / cols;
+        // Shift window back so that row lands on the bottom row of the grid
+        int32_t rowShift = (rows - 1 - lastItemRow) * cols;
+        int32_t windowStart = ((total - 1) / cells) * cells - rowShift;
+        if (windowStart < 0) windowStart = 0;
         mImageDownloader->FlushQueue();
-        StoreManager::LoadAtOffset(lastPageStart);
+        StoreManager::LoadAtOffset(windowStart);
         mStoreIndex = total - 1;
       }
     }

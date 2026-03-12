@@ -8,12 +8,12 @@ public:
   static void Init();
   static void StartFetch(const std::string &category, int32_t totalCount);
   static void StopFetch();
-  static bool IsFetching();
   static bool IsReady();
-  static int32_t GetItemCount(); // actual count from cache, may differ from category metadata
+  static bool IsFailed();
+  static int32_t GetStreamedCount();
+  static int32_t GetTotalCount();
   static bool TryGetPage(const std::string &category, int32_t offset,
       int32_t count, AppsResponse &result);
-  static void PurgeCategory(const std::string &category);
   static void PurgeAll();
 
 private:
@@ -35,4 +35,7 @@ private:
 
   static volatile LONG mFetchCancel;
   static HANDLE mFetchThread;
+  static volatile LONG mFetchFailed;
+  static volatile LONG mStreamedCount;
+  static volatile LONG mTotalCount;
 };

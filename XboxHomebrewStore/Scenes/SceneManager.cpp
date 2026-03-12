@@ -12,6 +12,10 @@ void SceneManager::PushScene(Scene *pScene) {
   if (!pScene) {
     return;
   }
+  // Pause the current top scene before covering it
+  if (m_pStack && m_pStack->pScene) {
+    m_pStack->pScene->OnPause();
+  }
   SceneNode *pNode = new SceneNode;
   pNode->pScene = pScene;
   pNode->pNext = m_pStack;

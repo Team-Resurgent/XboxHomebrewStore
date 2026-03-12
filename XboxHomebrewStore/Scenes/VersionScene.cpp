@@ -13,6 +13,7 @@
 #include "..\Network.h"
 #include "..\StoreList.h"
 #include "..\String.h"
+#include "..\TextureCache.h"
 #include "..\TextureHelper.h"
 #include "..\UserState.h"
 #include "..\ViewState.h"
@@ -75,12 +76,26 @@ VersionScene::VersionScene(const StoreVersions &storeVersions) {
 }
 
 VersionScene::~VersionScene() {
-  if (mStoreVersions.cover != NULL) {
-    mStoreVersions.cover->Release();
+  // Cancel image downloads FIRST -- the download thread holds a raw pointer
+  // to mStoreVersions.screenshot. If we destroy mStoreVersions while a
+  // download is in flight the thread writes into freed memory.
+  if (mImageDownloader != NULL) {
+    mImageDownloader->CancelAll();
+    delete mImageDownloader;
+    mImageDownloader = NULL;
   }
+
+  // cover is a VIEW pointer into TextureCache -- TextureCache owns the
+  // texture lifetime. Never call Release() on it here or TextureCache
+  // will hold a dangling pointer and crash StoreScene on resume.
+  // mStoreVersions.cover = NULL; // just leave it, TextureCache manages it
+
+  // screenshot IS owned by VersionScene (not in TextureCache)
   if (mStoreVersions.screenshot != NULL) {
     mStoreVersions.screenshot->Release();
+    mStoreVersions.screenshot = NULL;
   }
+
   if (mDownloadThread != NULL) {
     mDownloadCancelRequested = true;
     WaitForSingleObject(mDownloadThread, INFINITE);
@@ -419,11 +434,11 @@ void VersionScene::Render() {
   // data mid-download
   if (mNeedsUpdate && !mDownloading) {
     mNeedsUpdate = false;
-    if (mStoreVersions.cover != NULL) {
-      mStoreVersions.cover->Release();
-    }
+    // cover is a TextureCache view pointer -- never Release() it here
+    mStoreVersions.cover = NULL;
     if (mStoreVersions.screenshot != NULL) {
       mStoreVersions.screenshot->Release();
+      mStoreVersions.screenshot = NULL;
     }
     StoreManager::TryGetStoreVersions(mStoreVersions.appId, &mStoreVersions);
   }
@@ -650,8 +665,7 @@ void VersionScene::RenderListView() {
       screenshot = mStoreVersions.screenshot;
     } else {
       screenshot = TextureHelper::GetScreenshot();
-      mImageDownloader->Queue(&mStoreVersions.screenshot, mStoreVersions.appId,
-          IMAGE_SCREENSHOT);
+      mImageDownloader->Queue(&mStoreVersions.screenshot, mStoreVersions.appId, IMAGE_SCREENSHOT);
     }
   }
   Drawing::DrawTexturedRect(screenshot, 0xFFFFFFFF, titleXPos, gridY,
@@ -660,14 +674,22 @@ void VersionScene::RenderListView() {
   // Cover
   D3DTexture *cover = mStoreVersions.cover;
   if (cover == NULL) {
-    if (ImageDownloader::IsCoverCached(mStoreVersions.appId)) {
-      mStoreVersions.cover = TextureHelper::LoadFromFile(
+    cover = TextureCache::Get(mStoreVersions.appId);
+    if (cover != NULL) {
+      mStoreVersions.cover = cover;
+    } else if (ImageDownloader::IsCoverCached(mStoreVersions.appId)) {
+      D3DTexture *loaded = TextureHelper::LoadFromFile(
           ImageDownloader::GetCoverCachePath(mStoreVersions.appId));
-      cover = mStoreVersions.cover;
+      if (loaded != NULL) {
+        TextureCache::Put(mStoreVersions.appId, loaded);
+        mStoreVersions.cover = loaded;
+        cover = loaded;
+      } else {
+        cover = TextureHelper::GetCover();
+      }
     } else {
       cover = TextureHelper::GetCover();
-      mImageDownloader->Queue(&mStoreVersions.cover, mStoreVersions.appId,
-          IMAGE_COVER);
+      mImageDownloader->Queue(&mStoreVersions.cover, mStoreVersions.appId, IMAGE_COVER);
     }
   }
   Drawing::DrawTexturedRect(cover, 0xFFFFFFFF, 216 + ASSET_SCREENSHOT_WIDTH,

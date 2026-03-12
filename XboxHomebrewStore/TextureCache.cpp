@@ -79,28 +79,6 @@ void TextureCache::Put(const std::string &appId, D3DTexture *tex) {
   mEntries[lruIndex].lastUsed = ++mFrame;
 }
 
-void TextureCache::Evict(const std::string &appId) {
-  int32_t i;
-  for (i = 0; i < mCount; i++) {
-    if (mEntries[i].appId == appId) {
-      if (mEntries[i].tex != NULL) {
-        mEntries[i].tex->Release();
-        mEntries[i].tex = NULL;
-      }
-      // Shift remaining entries down
-      int32_t j;
-      for (j = i; j < mCount - 1; j++) {
-        mEntries[j] = mEntries[j + 1];
-      }
-      mEntries[mCount - 1].appId = "";
-      mEntries[mCount - 1].tex = NULL;
-      mEntries[mCount - 1].lastUsed = 0;
-      mCount--;
-      return;
-    }
-  }
-}
-
 void TextureCache::Clear() {
   int32_t i;
   for (i = 0; i < mCount; i++) {

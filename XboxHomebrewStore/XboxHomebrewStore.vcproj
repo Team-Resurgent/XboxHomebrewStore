@@ -613,12 +613,6 @@
 				RelativePath=".\ssfn.h">
 			</File>
 			<File
-				RelativePath=".\stb.h">
-			</File>
-			<File
-				RelativePath=".\stb_image.h">
-			</File>
-			<File
 				RelativePath=".\StoreList.h">
 			</File>
 			<File

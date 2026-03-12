@@ -9,8 +9,10 @@
 #include "..\Drawing.h"
 #include "..\FileSystem.h"
 #include "..\Font.h"
+#include "..\ImageDownloader.h"
 #include "..\InputManager.h"
 #include "..\StoreList.h"
+#include "..\StoreManager.h"
 #include "..\String.h"
 #include "..\TextureHelper.h"
 
@@ -73,13 +75,16 @@ void SettingsScene::OpenPathBrowser() {
 }
 
 // ==========================================================================
-// ClearImageCache -- deletes and recreates covers + screenshots dirs
+// ClearImageCache -- deletes and recreates covers + screenshots dirs,
+// then invalidates in-memory GPU textures so covers revert to placeholder.
 // ==========================================================================
 static void ClearImageCache() {
   FileSystem::DirectoryDelete("T:\\Cache\\Covers", true);
   FileSystem::DirectoryDelete("T:\\Cache\\Screenshots", true);
   FileSystem::DirectoryCreate("T:\\Cache\\Covers");
   FileSystem::DirectoryCreate("T:\\Cache\\Screenshots");
+  ImageDownloader::ResetCachedCoverCount(); // resets to 0 (dirs now empty)
+  StoreManager::InvalidateCovers();
 }
 
 // ==========================================================================

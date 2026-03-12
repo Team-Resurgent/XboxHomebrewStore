@@ -6,7 +6,7 @@
 // LRU cache of D3D cover textures.
 // Owns texture lifetime -- callers must NOT call Release() on returned pointers.
 // Thread safety: all public methods must be called from the main/render thread only.
-#define TEXTURE_CACHE_SIZE 256
+#define TEXTURE_CACHE_SIZE 32
 
 class TextureCache {
 public:
@@ -22,7 +22,6 @@ public:
   static void Put(const std::string &appId, D3DTexture *tex);
 
   // Removes a specific entry and releases its texture. No-op if not found.
-  static void Evict(const std::string &appId);
 
   // Releases all textures and clears the cache.
   static void Clear();

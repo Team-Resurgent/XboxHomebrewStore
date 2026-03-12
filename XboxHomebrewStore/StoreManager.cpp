@@ -6,6 +6,7 @@
 #include "Math.h"
 #include "MetaCache.h"
 #include "Models.h"
+#include "TextureCache.h"
 #include "TextureHelper.h"
 #include "UserState.h"
 #include "ViewState.h"
@@ -22,6 +23,7 @@ StoreItem *mTempStoreItems;
 volatile LONG mIdleWarmerCancel;
 HANDLE mIdleWarmerThread;
 bool mIdleWarmerDone;
+bool mWarmerQueued;  // set by thread when queuing completes; cleared on cancel/reset
 ImageDownloader *mIdleWarmerDownloader;
 } // namespace
 
@@ -54,6 +56,7 @@ bool StoreManager::Init() {
   mIdleWarmerCancel = 0;
   mIdleWarmerThread = NULL;
   mIdleWarmerDone = false;
+  mWarmerQueued = false;
   mIdleWarmerDownloader = new ImageDownloader();
 
   if (!LoadCategories()) {
@@ -75,6 +78,7 @@ bool StoreManager::Init() {
 
 void StoreManager::StopIdleWarmer() {
   InterlockedExchange((LPLONG)&mIdleWarmerCancel, 1);
+  mWarmerQueued = false;
   if (mIdleWarmerDownloader != NULL) {
     mIdleWarmerDownloader->CancelAll();
   }
@@ -83,10 +87,13 @@ void StoreManager::StopIdleWarmer() {
     return;
   }
   mIdleWarmerDone = false;
+  mWarmerQueued = false;
 }
 
 bool StoreManager::IsIdleWarmerRunning() { return mIdleWarmerThread != NULL; }
 bool StoreManager::IsIdleWarmerDone() { return mIdleWarmerDone; }
+void StoreManager::SetIdleWarmerDone() { mIdleWarmerDone = true; }
+bool StoreManager::IsWarmerQueued() { return mWarmerQueued; }
 bool StoreManager::IsIdleWarmerDownloading() {
   return mIdleWarmerDownloader != NULL && mIdleWarmerDownloader->HasPendingWork();
 }
@@ -167,7 +174,7 @@ DWORD WINAPI StoreManager::IdleWarmerThreadProc(LPVOID param) {
 
   if (mIdleWarmerCancel == 0) {
     Debug::Print("IdleWarmer: queued %d covers for download\n", queued);
-    mIdleWarmerDone = true;
+    mWarmerQueued = true;  // signal Update that downloads are in flight
   } else {
     Debug::Print("IdleWarmer: cancelled during queue\n");
     InterlockedExchange((LPLONG)&mIdleWarmerCancel, 0);
@@ -184,7 +191,10 @@ DWORD WINAPI StoreManager::IdleWarmerThreadProc(LPVOID param) {
 bool StoreManager::Reset() {
   StopIdleWarmer();
   mIdleWarmerDone = false;
+  mWarmerQueued = false;
   MetaCache::StopFetch();
+
+  TextureCache::Clear();
 
   for (int32_t i = 0; i < mWindowStoreItemCount; i++) {
     mWindowStoreItems[i].cover = NULL; // view pointer -- TextureCache owns lifetime
@@ -238,6 +248,7 @@ int32_t StoreManager::GetCategoryIndex() { return mCategoryIndex; }
 void StoreManager::SetCategoryIndex(int32_t categoryIndex) {
   StopIdleWarmer();
   mIdleWarmerDone = false;
+  mWarmerQueued = false;
   MetaCache::StopFetch();
 
   // Release covers from current window
@@ -308,6 +319,22 @@ StoreItem *StoreManager::GetWindowStoreItem(int32_t storeItemIndex) {
     return NULL;
   }
   return &mWindowStoreItems[storeItemIndex];
+}
+
+// InvalidateCovers -- call after deleting cover files on disk.
+// Releases all GPU textures from the LRU cache and nulls cover pointers on
+// all window items so DrawStoreItem re-evaluates them next frame.
+void StoreManager::InvalidateCovers() {
+  // Cancel any in-flight warmer and reset done state so the 30s countdown
+  // starts fresh -- covers need re-downloading after cache clear.
+  StopIdleWarmer();
+  mIdleWarmerDone = false;
+  mWarmerQueued = false;
+  TextureCache::Clear();
+  int32_t i;
+  for (i = 0; i < mWindowStoreItemCount; i++) {
+    mWindowStoreItems[i].cover = NULL;
+  }
 }
 
 bool StoreManager::HasPrevious() {
