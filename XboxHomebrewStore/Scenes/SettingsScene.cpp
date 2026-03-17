@@ -8,6 +8,7 @@
 #include "..\Defines.h"
 #include "..\Drawing.h"
 #include "..\FileSystem.h"
+#include "..\Debug.h"
 #include "..\Font.h"
 #include "..\ImageDownloader.h"
 #include "..\InputManager.h"
@@ -26,6 +27,13 @@ static void OnDownloadPathConfirmed(const std::string &path, void *userData) {
   }
 }
 
+static void OnCachePathConfirmed(const std::string &path, void *userData) {
+  SettingsScene *self = (SettingsScene *)userData;
+  if (self != NULL) {
+    self->SetCachePath(path);
+  }
+}
+
 // ==========================================================================
 // Layout constants
 // ==========================================================================
@@ -40,12 +48,15 @@ static const float SEC_HEAD_H = 26.0f; // section label height
 // ==========================================================================
 SettingsScene::SettingsScene()
     : mSelectedRow(0), mPickerOpen(false), mPickerSel(0),
+      mCachePickerOpen(false), mCachePickerSel(0),
       mClearCacheConfirmOpen(false), mClearCacheDone(false),
       mScrollOffset(0.0f) {
   mDownloadPath = AppSettings::GetDownloadPath();
   mAfterInstallAction = AppSettings::GetAfterInstallAction();
   mShowCachePartitions = AppSettings::GetShowCachePartitions();
   mPreCacheOnIdle = AppSettings::GetPreCacheOnIdle();
+  mCacheLocation = AppSettings::GetCacheLocation();
+  mCachePath = AppSettings::GetCachePath();
 }
 
 SettingsScene::~SettingsScene() {}
@@ -62,6 +73,31 @@ void SettingsScene::SaveAndPop() {
   AppSettings::SetAfterInstallAction(mAfterInstallAction);
   AppSettings::SetShowCachePartitions(mShowCachePartitions);
   AppSettings::SetPreCacheOnIdle(mPreCacheOnIdle);
+
+  // If cache location or path is changing, capture the old meta dir BEFORE
+  // the setting changes -- then purge it so stale files don't accumulate
+  bool cacheChanging =
+      (mCacheLocation != AppSettings::GetCacheLocation()) ||
+      (mCachePath != AppSettings::GetCachePath());
+  std::string oldMetaDir;
+  if (cacheChanging) {
+    oldMetaDir = StoreList::GetActiveCacheRoot() + "\\Meta";
+  }
+
+  AppSettings::SetCacheLocation(mCacheLocation);
+  AppSettings::SetCachePath(mCachePath);
+
+  // Now purge the old meta dir (GetActiveCacheRoot now returns new path)
+  if (cacheChanging && !oldMetaDir.empty()) {
+    bool exists = false;
+    FileSystem::DirectoryExists(oldMetaDir.c_str(), exists);
+    if (exists) {
+      FileSystem::DirectoryDelete(oldMetaDir.c_str(), true);
+      FileSystem::DirectoryCreate(oldMetaDir.c_str());
+      Debug::Print("SettingsScene: purged old cache meta %s\n", oldMetaDir.c_str());
+    }
+  }
+
   AppSettings::Save();
   Context::GetSceneManager()->PopScene();
 }
@@ -74,15 +110,23 @@ void SettingsScene::OpenPathBrowser() {
       new InstallPathScene(OnDownloadPathConfirmed, this, "Download Path"));
 }
 
+void SettingsScene::OpenCachePathBrowser() {
+  Context::GetSceneManager()->PushScene(
+      new InstallPathScene(OnCachePathConfirmed, this, "Cache Path"));
+}
+
 // ==========================================================================
 // ClearImageCache -- deletes and recreates covers + screenshots dirs,
 // then invalidates in-memory GPU textures so covers revert to placeholder.
 // ==========================================================================
 static void ClearImageCache() {
-  FileSystem::DirectoryDelete("T:\\Cache\\Covers", true);
-  FileSystem::DirectoryDelete("T:\\Cache\\Screenshots", true);
-  FileSystem::DirectoryCreate("T:\\Cache\\Covers");
-  FileSystem::DirectoryCreate("T:\\Cache\\Screenshots");
+  std::string root = StoreList::GetActiveCacheRoot();
+  std::string coversDir      = root + "\\Covers";
+  std::string screenshotsDir = root + "\\Screenshots";
+  FileSystem::DirectoryDelete(coversDir.c_str(), true);
+  FileSystem::DirectoryDelete(screenshotsDir.c_str(), true);
+  FileSystem::DirectoryCreate(coversDir.c_str());
+  FileSystem::DirectoryCreate(screenshotsDir.c_str());
   ImageDownloader::ResetCachedCoverCount(); // resets to 0 (dirs now empty)
   StoreManager::InvalidateCovers();
 }
@@ -91,7 +135,33 @@ static void ClearImageCache() {
 // Update
 // ==========================================================================
 void SettingsScene::Update() {
-  // ---- Picker popup takes priority ----
+  // ---- Cache location picker ----
+  if (mCachePickerOpen) {
+    if (InputManager::ControllerPressed(ControllerDpadUp, -1)) {
+      mCachePickerSel = (mCachePickerSel > 0) ? mCachePickerSel - 1 : 2;
+      return;
+    }
+    if (InputManager::ControllerPressed(ControllerDpadDown, -1)) {
+      mCachePickerSel = (mCachePickerSel < 2) ? mCachePickerSel + 1 : 0;
+      return;
+    }
+    if (InputManager::ControllerPressed(ControllerA, -1)) {
+      mCacheLocation = (CacheLocation)mCachePickerSel;
+      mCachePickerOpen = false;
+      // If custom selected, immediately open path browser
+      if (mCacheLocation == CacheLocationCustom) {
+        OpenCachePathBrowser();
+      }
+      return;
+    }
+    if (InputManager::ControllerPressed(ControllerB, -1)) {
+      mCachePickerOpen = false;
+      return;
+    }
+    return;
+  }
+
+  // ---- After-install picker popup ----
   if (mPickerOpen) {
     if (InputManager::ControllerPressed(ControllerDpadUp, -1)) {
       mPickerSel = (mPickerSel > 0) ? mPickerSel - 1 : 2;
@@ -168,16 +238,20 @@ void SettingsScene::Update() {
       OpenPathBrowser();
       break;
     case 2:
+      mCachePickerSel = (int)mCacheLocation;
+      mCachePickerOpen = true;
+      break;
+    case 3:
       mPickerSel = (int)mAfterInstallAction;
       mPickerOpen = true;
       break;
-    case 3:
+    case 4:
       mShowCachePartitions = !mShowCachePartitions;
       break;
-    case 4:
+    case 5:
       mPreCacheOnIdle = !mPreCacheOnIdle;
       break;
-    case 5:
+    case 6:
       mClearCacheDone = false;
       mClearCacheConfirmOpen = true;
       break;
@@ -199,6 +273,15 @@ static const char *AfterInstallLabel(AfterInstallAction a) {
     return "Ask Each Time";
   default:
     return "Unknown";
+  }
+}
+
+static const char *CacheLocationLabel(CacheLocation loc) {
+  switch (loc) {
+  case CacheLocationTemp:   return "Default (TDATA)";
+  case CacheLocationApp:    return "Application Path";
+  case CacheLocationCustom: return "Custom Path";
+  default:                  return "Unknown";
   }
 }
 
@@ -292,7 +375,7 @@ void SettingsScene::Render() {
       20.0f);
 
   float contentH = (SEC_HEAD_H + ROW_H + 2.0f) +
-                   (SEC_GAP + SEC_HEAD_H + ROW_H + 2.0f) +
+                   (SEC_GAP + SEC_HEAD_H + 2.0f * (ROW_H + 2.0f)) +
                    (SEC_GAP + SEC_HEAD_H + ROW_H + 2.0f) +
                    (SEC_GAP + SEC_HEAD_H + 3.0f * (ROW_H + 2.0f));
   float visibleH = footerY - BODY_TOP;
@@ -332,29 +415,38 @@ void SettingsScene::Render() {
       mSelectedRow == 1 ? "[ Browse ]" : NULL);
   y += ROW_H + 2.0f;
 
+  // Cache location row -- show custom path if set, otherwise show location label
+  std::string cacheDisplay = CacheLocationLabel(mCacheLocation);
+  if (mCacheLocation == CacheLocationCustom && !mCachePath.empty()) {
+    cacheDisplay = mCachePath;
+  }
+  DrawRow(rowX, y, rowW, mSelectedRow == 2, "Cover Cache Location", cacheDisplay,
+      mSelectedRow == 2 ? "[ Change ]" : NULL);
+  y += ROW_H + 2.0f;
+
   y += SEC_GAP;
   DrawSection(rowX, y, rowW, "Install Behaviour");
   y += SEC_HEAD_H;
-  DrawRow(rowX, y, rowW, mSelectedRow == 2, "Keep Downloaded Files",
+  DrawRow(rowX, y, rowW, mSelectedRow == 3, "Keep Downloaded Files",
       AfterInstallLabel(mAfterInstallAction),
-      mSelectedRow == 2 ? "[ Change ]" : NULL);
+      mSelectedRow == 3 ? "[ Change ]" : NULL);
   y += ROW_H + 2.0f;
 
   y += SEC_GAP;
   DrawSection(rowX, y, rowW, "Advanced");
   y += SEC_HEAD_H;
-  DrawRow(rowX, y, rowW, mSelectedRow == 3, "Show Cache Partitions (X/Y/Z)",
+  DrawRow(rowX, y, rowW, mSelectedRow == 4, "Show Cache Partitions (X/Y/Z)",
       mShowCachePartitions ? "Enabled" : "Disabled",
-      mSelectedRow == 3 ? "[ Toggle ]" : NULL);
-  y += ROW_H + 2.0f;
-  DrawRow(rowX, y, rowW, mSelectedRow == 4, "Pre-cache covers only when idle and in the All Apps section.",
-      mPreCacheOnIdle ? "Enabled" : "Disabled",
       mSelectedRow == 4 ? "[ Toggle ]" : NULL);
   y += ROW_H + 2.0f;
-  DrawRow(rowX, y, rowW, mSelectedRow == 5, "Clear Image Cache",
+  DrawRow(rowX, y, rowW, mSelectedRow == 5, "Pre-cache covers only when idle and in the All Apps section.",
+      mPreCacheOnIdle ? "Enabled" : "Disabled",
+      mSelectedRow == 5 ? "[ Toggle ]" : NULL);
+  y += ROW_H + 2.0f;
+  DrawRow(rowX, y, rowW, mSelectedRow == 6, "Clear Image Cache",
       mClearCacheDone ? "Cleared!"
                       : "Deletes all cached covers and screenshots",
-      mSelectedRow == 5 ? "[ Clear ]" : NULL);
+      mSelectedRow == 6 ? "[ Clear ]" : NULL);
   y += ROW_H + 2.0f;
 
   Drawing::EndStencil();
@@ -363,7 +455,9 @@ void SettingsScene::Render() {
       (mDownloadPath != AppSettings::GetDownloadPath()) ||
       ((int)mAfterInstallAction != (int)AppSettings::GetAfterInstallAction()) ||
       (mShowCachePartitions != AppSettings::GetShowCachePartitions()) ||
-      (mPreCacheOnIdle != AppSettings::GetPreCacheOnIdle());
+      (mPreCacheOnIdle != AppSettings::GetPreCacheOnIdle()) ||
+      ((int)mCacheLocation != (int)AppSettings::GetCacheLocation()) ||
+      (mCachePath != AppSettings::GetCachePath());
   if (dirty) {
     const char *hint = "* Unsaved changes";
     float hw = 0.0f;
@@ -405,6 +499,9 @@ void SettingsScene::Render() {
 
 #undef DRAW_CTRL
 
+  if (mCachePickerOpen) {
+    RenderCacheLocationPicker();
+  }
   if (mPickerOpen) {
     RenderPicker();
   }
@@ -415,6 +512,75 @@ void SettingsScene::Render() {
 
 // ==========================================================================
 // RenderPicker - small centred popup with 3 options
+// ==========================================================================
+
+// ==========================================================================
+// RenderCacheLocationPicker
+// ==========================================================================
+void SettingsScene::RenderCacheLocationPicker() {
+  float screenW = (float)Context::GetScreenWidth();
+  float screenH = (float)Context::GetScreenHeight();
+
+  Drawing::DrawFilledRect(0xBB000000, 0.0f, 0.0f, screenW, screenH);
+
+  const char *opts[3] = {"Default (TDATA)", "Application Path", "Custom Path"};
+  const float ITEM_H = 40.0f;
+  const float PAD = 16.0f;
+  float panelW = 300.0f;
+  float panelH = PAD + (float)3 * ITEM_H + PAD + 32.0f;
+  float px = (screenW - panelW) * 0.5f;
+  float py = (screenH - panelH) * 0.5f;
+
+  Drawing::DrawFilledRect(0xFF1E1E1E, px, py, panelW, panelH);
+  Drawing::DrawFilledRect(COLOR_FOCUS_HIGHLIGHT, px, py, panelW, 3.0f);
+
+  int i;
+  for (i = 0; i < 3; i++) {
+    float iy = py + PAD + (float)i * ITEM_H;
+    bool sel = (mCachePickerSel == i);
+    bool cur = ((int)mCacheLocation == i);
+
+    if (sel) {
+      Drawing::DrawFilledRect(0xFF2E2E2E, px, iy, panelW, ITEM_H - 2.0f);
+      Drawing::DrawFilledRect(COLOR_FOCUS_HIGHLIGHT, px, iy, 3.0f, ITEM_H - 2.0f);
+    }
+
+    uint32_t col = sel ? COLOR_WHITE : COLOR_TEXT_GRAY;
+    Font::DrawText(FONT_NORMAL, opts[i], col, (px + 16.0f), (iy + 11.0f));
+
+    if (cur) {
+      Font::DrawText(FONT_LARGE, "*", COLOR_FOCUS_HIGHLIGHT,
+          (px + panelW - 26.0f), (iy + 6.0f));
+    }
+  }
+
+  float iW = (float)ASSET_CONTROLLER_ICON_WIDTH;
+  float iH = (float)ASSET_CONTROLLER_ICON_HEIGHT;
+  float selW = 0.0f;
+  float canW = 0.0f;
+  Font::MeasureText(FONT_NORMAL, "Select", &selW);
+  Font::MeasureText(FONT_NORMAL, "Cancel", &canW);
+  float hintW = (iW + 4.0f + selW) + 16.0f + (iW + 4.0f + canW);
+  float hx = px + (panelW - hintW) * 0.5f;
+  float hy = py + panelH - iH - 8.0f;
+
+  D3DTexture *iconA = TextureHelper::GetControllerIcon("ButtonA");
+  if (iconA) {
+    Drawing::DrawTexturedRect(iconA, 0xffffffff, hx, hy, iW, iH);
+    hx += iW + 4.0f;
+  }
+  Font::DrawText(FONT_NORMAL, "Select", COLOR_TEXT_GRAY, hx, (hy + 2.0f));
+  hx += selW + 16.0f;
+  D3DTexture *iconB = TextureHelper::GetControllerIcon("ButtonB");
+  if (iconB) {
+    Drawing::DrawTexturedRect(iconB, 0xffffffff, hx, hy, iW, iH);
+    hx += iW + 4.0f;
+  }
+  Font::DrawText(FONT_NORMAL, "Cancel", COLOR_TEXT_GRAY, hx, (hy + 2.0f));
+}
+
+// ==========================================================================
+// RenderPicker
 // ==========================================================================
 void SettingsScene::RenderPicker() {
   float screenW = (float)Context::GetScreenWidth();

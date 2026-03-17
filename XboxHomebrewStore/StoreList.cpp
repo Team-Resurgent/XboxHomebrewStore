@@ -1,10 +1,100 @@
 #include "StoreList.h"
+#include "AppSettings.h"
 #include "Debug.h"
 #include "FileSystem.h"
+#include "String.h"
 
 // File format: 4-byte count, 4-byte activeIndex, then count *
 // sizeof(StoreEntry)
 #define STORE_LIST_HEADER_SIZE 8
+
+// Returns the base cache directory based on user's setting:
+//   T:\Cache  (default, temp drive)
+//   D:\Cache  (app drive, always persistent)
+//   <custom>  (user-defined)
+static std::string GetCacheBase()
+{
+    CacheLocation loc = AppSettings::GetCacheLocation();
+    if( loc == CacheLocationApp )
+        return "D:\\Cache";
+    if( loc == CacheLocationCustom )
+    {
+        std::string custom = AppSettings::GetCachePath();
+        if( !custom.empty() ) return custom;
+        // fallback to default if custom path is blank
+    }
+    return "T:\\Cache";
+}
+
+// ---------------------------------------------------------------------------
+// CRC32 -- used to derive a stable folder name from the store URL
+// ---------------------------------------------------------------------------
+static uint32_t StoreCRC32( const void* data, size_t size )
+{
+    static uint32_t s_table[256];
+    static int32_t  s_init = 0;
+    if( !s_init )
+    {
+        for( uint32_t i = 0; i < 256; i++ )
+        {
+            uint32_t c = i;
+            for( int32_t k = 0; k < 8; k++ )
+                c = (c & 1) ? (0xEDB88320U ^ (c >> 1)) : (c >> 1);
+            s_table[i] = c;
+        }
+        s_init = 1;
+    }
+    uint32_t crc = 0xFFFFFFFFU;
+    const uint8_t* p = (const uint8_t*)data;
+    for( size_t i = 0; i < size; i++ )
+        crc = s_table[(crc ^ p[i]) & 0xFF] ^ (crc >> 8);
+    return crc ^ 0xFFFFFFFFU;
+}
+
+// Normalise URL: lowercase + strip trailing slashes
+static std::string NormaliseUrl( const std::string& url )
+{
+    std::string out = url;
+    for( size_t i = 0; i < out.size(); i++ )
+        out[i] = (char)tolower( (unsigned char)out[i] );
+    while( !out.empty() && out[out.size()-1] == '/' )
+        out.erase( out.size()-1, 1 );
+    return out;
+}
+
+std::string StoreList::GetActiveCacheRoot()
+{
+    std::string url = NormaliseUrl( GetActiveUrl() );
+    uint32_t crc = StoreCRC32( url.c_str(), url.size() );
+    return String::Format( "%s\\%08X", GetCacheBase().c_str(), crc );
+}
+
+void StoreList::EnsureCacheDirs()
+{
+    std::string base = GetCacheBase();
+    std::string root = GetActiveCacheRoot();
+    FileSystem::DirectoryCreate( base.c_str() );
+    FileSystem::DirectoryCreate( root.c_str() );
+    FileSystem::DirectoryCreate( (root + "\\Covers").c_str() );
+    FileSystem::DirectoryCreate( (root + "\\Screenshots").c_str() );
+    FileSystem::DirectoryCreate( (root + "\\Meta").c_str() );
+
+    // Write a human-readable identifier so the folder can be identified
+    // when browsing manually via FTP -- not read by the app
+    std::string infoPath = root + "\\store.txt";
+    FILE* f = fopen( infoPath.c_str(), "wb" );
+    if( f )
+    {
+        std::string url = GetActiveUrl();
+        StoreEntry* e = GetEntry( mActiveIndex );
+        std::string name = e ? std::string( e->name ) : url;
+        fwrite( name.c_str(), 1, name.size(), f );
+        fwrite( "\r\n", 1, 2, f );
+        fwrite( url.c_str(), 1, url.size(), f );
+        fwrite( "\r\n", 1, 2, f );
+        fclose( f );
+    }
+}
 
 StoreEntry StoreList::mEntries[STORE_LIST_MAX];
 int32_t StoreList::mCount = 0;
@@ -144,8 +234,20 @@ void StoreList::SetActiveIndex(int32_t index) {
     Load();
   }
   if (index >= 0 && index < mCount && index != mActiveIndex) {
+    // Capture and purge the old store's meta cache before switching
+    std::string oldMetaDir = GetActiveCacheRoot() + "\\Meta";
+
     mActiveIndex = index;
     mStoreChanged = true;
+
+    // Delete old meta files -- they belong to the previous store
+    bool exists = false;
+    FileSystem::DirectoryExists(oldMetaDir.c_str(), exists);
+    if (exists) {
+      FileSystem::DirectoryDelete(oldMetaDir.c_str(), true);
+      FileSystem::DirectoryCreate(oldMetaDir.c_str());
+      Debug::Print("StoreList: purged old store meta %s\n", oldMetaDir.c_str());
+    }
   }
 }
 

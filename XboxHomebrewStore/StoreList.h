@@ -15,7 +15,7 @@ typedef struct {
 } StoreEntry;
 
 // ---------------------------------------------------------------------------
-// StoreList  �  manages the list of configured store URLs
+// StoreList manages the list of configured store URLs
 //
 // Persisted to T:\Stores.bin as a flat array of StoreEntry structs.
 // The active store index is stored in AppSettings.
@@ -34,6 +34,14 @@ public:
 
   static std::string GetActiveUrl();
 
+  // Returns the cache root for the active store, e.g. T:\Cache\A1B2C3D4
+  // CRC32 of the lowercased, trailing-slash-stripped URL.
+  static std::string GetActiveCacheRoot();
+
+  // Creates Covers, Screenshots and Meta subdirs under the active cache root.
+  // Call once after store switch before any cache reads/writes.
+  static void EnsureCacheDirs();
+
   // Returns true if the active store was changed since the last call to
   // ClearStoreChangedFlag().  Used by StoreScene to detect reload needed.
   static bool WasStoreChanged();
@@ -45,7 +53,7 @@ public:
   // Edit in place
   static bool Edit(int32_t index, const std::string &name, const std::string &url);
 
-  // Delete by index � shifts remaining entries down
+  // Delete by index shifts remaining entries down
   static bool Delete(int32_t index);
 
 private:

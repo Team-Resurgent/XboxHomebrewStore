@@ -1,12 +1,15 @@
 #include "ViewState.h"
 #include "Debug.h"
 #include "FileSystem.h"
+#include "StoreList.h"
 
-#define VIEW_STATE_PATH "T:\\ViewState.bin"
+static std::string ViewStatePath() {
+  return StoreList::GetActiveCacheRoot() + "\\ViewState.bin";
+}
 
 bool ViewState::TrySave(const std::string appId, const std::string verId) {
   uint32_t fileHandle = 0;
-  if (FileSystem::FileOpen(VIEW_STATE_PATH, FileModeReadUpdate, fileHandle)) {
+  if (FileSystem::FileOpen(ViewStatePath().c_str(), FileModeReadUpdate, fileHandle)) {
     uint32_t fileSize = 0;
     if (FileSystem::FileSize(fileHandle, fileSize)) {
       const uint32_t recordSize = sizeof(ViewSaveState);
@@ -34,7 +37,7 @@ bool ViewState::TrySave(const std::string appId, const std::string verId) {
     FileSystem::FileClose(fileHandle);
   }
 
-  if (!FileSystem::FileOpen(VIEW_STATE_PATH, FileModeAppend, fileHandle)) {
+  if (!FileSystem::FileOpen(ViewStatePath().c_str(), FileModeAppend, fileHandle)) {
     return false;
   }
 
@@ -53,7 +56,7 @@ bool ViewState::TrySave(const std::string appId, const std::string verId) {
 
 bool ViewState::GetViewed(const std::string appId, const std::string verId) {
   uint32_t fileHandle = 0;
-  if (!FileSystem::FileOpen(VIEW_STATE_PATH, FileModeRead, fileHandle)) {
+  if (!FileSystem::FileOpen(ViewStatePath().c_str(), FileModeRead, fileHandle)) {
     return false;
   }
 

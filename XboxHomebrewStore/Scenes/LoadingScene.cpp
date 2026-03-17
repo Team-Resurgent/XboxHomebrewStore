@@ -164,9 +164,7 @@ void LoadingScene::LaunchUpdate() {
 }
 
 void LoadingScene::ProceedToStore() {
-  FileSystem::DirectoryCreate("T:\\Cache");
-  FileSystem::DirectoryCreate("T:\\Cache\\Covers");
-  FileSystem::DirectoryCreate("T:\\Cache\\Screenshots");
+  StoreList::EnsureCacheDirs(); // creates T:\Cache\<storeCRC>\Covers|Screenshots|Meta
   FileSystem::DirectoryCreate("HDD0-E:\\Homebrew");
   FileSystem::DirectoryCreate("HDD0-E:\\Homebrew\\Downloads");
   FileSystem::DirectoryCreate("HDD0-E:\\Homebrew\\Installs");
@@ -281,6 +279,7 @@ void LoadingScene::Update() {
     break;
   }
   case 8:
+    StoreList::EnsureCacheDirs(); // must exist before MetaCache starts writing
     StoreManager::Init();
     break;
   case 9:

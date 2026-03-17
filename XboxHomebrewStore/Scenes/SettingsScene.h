@@ -8,13 +8,14 @@
 // ---------------------------------------------------------------------------
 // SettingsScene
 //
-// Six rows:
+// Seven rows:
 //   0 - Active Store              (A = push StoreManagerScene)
 //   1 - Download Path             (A = browse)
-//   2 - Keep Downloaded Files     (A = open popup picker)
-//   3 - Show Cache Partitions     (A = toggle)
-//   4 - Pre-cache Covers on Idle  (A = toggle)
-//   5 - Clear Image Cache         (A = confirm dialog)
+//   2 - Cache Location            (A = open popup picker: T: / D: / Custom)
+//   3 - Keep Downloaded Files     (A = open popup picker)
+//   4 - Show Cache Partitions     (A = toggle)
+//   5 - Pre-cache Covers on Idle  (A = toggle)
+//   6 - Clear Image Cache         (A = confirm dialog)
 //
 // B / Start  =  save & go back
 // ---------------------------------------------------------------------------
@@ -30,11 +31,14 @@ public:
   virtual void OnResume();
 
   void SetDownloadPath(const std::string &path) { mDownloadPath = path; }
+  void SetCachePath(const std::string &path) { mCachePath = path; }
 
 private:
   void OpenPathBrowser();
+  void OpenCachePathBrowser();
   void SaveAndPop();
   void RenderPicker();
+  void RenderCacheLocationPicker();
   void RenderClearCacheConfirm();
 
   int32_t mSelectedRow;
@@ -43,10 +47,16 @@ private:
   AfterInstallAction mAfterInstallAction;
   bool mShowCachePartitions;
   bool mPreCacheOnIdle;
+  CacheLocation mCacheLocation;
+  std::string mCachePath;
 
-  // Popup picker state
+  // Popup picker state (after-install)
   bool mPickerOpen;
-  int32_t mPickerSel; // 0=Delete 1=Keep 2=Ask
+  int32_t mPickerSel;
+
+  // Cache location picker state
+  bool mCachePickerOpen;
+  int32_t mCachePickerSel;
 
   // Clear cache confirm dialog
   bool mClearCacheConfirmOpen;
@@ -55,5 +65,5 @@ private:
   // Body scroll
   float mScrollOffset;
 
-  static const int ROW_COUNT = 6;
+  static const int ROW_COUNT = 7;
 };

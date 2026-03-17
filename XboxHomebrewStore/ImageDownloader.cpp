@@ -10,6 +10,7 @@
 
 #include "ImageDownloader.h"
 #include "Context.h"
+#include "StoreList.h"
 #include "Defines.h"
 #include "WebManager.h"
 #include "Debug.h"
@@ -44,9 +45,10 @@ static uint32_t CRC32( const void* data, size_t size )
 static std::string CachePathFor( const std::string appId, ImageDownloadType type )
 {
     uint32_t crc = CRC32( appId.c_str(), appId.size() );
+    std::string root = StoreList::GetActiveCacheRoot();
     if( type == IMAGE_COVER )
-        return String::Format( "T:\\Cache\\Covers\\%08X.jpg", crc );
-    return String::Format( "T:\\Cache\\Screenshots\\%08X.jpg", crc );
+        return String::Format( "%s\\Covers\\%08X.jpg", root.c_str(), crc );
+    return String::Format( "%s\\Screenshots\\%08X.jpg", root.c_str(), crc );
 }
 
 static bool FileExists( const char* path )
@@ -157,17 +159,19 @@ static void CollectFileWithTime( const char* dir,
 
 static int32_t CountCacheFiles()
 {
+    std::string root = StoreList::GetActiveCacheRoot();
     std::vector<std::pair<std::string,ULONGLONG> > files;
-    CollectFileWithTime( "T:\\Cache\\Covers",      &files );
-    CollectFileWithTime( "T:\\Cache\\Screenshots", &files );
+    CollectFileWithTime( (root + "\\Covers").c_str(),      &files );
+    CollectFileWithTime( (root + "\\Screenshots").c_str(), &files );
     return (int32_t)files.size();
 }
 
 static std::string FindOldestCacheFile()
 {
+    std::string root = StoreList::GetActiveCacheRoot();
     std::vector<std::pair<std::string,ULONGLONG> > files;
-    CollectFileWithTime( "T:\\Cache\\Covers",      &files );
-    CollectFileWithTime( "T:\\Cache\\Screenshots", &files );
+    CollectFileWithTime( (root + "\\Covers").c_str(),      &files );
+    CollectFileWithTime( (root + "\\Screenshots").c_str(), &files );
     if( files.empty() ) return std::string();
     size_t oldest = 0;
     for( size_t i = 1; i < files.size(); i++ )
@@ -188,8 +192,9 @@ static void EnforceCacheLimit()
 void ImageDownloader::ResetCachedCoverCount()
 {
     // Do a one-time scan at startup (before converter thread runs)
+    std::string root = StoreList::GetActiveCacheRoot();
     std::vector<std::pair<std::string,ULONGLONG> > files;
-    CollectFileWithTime( "T:\\Cache\\Covers", &files );
+    CollectFileWithTime( (root + "\\Covers").c_str(), &files );
     InterlockedExchange( (LPLONG)&s_cachedCoverCount, (LONG)files.size() );
 }
 
@@ -204,24 +209,27 @@ int32_t ImageDownloader::GetCachedCoverCount()
 
 std::string ImageDownloader::GetCoverCachePath( const std::string appId )
 {
+    std::string root = StoreList::GetActiveCacheRoot();
     uint32_t crc = CRC32( appId.c_str(), appId.size() );
-    std::string dxtPath = String::Format( "T:\\Cache\\Covers\\%08X.dxt", crc );
+    std::string dxtPath = String::Format( "%s\\Covers\\%08X.dxt", root.c_str(), crc );
     if( FileExistsAndAvailable( dxtPath.c_str() ) ) return dxtPath;
-    return String::Format( "T:\\Cache\\Covers\\%08X.jpg", crc );
+    return String::Format( "%s\\Covers\\%08X.jpg", root.c_str(), crc );
 }
 
 std::string ImageDownloader::GetCoverJpgPath( const std::string appId )
 {
+    std::string root = StoreList::GetActiveCacheRoot();
     uint32_t crc = CRC32( appId.c_str(), appId.size() );
-    return String::Format( "T:\\Cache\\Covers\\%08X.jpg", crc );
+    return String::Format( "%s\\Covers\\%08X.jpg", root.c_str(), crc );
 }
 
 bool ImageDownloader::IsCoverCached( const std::string appId )
 {
+    std::string root = StoreList::GetActiveCacheRoot();
     uint32_t crc = CRC32( appId.c_str(), appId.size() );
-    std::string dxtPath = String::Format( "T:\\Cache\\Covers\\%08X.dxt", crc );
+    std::string dxtPath = String::Format( "%s\\Covers\\%08X.dxt", root.c_str(), crc );
     if( FileExistsAndAvailable( dxtPath.c_str() ) ) return true;
-    std::string jpgPath = String::Format( "T:\\Cache\\Covers\\%08X.jpg", crc );
+    std::string jpgPath = String::Format( "%s\\Covers\\%08X.jpg", root.c_str(), crc );
     return FileExistsAndAvailable( jpgPath.c_str() );
 }
 
@@ -477,7 +485,7 @@ void ImageDownloader::DownloadLoop()
             if( req.type == IMAGE_COVER )
             {
                 ok = WebManager::TryDownloadCover(
-                    req.appId, 288, 408, jpgPath, NULL, NULL, &m_cancelRequested );
+                    req.appId, 144, 204, jpgPath, NULL, NULL, &m_cancelRequested );
             }
             else
             {

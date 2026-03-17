@@ -1,12 +1,15 @@
 #include "UserState.h"
 #include "Debug.h"
 #include "FileSystem.h"
+#include "StoreList.h"
 
-#define USER_STATE_PATH "T:\\UserState.bin"
+static std::string UserStatePath() {
+  return StoreList::GetActiveCacheRoot() + "\\UserState.bin";
+}
 
 bool UserState::TrySave(const std::string appId, const std::string versionId, const std::string *downloadPath, const std::string *installPath) {
   uint32_t fileHandle = 0;
-  if (FileSystem::FileOpen(USER_STATE_PATH, FileModeReadUpdate, fileHandle)) {
+  if (FileSystem::FileOpen(UserStatePath().c_str(), FileModeReadUpdate, fileHandle)) {
     UserSaveState existing;
     uint32_t bytesRead = 0;
     uint32_t recordIndex = 0;
@@ -33,7 +36,7 @@ bool UserState::TrySave(const std::string appId, const std::string versionId, co
     FileSystem::FileClose(fileHandle);
   }
 
-  if (!FileSystem::FileOpen(USER_STATE_PATH, FileModeAppend, fileHandle)) {
+  if (!FileSystem::FileOpen(UserStatePath().c_str(), FileModeAppend, fileHandle)) {
     return false;
   }
 
@@ -59,7 +62,7 @@ bool UserState::TryGetByAppId(const std::string appId, std::vector<UserSaveState
   out.clear();
 
   uint32_t fileHandle = 0;
-  if (!FileSystem::FileOpen(USER_STATE_PATH, FileModeRead, fileHandle)) {
+  if (!FileSystem::FileOpen(UserStatePath().c_str(), FileModeRead, fileHandle)) {
     return false;
   }
 
@@ -91,7 +94,7 @@ bool UserState::TryGetByAppId(const std::string appId, std::vector<UserSaveState
 
 bool UserState::TryGetByAppIdAndVersionId(const std::string appId, const std::string versionId, UserSaveState &out) {
   uint32_t fileHandle = 0;
-  if (!FileSystem::FileOpen(USER_STATE_PATH, FileModeRead, fileHandle)) {
+  if (!FileSystem::FileOpen(UserStatePath().c_str(), FileModeRead, fileHandle)) {
     return false;
   }
 
@@ -126,7 +129,7 @@ bool UserState::TryGetByAppIdAndVersionId(const std::string appId, const std::st
 
 bool UserState::PruneMissingPaths() {
   uint32_t fileHandle = 0;
-  if (!FileSystem::FileOpen(USER_STATE_PATH, FileModeReadUpdate, fileHandle)) {
+  if (!FileSystem::FileOpen(UserStatePath().c_str(), FileModeReadUpdate, fileHandle)) {
     return false;
   }
 

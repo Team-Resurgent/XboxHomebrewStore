@@ -7,6 +7,7 @@
 
 AppSettingsData AppSettings::mData;
 bool AppSettings::mLoaded = false;
+bool AppSettings::mCacheLocationChanged = false;
 
 // ==========================================================================
 void AppSettings::ApplyDefaults() {
@@ -15,6 +16,8 @@ void AppSettings::ApplyDefaults() {
   mData.afterInstallAction = (uint32_t)AfterInstallAsk;
   mData.showCachePartitions = 0;
   mData.preCacheOnIdle = 0;
+  mData.cacheLocation = (uint32_t)CacheLocationTemp;
+  mData.cachePath[0] = '\0';
 }
 
 // ==========================================================================
@@ -45,15 +48,19 @@ bool AppSettings::Load() {
 
   // Null-terminate string fields defensively
   mData.downloadPath[sizeof(mData.downloadPath) - 1] = '\0';
+  mData.cachePath[sizeof(mData.cachePath) - 1] = '\0';
 
   // If path was blank (older file), apply default
   if (mData.downloadPath[0] == '\0') {
     strncpy(mData.downloadPath, DEFAULT_DOWNLOAD_PATH, sizeof(mData.downloadPath) - 1);
   }
 
-  // Clamp enum value
+  // Clamp enum values
   if (mData.afterInstallAction > (uint32_t)AfterInstallAsk) {
     mData.afterInstallAction = (uint32_t)AfterInstallDelete;
+  }
+  if (mData.cacheLocation > (uint32_t)CacheLocationCustom) {
+    mData.cacheLocation = (uint32_t)CacheLocationTemp;
   }
 
   mLoaded = true;
@@ -134,4 +141,47 @@ void AppSettings::SetPreCacheOnIdle(bool enabled) {
     Load();
   }
   mData.preCacheOnIdle = enabled ? 1 : 0;
+}
+
+CacheLocation AppSettings::GetCacheLocation() {
+  if (!mLoaded) {
+    Load();
+  }
+  return (CacheLocation)mData.cacheLocation;
+}
+
+std::string AppSettings::GetCachePath() {
+  if (!mLoaded) {
+    Load();
+  }
+  return std::string(mData.cachePath);
+}
+
+void AppSettings::SetCacheLocation(CacheLocation location) {
+  if (!mLoaded) {
+    Load();
+  }
+  if (mData.cacheLocation != (uint32_t)location) {
+    mData.cacheLocation = (uint32_t)location;
+    mCacheLocationChanged = true;
+  }
+}
+
+void AppSettings::SetCachePath(const std::string &path) {
+  if (!mLoaded) {
+    Load();
+  }
+  if (std::string(mData.cachePath) != path) {
+    strncpy(mData.cachePath, path.c_str(), sizeof(mData.cachePath) - 1);
+    mData.cachePath[sizeof(mData.cachePath) - 1] = '\0';
+    mCacheLocationChanged = true;
+  }
+}
+
+bool AppSettings::WasCacheLocationChanged() {
+  return mCacheLocationChanged;
+}
+
+void AppSettings::ClearCacheLocationChangedFlag() {
+  mCacheLocationChanged = false;
 }

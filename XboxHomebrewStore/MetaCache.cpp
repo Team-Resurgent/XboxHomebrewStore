@@ -6,13 +6,18 @@
 #include "Debug.h"
 #include "FileSystem.h"
 #include "String.h"
+#include "StoreList.h"
 #include "WebManager.h"
 
-#define META_CACHE_DIR        "T:\\Cache\\Meta"
 #define META_FETCH_SIZE       100
 #define META_MAGIC            0x4D455441  // 'META'
 #define META_VERSION          3
 #define META_ITEMCOUNT_OFFSET 8
+
+// Returns the Meta dir for the currently active store
+static std::string MetaCacheDir() {
+  return StoreList::GetActiveCacheRoot() + "\\Meta";
+}
 
 // File format:
 //   uint32_t magic         (offset 0)
@@ -141,7 +146,7 @@ uint32_t MetaCache::CategoryCRC(const std::string &category) {
 }
 
 std::string MetaCache::CachePath(const std::string &category) {
-  return String::Format("%s\\%08X.bin", META_CACHE_DIR, CategoryCRC(category));
+  return String::Format("%s\\%08X.bin", MetaCacheDir().c_str(), CategoryCRC(category));
 }
 
 // ==========================================================================
@@ -268,12 +273,12 @@ void MetaCache::Init() {
   LeaveCriticalSection(&mCacheLock);
 
   bool exists = false;
-  FileSystem::DirectoryExists(META_CACHE_DIR, exists);
+  FileSystem::DirectoryExists(MetaCacheDir().c_str(), exists);
   if (exists) {
-    FileSystem::DirectoryDelete(META_CACHE_DIR, true);
+    FileSystem::DirectoryDelete(MetaCacheDir().c_str(), true);
     Debug::Print("MetaCache: wiped cache on startup\n");
   }
-  FileSystem::DirectoryCreate(META_CACHE_DIR);
+  FileSystem::DirectoryCreate(MetaCacheDir().c_str());
 }
 
 // ==========================================================================
@@ -282,10 +287,10 @@ void MetaCache::Init() {
 
 void MetaCache::PurgeAll() {
   bool exists = false;
-  FileSystem::DirectoryExists(META_CACHE_DIR, exists);
+  FileSystem::DirectoryExists(MetaCacheDir().c_str(), exists);
   if (exists) {
-    FileSystem::DirectoryDelete(META_CACHE_DIR, true);
-    FileSystem::DirectoryCreate(META_CACHE_DIR);
+    FileSystem::DirectoryDelete(MetaCacheDir().c_str(), true);
+    FileSystem::DirectoryCreate(MetaCacheDir().c_str());
   }
   EnterCriticalSection(&mCacheLock);
   mCachedItems.clear();

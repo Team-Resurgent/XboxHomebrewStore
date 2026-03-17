@@ -53,9 +53,13 @@ void StoreScene::OnResume() {
   mIdleFrames = 0;
   mLastQueueOffset = -1; // force SetVisibleQueue to fire on first frame back
 
-  if (StoreList::WasStoreChanged()) {
-    // Store changed while in Settings -- full reset, refetch everything
+  // Always ensure cache dirs exist -- covers store switch and cache location change
+  StoreList::EnsureCacheDirs();
+
+  if (StoreList::WasStoreChanged() || AppSettings::WasCacheLocationChanged()) {
+    // Store or cache location changed -- full reset and refetch into new path
     StoreList::ClearStoreChangedFlag();
+    AppSettings::ClearCacheLocationChangedFlag();
     mStoreIndex = 0;
     mHighlightedCategoryIndex = 0;
     mSideBarFocused = false;
@@ -64,7 +68,7 @@ void StoreScene::OnResume() {
     return;
   }
 
-  // No store change -- just restore position, no purging
+  // No change -- just restore position
   if (mHasSavedPosition) {
     StoreManager::LoadAtOffset(mSavedWindowOffset);
     int32_t maxIndex = StoreManager::GetWindowStoreItemOffset() +
