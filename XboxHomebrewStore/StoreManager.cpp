@@ -502,6 +502,26 @@ bool StoreManager::TryGetStoreVersions(std::string appId, StoreVersions *storeVe
   storeVersions->screenshot = NULL;
   storeVersions->versions.clear();
 
+  // Find the index of the installed version in the list (API returns newest first).
+  // Only versions with a lower index (i.e. newer) should be marked as updates.
+  int32_t installedVersionIndex = -1;
+  {
+    std::vector<UserSaveState> userStates;
+    if (UserState::TryGetByAppId(storeItem->appId, userStates)) {
+      for (int32_t i = 0; i < (int32_t)versionsResponse.versions.size(); i++) {
+        for (size_t j = 0; j < userStates.size(); j++) {
+              if (userStates[j].versionId[0] != '\0' &&
+              versionsResponse.versions[i].id == userStates[j].versionId) {
+            installedVersionIndex = i;
+                  break;
+          }
+        }
+        if (installedVersionIndex >= 0) break;
+      }
+    } else {
+    }
+  }
+
   for (int32_t i = 0; i < (int32_t)versionsResponse.versions.size(); i++) {
     VersionItem *versionItem = &versionsResponse.versions[i];
 
@@ -526,18 +546,18 @@ bool StoreManager::TryGetStoreVersions(std::string appId, StoreVersions *storeVe
     std::vector<UserSaveState> userStates;
     if (UserState::TryGetByAppId(storeItem->appId, userStates)) {
       bool hasInstalled = false;
-      bool hasThisVersion = false;
+      bool hasThisVersion = (installedVersionIndex == i);
       for (size_t j = 0; j < userStates.size(); j++) {
         const UserSaveState &us = userStates[j];
         if (us.installPath[0] != '\0') {
           hasInstalled = true;
           storeVersion.state = 0;
         }
-        if (us.versionId[0] != '\0' && storeVersion.versionId == us.versionId) {
-          hasThisVersion = true;
-        }
       }
-      if (hasInstalled && !hasThisVersion) {
+      // Only the latest version (index 0) can ever be an update.
+      // If it's not installed and something older is, mark it as Update.
+      if (hasInstalled && !hasThisVersion &&
+          i == 0 && installedVersionIndex > 0) {
         storeVersion.state = 2;
       }
     }

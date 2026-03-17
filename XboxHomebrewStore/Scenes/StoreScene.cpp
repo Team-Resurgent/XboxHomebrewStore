@@ -49,7 +49,7 @@ void StoreScene::OnPause() {
 }
 
 void StoreScene::OnResume() {
-  mMetaReady = MetaCache::IsReady();
+  mMetaReady = false; // always force re-detection so RefreshApplications fires correctly
   mIdleFrames = 0;
   mLastQueueOffset = -1; // force SetVisibleQueue to fire on first frame back
 
@@ -554,6 +554,7 @@ void StoreScene::Update() {
           StoreManager::GetCategoryIndex() != mHighlightedCategoryIndex;
       if (needsUpdate == true) {
         mImageDownloader->CancelAll();
+        mMetaReady = false; // reset immediately so Update detects ready transition
         StoreManager::SetCategoryIndex(mHighlightedCategoryIndex);
         mStoreIndex = 0;
         mLastQueueOffset = -1;
