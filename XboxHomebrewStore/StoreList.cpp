@@ -234,13 +234,13 @@ void StoreList::SetActiveIndex(int32_t index) {
     Load();
   }
   if (index >= 0 && index < mCount && index != mActiveIndex) {
-    // Capture and purge the old store's meta cache before switching
+    // Capture old store's meta dir BEFORE changing the index
     std::string oldMetaDir = GetActiveCacheRoot() + "\\Meta";
 
     mActiveIndex = index;
     mStoreChanged = true;
 
-    // Delete old meta files -- they belong to the previous store
+    // Purge the old store's meta files
     bool exists = false;
     FileSystem::DirectoryExists(oldMetaDir.c_str(), exists);
     if (exists) {

@@ -231,6 +231,14 @@ static bool ParseVersionsResponse(const std::string raw,
   return true;
 }
 
+// Simple progress callback that only checks a cancel flag -- used for
+// metadata fetches where we don't need progress reporting
+static int CancelCheckCallback(void *clientp, curl_off_t dltotal, curl_off_t dlnow,
+    curl_off_t ultotal, curl_off_t ulnow) {
+  volatile bool *pCancel = (volatile bool *)clientp;
+  return (pCancel && *pCancel) ? 1 : 0;
+}
+
 static int ProgressCallback(void *clientp, curl_off_t dltotal, curl_off_t dlnow,
     curl_off_t ultotal, curl_off_t ulnow) {
   ProgressContext *ctx = (ProgressContext *)clientp;
@@ -419,15 +427,9 @@ static void RunMultiSocketDownload(CURL *curl, FILE *fp,
   curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
   curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0");
   curl_easy_setopt(curl, CURLOPT_COOKIEFILE, "");
-  curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 30L);
+  curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
+  curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L); // 30s total -- avoids infinite hang on dead server
   curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1L);
-
-  // Remove total timeout completely
-  curl_easy_setopt(curl, CURLOPT_TIMEOUT, 0L);
-
-  // Only fail if transfer is extremely slow
-  curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 1024L); // 1 KB/sec
-  curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 60L);    // for 60 seconds
 
   char *effective_url = nullptr;
   if (curl_easy_getinfo(curl, CURLINFO_EFFECTIVE_URL, &effective_url) ==
@@ -722,7 +724,8 @@ bool WebManager::TryDownloadWebData(const std::string url,
 
 bool WebManager::TryGetApps(AppsResponse &result, int32_t offset, int32_t count,
     const std::string category,
-    const std::string name) {
+    const std::string name,
+    volatile bool *pCancelRequested) {
   NetworkLockScope lock;
   result.items.clear();
   ResetCurlGlobal();
@@ -753,6 +756,12 @@ bool WebManager::TryGetApps(AppsResponse &result, int32_t offset, int32_t count,
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, StringWriteCallback);
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, &raw);
   curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+
+  if (pCancelRequested != NULL) {
+    curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+    curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, CancelCheckCallback);
+    curl_easy_setopt(curl, CURLOPT_XFERINFODATA, (void *)pCancelRequested);
+  }
 
   long http_code = 0;
   CURLcode res = curl_easy_perform(curl);
@@ -1062,6 +1071,10 @@ bool WebManager::TrySyncTime() {
   if (sock == INVALID_SOCKET) {
     return false;
   }
+
+  // 3 second timeout so a dead NTP server doesn't stall loading
+  DWORD timeout = 3000;
+  setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(timeout));
 
   sockaddr_in addr = {};
   addr.sin_family = AF_INET;

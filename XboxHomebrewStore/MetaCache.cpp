@@ -285,6 +285,7 @@ void MetaCache::Init() {
 // PurgeAll
 // ==========================================================================
 
+
 void MetaCache::PurgeAll() {
   bool exists = false;
   FileSystem::DirectoryExists(MetaCacheDir().c_str(), exists);
@@ -352,6 +353,10 @@ bool MetaCache::IsReady() {
 
 bool MetaCache::IsFailed() {
   return mFetchFailed != 0;
+}
+
+void MetaCache::SetFailed() {
+  InterlockedExchange((LPLONG)&mFetchFailed, 1);
 }
 
 int32_t MetaCache::GetStreamedCount() {
@@ -424,7 +429,8 @@ DWORD WINAPI MetaCache::FetchThreadProc(LPVOID param) {
     bool pageOk = false;
     int32_t attempts = 0;
     while (attempts < 3 && mFetchCancel == 0) {
-      if (WebManager::TryGetApps(page, offset, META_FETCH_SIZE, category, "")) {
+      if (WebManager::TryGetApps(page, offset, META_FETCH_SIZE, category, "",
+              reinterpret_cast<volatile bool*>(&mFetchCancel))) {
         pageOk = true;
         break;
       }

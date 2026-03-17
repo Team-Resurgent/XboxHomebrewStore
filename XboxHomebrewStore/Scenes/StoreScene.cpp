@@ -468,7 +468,12 @@ void StoreScene::Update() {
   } else if (!metaNowReady) {
     mMetaReady = false; // reset when category changes and cache is purged
     if (!MetaCache::IsFailed()) {
-      return; // still loading -- show indicator, block input
+      // Still loading -- block most input but allow Start to open Settings
+      // so the user can change store URL or cache location if fetch is stuck
+      if (InputManager::ControllerPressed(ControllerStart, -1)) {
+        Context::GetSceneManager()->PushScene(new SettingsScene());
+      }
+      return;
     }
     // Failed -- fall through so Start/Y inputs still work
   }
@@ -511,7 +516,8 @@ void StoreScene::Update() {
     }
     mIdleFrames = 0;
   } else if (AppSettings::GetPreCacheOnIdle() &&
-             StoreManager::GetCategoryIndex() == 0) {
+             StoreManager::GetCategoryIndex() == 0 &&
+             MetaCache::IsReady()) {
     bool running     = StoreManager::IsIdleWarmerRunning();
     bool downloading = StoreManager::IsIdleWarmerDownloading();
     bool queued      = StoreManager::IsWarmerQueued();

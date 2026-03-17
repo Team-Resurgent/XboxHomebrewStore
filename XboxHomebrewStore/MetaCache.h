@@ -10,11 +10,13 @@ public:
   static void StopFetch();
   static bool IsReady();
   static bool IsFailed();
+  static void SetFailed(); // call when fetch cannot start (e.g. no categories)
   static int32_t GetStreamedCount();
   static int32_t GetTotalCount();
   static bool TryGetPage(const std::string &category, int32_t offset,
       int32_t count, AppsResponse &result);
   static void PurgeAll();
+
 
 private:
   static uint32_t CategoryCRC(const std::string &category);

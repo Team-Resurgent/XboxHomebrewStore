@@ -59,11 +59,14 @@ bool StoreManager::Init() {
   mWarmerQueued = false;
   mIdleWarmerDownloader = new ImageDownloader();
 
+  // Init MetaCache FIRST so its critical section is always initialised
+  // even if LoadCategories fails (bad URL at startup)
+  MetaCache::Init();
+
   if (!LoadCategories()) {
+    MetaCache::SetFailed();
     return false;
   }
-
-  MetaCache::Init();
 
   std::string categoryFilter = "";
   int32_t total = GetSelectedCategoryTotal();
@@ -224,11 +227,13 @@ bool StoreManager::Reset() {
   mWindowStoreItemCount = 0;
   mCategories.clear();
 
+  MetaCache::PurgeAll();
+
   if (!LoadCategories()) {
+    Debug::Print("StoreManager::Reset: LoadCategories failed\n");
+    MetaCache::SetFailed();
     return false;
   }
-
-  MetaCache::PurgeAll();
 
   std::string categoryFilter = "";
   int32_t total = GetSelectedCategoryTotal();
