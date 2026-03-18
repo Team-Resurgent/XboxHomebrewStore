@@ -220,7 +220,8 @@ void LoadingScene::Update() {
     } else if (InputManager::ControllerPressed(ControllerB, -1)) {
       mUpdateAvailable = false;
       mUpdatePromptShown = false;
-      ProceedToStore();
+      // Do NOT call ProceedToStore() -- mProgress is already at 8
+      // so let the normal loop finish StoreManager::Init() and FtpServer::Init()
     }
     return;
   }

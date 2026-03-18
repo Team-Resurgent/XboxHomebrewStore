@@ -965,7 +965,7 @@ bool WebManager::TryDownloadCover(const std::string id, int32_t width,
     return false;
   }
   std::string url = StoreList::GetActiveUrl() + "/api/Cover/" + id +
-                    String::Format("?width=%u&height=%u", width, height);
+                    String::Format("?width=%u&height=%u&format=dds", width, height);
   return TryDownloadApiData(url, filePath, progressFn, progressUserData,
       pCancelRequested, nullptr, nullptr);
 }
@@ -979,7 +979,7 @@ bool WebManager::TryDownloadCoverToMemory(const std::string id, int32_t width,
   }
 
   std::string url = StoreList::GetActiveUrl() + "/api/Cover/" + id +
-                    String::Format("?width=%u&height=%u", width, height);
+                    String::Format("?width=%u&height=%u&format=dds", width, height);
 
   ResetCurlGlobal();
 
@@ -1030,7 +1030,7 @@ bool WebManager::TryDownloadScreenshot(const std::string id, int32_t width,
     return false;
   }
   std::string url = StoreList::GetActiveUrl() + "/api/Screenshot/" + id +
-                    String::Format("?width=%u&height=%u", width, height);
+                    String::Format("?width=%u&height=%u&format=dds", width, height);
   return TryDownloadApiData(url, filePath, progressFn, progressUserData,
       pCancelRequested, nullptr, nullptr);
 }

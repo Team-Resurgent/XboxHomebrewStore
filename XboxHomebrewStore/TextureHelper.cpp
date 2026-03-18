@@ -158,78 +158,53 @@ static bool WriteDxt1DDS(const std::string &path, D3DTexture *tex) {
 // (pure GPU upload, no D3DX overhead). Other formats fall back to D3DXCreateTextureFromFileEx.
 // ---------------------------------------------------------------------------
 D3DTexture *TextureHelper::LoadFromFile(const std::string filePath) {
-  bool isDxt = filePath.size() >= 4 &&
-               filePath.substr(filePath.size() - 4) == ".dxt";
+  bool isDds = filePath.size() >= 4 &&
+               (filePath.substr(filePath.size() - 4) == ".dds" ||
+                filePath.substr(filePath.size() - 4) == ".dxt");
 
-  if (isDxt) {
-    // Read the raw DDS file ourselves and upload via LockRect -- fastest possible path
+  if (isDds) {
+    // Read file into memory and let D3DX handle format/pool/layout
     FILE *f = fopen(filePath.c_str(), "rb");
     if (f == NULL) {
       Debug::Print("LoadFromFile: fopen failed %s\n", filePath.c_str());
       return NULL;
     }
-
-    // DDS layout: 4 magic + 124 header = 128 bytes, then raw DXT1 blocks
-    DWORD magic = 0;
-    fread(&magic, 4, 1, f);
-    if (magic != 0x20534444) { // 'DDS '
-      Debug::Print("LoadFromFile: bad DDS magic %s\n", filePath.c_str());
+    fseek(f, 0, SEEK_END);
+    long fileSize = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    if (fileSize < 128) {
       fclose(f);
-      DeleteFileA(filePath.c_str()); // corrupt file -- delete so it re-downloads
+      DeleteFileA(filePath.c_str());
+      Debug::Print("LoadFromFile: file too small %s\n", filePath.c_str());
       return NULL;
     }
-
-    DWORD hdr[31];
-    fread(hdr, sizeof(hdr), 1, f);
-
-    UINT width    = hdr[3];
-    UINT height   = hdr[2];
-    UINT dataSize = hdr[4];
-
-    if (width == 0 || height == 0 || dataSize == 0) {
-      Debug::Print("LoadFromFile: bad DDS dims %s\n", filePath.c_str());
+    void *buf = malloc(fileSize);
+    if (buf == NULL) {
       fclose(f);
-      DeleteFileA(filePath.c_str()); // corrupt file -- delete so it re-downloads
-      return NULL;
-    }
-
-    void *blocks = malloc(dataSize);
-    if (blocks == NULL) {
       Debug::Print("LoadFromFile: malloc failed %s\n", filePath.c_str());
-      fclose(f);
       return NULL;
     }
-
-    fread(blocks, dataSize, 1, f);
+    fread(buf, fileSize, 1, f);
     fclose(f);
-
-    D3DTexture *tex = NULL;
-    HRESULT hr = Context::GetD3dDevice()->CreateTexture(
-        width, height, 1, 0, D3DFMT_DXT1, D3DPOOL_DEFAULT, &tex);
-    if (FAILED(hr) || tex == NULL) {
-      Debug::Print("LoadFromFile: CreateTexture failed %s hr=0x%08X\n",
-          filePath.c_str(), (unsigned int)hr);
-      free(blocks);
+    D3DTexture *ddsTex = NULL;
+    HRESULT ddsHr = D3DXCreateTextureFromFileInMemoryEx(
+        Context::GetD3dDevice(),
+        buf, (UINT)fileSize,
+        D3DX_DEFAULT, D3DX_DEFAULT, 1,
+        0, D3DFMT_UNKNOWN, D3DPOOL_DEFAULT,
+        D3DX_DEFAULT, D3DX_DEFAULT,
+        0, NULL, NULL, &ddsTex);
+    free(buf);
+    if (FAILED(ddsHr) || ddsTex == NULL) {
+      Debug::Print("LoadFromFile: D3DX failed %s hr=0x%08X\n",
+          filePath.c_str(), (unsigned int)ddsHr);
+      DeleteFileA(filePath.c_str());
       return NULL;
     }
-
-    D3DLOCKED_RECT locked;
-    hr = tex->LockRect(0, &locked, NULL, 0);
-    if (FAILED(hr)) {
-      Debug::Print("LoadFromFile: LockRect failed %s\n", filePath.c_str());
-      tex->Release();
-      free(blocks);
-      return NULL;
-    }
-
-    memcpy(locked.pBits, blocks, dataSize);
-    tex->UnlockRect(0);
-    free(blocks);
-
-    return tex;
+    return ddsTex;
   }
 
-  // Non-DXT (PNG, JPG for UI assets) -- use D3DX as before
+  // Non-DDS (PNG, JPG for UI assets) -- use D3DX with filename directly
   D3DTexture *tex = NULL;
   HRESULT hr = D3DXCreateTextureFromFileEx(
       Context::GetD3dDevice(), filePath.c_str(),

@@ -1,9 +1,7 @@
 //=============================================================================
-// ImageDownloader.h - Threaded download + background JPG->DXT1 conversion
+// ImageDownloader.h - Threaded cover download (server returns DDS directly)
 //=============================================================================
-
 #pragma once
-
 #include "Main.h"
 #include <set>
 #include <deque>
@@ -26,18 +24,16 @@ public:
   bool HasPendingWork() const;
 
   static std::string GetCoverCachePath(const std::string appId);
-  static std::string GetCoverJpgPath(const std::string appId);
-  static bool IsCoverCached(const std::string appId);
+  static bool        IsCoverCached(const std::string appId);
   static std::string GetScreenshotCachePath(const std::string appId);
-  static bool IsScreenshotCached(const std::string appId);
-  static int32_t GetCachedCoverCount();
-  static void ResetCachedCoverCount(); // call once at startup after cache dir scan
+  static bool        IsScreenshotCached(const std::string appId);
+  static int32_t     GetCachedCoverCount();
+  static void        ResetCachedCoverCount();
 
 private:
-  // Download queue
   struct Request {
     D3DTexture **pOutTexture;
-    std::string appId;
+    std::string  appId;
     ImageDownloadType type;
   };
 
@@ -50,16 +46,7 @@ private:
   volatile bool         m_quit;
   volatile bool         m_cancelRequested;
   volatile bool         m_busy;
-  std::string           m_busyAppId;   // appId currently being downloaded
-  ImageDownloadType     m_busyType;    // type currently being downloaded
+  std::string           m_busyAppId;
+  ImageDownloadType     m_busyType;
   std::set<std::string> m_failed;
-
-  // Converter queue -- jpg paths pushed by download thread, consumed by converter thread
-  static DWORD WINAPI ConverterThreadProc(LPVOID param);
-  void ConverterLoop();
-
-  std::deque<std::string> m_convertQueue;
-  CRITICAL_SECTION        m_convertLock;
-  HANDLE                  m_convertThread;
-  volatile bool           m_convertBusy;
 };

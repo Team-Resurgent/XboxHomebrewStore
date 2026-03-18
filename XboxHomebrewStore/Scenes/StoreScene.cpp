@@ -254,21 +254,12 @@ void StoreScene::DrawStoreItem(StoreItem *storeItem, float x, float y,
       storeItem->cover = cover;
     } else if (ImageDownloader::IsCoverCached(storeItem->appId)) {
       std::string path = ImageDownloader::GetCoverCachePath(storeItem->appId);
-      bool isDxt = path.size() >= 4 && path.substr(path.size() - 4) == ".dxt";
-      if (isDxt) {
-        // .dxt ready -- fast memcpy upload, no stall
-        D3DTexture *loaded = TextureHelper::LoadFromFile(path);
-        if (loaded != NULL) {
-          TextureCache::Put(storeItem->appId, loaded);
-          storeItem->cover = loaded;
-          cover = loaded;
-        } else {
-          // Load failed (shouldn't happen) -- show placeholder but DON'T
-          // store it in storeItem->cover so we retry next frame
-          cover = TextureHelper::GetCover();
-        }
+      D3DTexture *loaded = TextureHelper::LoadFromFile(path);
+      if (loaded != NULL) {
+        TextureCache::Put(storeItem->appId, loaded);
+        storeItem->cover = loaded;
+        cover = loaded;
       } else {
-        // .jpg present -- converter thread is working on it, show placeholder
         cover = TextureHelper::GetCover();
       }
     } else {
