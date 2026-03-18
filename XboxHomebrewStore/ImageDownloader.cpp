@@ -385,7 +385,7 @@ void ImageDownloader::DownloadLoop() {
       bool ok = false;
       if (req.type == IMAGE_COVER) {
         ok = WebManager::TryDownloadCover(
-            req.appId, 144, 204, ddsPath, NULL, NULL, &m_cancelRequested);
+            req.appId, 288, 408, ddsPath, NULL, NULL, &m_cancelRequested);
       } else {
         ok = WebManager::TryDownloadScreenshot(
             req.appId, 640, 360, ddsPath, NULL, NULL, &m_cancelRequested);

@@ -13,14 +13,6 @@
 #include "TextureHelper.h"
 #include "WebManager.h"
 
-static void CoverDownloadProgress(uint32_t dlNow, uint32_t dlTotal, void *userData) {
-  (void)userData;
-  Debug::Print(std::string("Cover download: %u / %u bytes\n"), dlNow, dlTotal);
-  // Example: to cancel the download, pass the same volatile bool* as
-  // progressUserData and pCancelRequested, then set:
-  // *(volatile bool*)userData = true;
-}
-
 //-----------------------------------------------------------------------------
 // Global variables
 //-----------------------------------------------------------------------------

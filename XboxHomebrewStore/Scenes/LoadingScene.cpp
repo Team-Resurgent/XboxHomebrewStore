@@ -23,34 +23,6 @@
 
 #define TOTAL_STEPS 10
 
-static void DeleteImageCache() {
-  WIN32_FIND_DATAA fd;
-  HANDLE h;
-  std::string pattern;
-  pattern = "T:\\Cache\\Covers\\*";
-  h = FindFirstFileA(pattern.c_str(), &fd);
-  if (h != INVALID_HANDLE_VALUE) {
-    do {
-      if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
-        std::string path = "T:\\Cache\\Covers\\" + std::string(fd.cFileName);
-        DeleteFileA(path.c_str());
-      }
-    } while (FindNextFileA(h, &fd));
-    FindClose(h);
-  }
-  pattern = "T:\\Cache\\Screenshots\\*";
-  h = FindFirstFileA(pattern.c_str(), &fd);
-  if (h != INVALID_HANDLE_VALUE) {
-    do {
-      if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
-        std::string path =
-            "T:\\Cache\\Screenshots\\" + std::string(fd.cFileName);
-        DeleteFileA(path.c_str());
-      }
-    } while (FindNextFileA(h, &fd));
-    FindClose(h);
-  }
-}
 
 static void UpdateDownloadProgressCb(uint32_t dlNow, uint32_t dlTotal,
     void *userData) {
@@ -169,7 +141,6 @@ void LoadingScene::ProceedToStore() {
   FileSystem::DirectoryCreate("HDD0-E:\\Homebrew\\Downloads");
   FileSystem::DirectoryCreate("HDD0-E:\\Homebrew\\Installs");
 
-  // DeleteImageCache();
 
   SceneManager *sceneManager = Context::GetSceneManager();
   sceneManager->PopScene();

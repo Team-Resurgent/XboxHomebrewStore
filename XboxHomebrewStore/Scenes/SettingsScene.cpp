@@ -343,33 +343,6 @@ static void DrawRow(float x, float y, float w, bool selected, const char *label,
   }
 }
 
-static void DrawCycleRow(float x, float y, float w, bool selected,
-    const char *label, const char *value) {
-  uint32_t bg = selected ? 0xFF3C3C3C : 0xFF282828;
-  Drawing::DrawFilledRect(bg, x, y, w, ROW_H - 2.0f);
-
-  if (selected) {
-    Drawing::DrawFilledRect(COLOR_FOCUS_HIGHLIGHT, x, y, 3.0f, ROW_H - 2.0f);
-  }
-
-  float tx = x + 14.0f + (selected ? 3.0f : 0.0f);
-  Font::DrawText(FONT_NORMAL, label, COLOR_TEXT_GRAY, tx, y + 8.0f);
-
-  if (selected) {
-    float valW = 0.0f;
-    Font::MeasureText(FONT_NORMAL, value, &valW);
-    float midX = x + w * 0.5f;
-    Font::DrawText(FONT_NORMAL, "<", COLOR_FOCUS_HIGHLIGHT,
-        midX - valW * 0.5f - 22.0f, y + 36.0f);
-    Font::DrawText(FONT_NORMAL, value, COLOR_WHITE, midX - valW * 0.5f,
-        y + 36.0f);
-    Font::DrawText(FONT_NORMAL, ">", COLOR_FOCUS_HIGHLIGHT,
-        midX + valW * 0.5f + 8.0f, y + 36.0f);
-  } else {
-    Font::DrawText(FONT_NORMAL, value, COLOR_WHITE, tx, y + 36.0f);
-  }
-}
-
 // ==========================================================================
 // Render
 // ==========================================================================
