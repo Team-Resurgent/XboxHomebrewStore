@@ -46,6 +46,8 @@ VersionScene::VersionScene(const StoreVersions &storeVersions) {
   mLastMeasuredVersionIndex = -1;
 
   mNeedsUpdate = false;
+  mCoverQueued = false;
+  mScreenshotQueued = false;
   mDownloading = false;
   mDownloadCancelRequested = false;
   mDownloadCurrent = 0;
@@ -434,12 +436,16 @@ void VersionScene::Render() {
   // data mid-download
   if (mNeedsUpdate && !mDownloading) {
     mNeedsUpdate = false;
+  mCoverQueued = false;
+  mScreenshotQueued = false;
     // cover is a TextureCache view pointer -- never Release() it here
     mStoreVersions.cover = NULL;
     if (mStoreVersions.screenshot != NULL) {
       mStoreVersions.screenshot->Release();
       mStoreVersions.screenshot = NULL;
     }
+    mCoverQueued = false;
+    mScreenshotQueued = false;
     StoreManager::TryGetStoreVersions(mStoreVersions.appId, &mStoreVersions);
   }
 
@@ -665,7 +671,10 @@ void VersionScene::RenderListView() {
       screenshot = mStoreVersions.screenshot;
     } else {
       screenshot = TextureHelper::GetScreenshot();
-      mImageDownloader->Queue(&mStoreVersions.screenshot, mStoreVersions.appId, IMAGE_SCREENSHOT);
+      if (!mScreenshotQueued) {
+        mImageDownloader->Queue(&mStoreVersions.screenshot, mStoreVersions.appId, IMAGE_SCREENSHOT);
+        mScreenshotQueued = true;
+      }
     }
   }
   Drawing::DrawTexturedRect(screenshot, 0xFFFFFFFF, titleXPos, gridY,
@@ -689,7 +698,13 @@ void VersionScene::RenderListView() {
       }
     } else {
       cover = TextureHelper::GetCover();
-      mImageDownloader->Queue(&mStoreVersions.cover, mStoreVersions.appId, IMAGE_COVER);
+      if (!mCoverQueued) {
+        if (ImageDownloader::IsCoverFailed(mStoreVersions.appId)) {
+          ImageDownloader::ClearFailedCover(mStoreVersions.appId);
+        }
+        mImageDownloader->Queue(&mStoreVersions.cover, mStoreVersions.appId, IMAGE_COVER);
+        mCoverQueued = true;
+      }
     }
   }
   Drawing::DrawTexturedRect(cover, 0xFFFFFFFF, 216 + ASSET_SCREENSHOT_WIDTH,

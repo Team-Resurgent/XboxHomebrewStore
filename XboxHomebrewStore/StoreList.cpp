@@ -76,7 +76,9 @@ void StoreList::EnsureCacheDirs()
     FileSystem::DirectoryCreate( base.c_str() );
     FileSystem::DirectoryCreate( root.c_str() );
     FileSystem::DirectoryCreate( (root + "\\Covers").c_str() );
+    FileSystem::DirectoryCreate( (root + "\\Covers\\Failed").c_str() );
     FileSystem::DirectoryCreate( (root + "\\Screenshots").c_str() );
+    FileSystem::DirectoryCreate( (root + "\\Screenshots\\Failed").c_str() );
     FileSystem::DirectoryCreate( (root + "\\Meta").c_str() );
 
     // Write a human-readable identifier so the folder can be identified

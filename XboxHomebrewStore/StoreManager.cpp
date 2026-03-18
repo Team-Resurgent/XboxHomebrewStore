@@ -168,7 +168,9 @@ DWORD WINAPI StoreManager::IdleWarmerThreadProc(LPVOID param) {
       break;
     }
     if (mIdleWarmerDownloader != NULL) {
-      if (!ImageDownloader::IsCoverCached(appIds[i])) {
+      // Skip if already cached OR previously failed (has a .fail marker)
+      if (!ImageDownloader::IsCoverCached(appIds[i]) &&
+          !ImageDownloader::IsCoverFailed(appIds[i])) {
         mIdleWarmerDownloader->WarmCache(appIds[i], IMAGE_COVER);
         queued++;
       }
@@ -177,6 +179,13 @@ DWORD WINAPI StoreManager::IdleWarmerThreadProc(LPVOID param) {
 
   if (mIdleWarmerCancel == 0) {
     Debug::Print("IdleWarmer: queued %d covers for download\n", queued);
+    if (queued == 0) {
+      // Nothing to download -- all covers are cached or permanently failed
+      Debug::Print("IdleWarmer: nothing to queue, all covers cached or failed\n");
+      mIdleWarmerDone = true;
+      mIdleWarmerThread = NULL;
+      return 0;
+    }
     mWarmerQueued = true;  // signal Update that downloads are in flight
   } else {
     Debug::Print("IdleWarmer: cancelled during queue\n");

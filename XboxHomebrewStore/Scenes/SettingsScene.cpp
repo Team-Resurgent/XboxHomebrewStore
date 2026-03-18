@@ -50,6 +50,7 @@ SettingsScene::SettingsScene()
     : mSelectedRow(0), mPickerOpen(false), mPickerSel(0),
       mCachePickerOpen(false), mCachePickerSel(0),
       mClearCacheConfirmOpen(false), mClearCacheDone(false),
+      mRetryFailedConfirmOpen(false), mRetryFailedDone(false),
       mScrollOffset(0.0f) {
   mDownloadPath = AppSettings::GetDownloadPath();
   mAfterInstallAction = AppSettings::GetAfterInstallAction();
@@ -126,7 +127,9 @@ static void ClearImageCache() {
   FileSystem::DirectoryDelete(coversDir.c_str(), true);
   FileSystem::DirectoryDelete(screenshotsDir.c_str(), true);
   FileSystem::DirectoryCreate(coversDir.c_str());
+  FileSystem::DirectoryCreate((coversDir + "\\\\Failed").c_str());
   FileSystem::DirectoryCreate(screenshotsDir.c_str());
+  FileSystem::DirectoryCreate((screenshotsDir + "\\\\Failed").c_str());
   ImageDownloader::ResetCachedCoverCount(); // resets to 0 (dirs now empty)
   StoreManager::InvalidateCovers();
 }
@@ -199,6 +202,22 @@ void SettingsScene::Update() {
     return;
   }
 
+  // ---- Retry failed confirm dialog ----
+  if (mRetryFailedConfirmOpen) {
+    if (InputManager::ControllerPressed(ControllerY, -1)) {
+      ImageDownloader::ClearFailedCovers();
+      mRetryFailedDone = true;
+      mRetryFailedConfirmOpen = false;
+      return;
+    }
+    if (InputManager::ControllerPressed(ControllerB, -1) ||
+        InputManager::ControllerPressed(ControllerA, -1)) {
+      mRetryFailedConfirmOpen = false;
+      return;
+    }
+    return;
+  }
+
   if (InputManager::ControllerPressed(ControllerB, -1) ||
       InputManager::ControllerPressed(ControllerStart, -1)) {
     SaveAndPop();
@@ -254,6 +273,10 @@ void SettingsScene::Update() {
     case 6:
       mClearCacheDone = false;
       mClearCacheConfirmOpen = true;
+      break;
+    case 7:
+      mRetryFailedDone = false;
+      mRetryFailedConfirmOpen = true;
       break;
     }
     return;
@@ -377,7 +400,7 @@ void SettingsScene::Render() {
   float contentH = (SEC_HEAD_H + ROW_H + 2.0f) +
                    (SEC_GAP + SEC_HEAD_H + 2.0f * (ROW_H + 2.0f)) +
                    (SEC_GAP + SEC_HEAD_H + ROW_H + 2.0f) +
-                   (SEC_GAP + SEC_HEAD_H + 3.0f * (ROW_H + 2.0f));
+                   (SEC_GAP + SEC_HEAD_H + 4.0f * (ROW_H + 2.0f));
   float visibleH = footerY - BODY_TOP;
   float maxScroll = contentH - visibleH;
   if (maxScroll < 0.0f) {
@@ -449,6 +472,19 @@ void SettingsScene::Render() {
       mSelectedRow == 6 ? "[ Clear ]" : NULL);
   y += ROW_H + 2.0f;
 
+  {
+    int32_t failCount = ImageDownloader::GetFailedCoverCount();
+    std::string failLabel = mRetryFailedDone
+        ? "Done! Covers will retry on next scroll"
+        : (failCount > 0
+            ? String::Format("%d cover(s) failed to download", failCount)
+            : "No failed covers");
+    DrawRow(rowX, y, rowW, mSelectedRow == 7, "Retry Failed Covers",
+        failLabel,
+        (mSelectedRow == 7 && failCount > 0) ? "[ Retry ]" : NULL);
+  }
+  y += ROW_H + 2.0f;
+
   Drawing::EndStencil();
 
   bool dirty =
@@ -507,6 +543,9 @@ void SettingsScene::Render() {
   }
   if (mClearCacheConfirmOpen) {
     RenderClearCacheConfirm();
+  }
+  if (mRetryFailedConfirmOpen) {
+    RenderRetryFailedConfirm();
   }
 }
 
@@ -681,6 +720,54 @@ void SettingsScene::RenderClearCacheConfirm() {
   float hintW = (iW + 4.0f + confW) + 16.0f + (iW + 4.0f + canW);
   float hx = px + (panelW - hintW) * 0.5f;
   float hy = py + panelH - iH - 10.0f;
+
+  D3DTexture *iconY = TextureHelper::GetControllerIcon("ButtonY");
+  if (iconY) {
+    Drawing::DrawTexturedRect(iconY, 0xFFFFFFFF, hx, hy, iW, iH);
+    hx += iW + 4.0f;
+  }
+  Font::DrawText(FONT_NORMAL, "Confirm", COLOR_TEXT_GRAY, hx, hy + 2.0f);
+  hx += confW + 16.0f;
+  D3DTexture *iconB = TextureHelper::GetControllerIcon("ButtonB");
+  if (iconB) {
+    Drawing::DrawTexturedRect(iconB, 0xFFFFFFFF, hx, hy, iW, iH);
+    hx += iW + 4.0f;
+  }
+  Font::DrawText(FONT_NORMAL, "Cancel", COLOR_TEXT_GRAY, hx, hy + 2.0f);
+}
+
+// ==========================================================================
+// RenderRetryFailedConfirm
+// ==========================================================================
+void SettingsScene::RenderRetryFailedConfirm() {
+  float screenW = (float)Context::GetScreenWidth();
+  float screenH = (float)Context::GetScreenHeight();
+
+  Drawing::DrawFilledRect(0xCC000000, 0.0f, 0.0f, screenW, screenH);
+
+  const float panelW = 460.0f;
+  const float panelH = 130.0f;
+  float px = (screenW - panelW) * 0.5f;
+  float py = (screenH - panelH) * 0.5f;
+
+  Drawing::DrawFilledRect(COLOR_CARD_BG, px, py, panelW, panelH);
+  Drawing::DrawFilledRect(COLOR_FOCUS_HIGHLIGHT, px, py, panelW, 4.0f);
+
+  int32_t failCount = ImageDownloader::GetFailedCoverCount();
+  std::string title = String::Format("Retry %d failed cover(s)?", failCount);
+  Font::DrawText(FONT_NORMAL, title.c_str(), COLOR_WHITE, px + 20.0f, py + 18.0f);
+  Font::DrawTextWrapped(FONT_NORMAL,
+      "Clears the failed markers so covers will attempt\nto download again on next scroll.",
+      COLOR_TEXT_GRAY, px + 20.0f, py + 44.0f, panelW - 40.0f);
+
+  float iW   = (float)ASSET_CONTROLLER_ICON_WIDTH;
+  float iH   = (float)ASSET_CONTROLLER_ICON_HEIGHT;
+  float confW = 0.0f, canW = 0.0f;
+  Font::MeasureText(FONT_NORMAL, "Confirm", &confW);
+  Font::MeasureText(FONT_NORMAL, "Cancel",  &canW);
+  float hintW = (iW + 4.0f + confW) + 16.0f + (iW + 4.0f + canW);
+  float hx    = px + (panelW - hintW) * 0.5f;
+  float hy    = py + panelH - iH - 10.0f;
 
   D3DTexture *iconY = TextureHelper::GetControllerIcon("ButtonY");
   if (iconY) {

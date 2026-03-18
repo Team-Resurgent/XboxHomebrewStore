@@ -110,60 +110,17 @@ bool TextureHelper::Init() {
 }
 
 // ---------------------------------------------------------------------------
-// WriteDxt1DDS -- writes a DXT1 texture to a DDS file. Main thread only.
-// ---------------------------------------------------------------------------
-static bool WriteDxt1DDS(const std::string &path, D3DTexture *tex) {
-  D3DSURFACE_DESC desc;
-  if (FAILED(tex->GetLevelDesc(0, &desc))) return false;
-
-  D3DLOCKED_RECT locked;
-  if (FAILED(tex->LockRect(0, &locked, NULL, D3DLOCK_READONLY))) return false;
-
-  UINT bw = (desc.Width  + 3) / 4;
-  UINT bh = (desc.Height + 3) / 4;
-  UINT dataSize = bw * bh * 8;
-
-  FILE *f = fopen(path.c_str(), "wb");
-  if (f == NULL) { tex->UnlockRect(0); return false; }
-
-  DWORD magic = 0x20534444;
-  fwrite(&magic, 4, 1, f);
-
-  DWORD hdr[31];
-  memset(hdr, 0, sizeof(hdr));
-  hdr[0]  = 124;
-  hdr[1]  = 0x00081007;
-  hdr[2]  = desc.Height;
-  hdr[3]  = desc.Width;
-  hdr[4]  = dataSize;
-  hdr[6]  = 1;
-  hdr[18] = 32;
-  hdr[19] = 0x00000004;
-  hdr[20] = 0x31545844;  // 'DXT1'
-  hdr[26] = 0x00001000;
-  fwrite(hdr, sizeof(hdr), 1, f);
-  fwrite(locked.pBits, dataSize, 1, f);
-  fclose(f);
-  tex->UnlockRect(0);
-
-  SetFileAttributesA(path.c_str(), FILE_ATTRIBUTE_NORMAL);
-  Debug::Print("WriteDxt1DDS: wrote %s (%dx%d %d bytes)\n",
-      path.c_str(), desc.Width, desc.Height, dataSize);
-  return true;
-}
-
 
 // ---------------------------------------------------------------------------
-// LoadFromFile -- for .dxt files uses CreateTexture+LockRect+memcpy+UnlockRect
-// (pure GPU upload, no D3DX overhead). Other formats fall back to D3DXCreateTextureFromFileEx.
+// LoadFromFile
+// DDS files are loaded via D3DXCreateTextureFromFileInMemoryEx.
+// PNG/JPG (UI assets) fall back to D3DXCreateTextureFromFileEx.
 // ---------------------------------------------------------------------------
 D3DTexture *TextureHelper::LoadFromFile(const std::string filePath) {
   bool isDds = filePath.size() >= 4 &&
-               (filePath.substr(filePath.size() - 4) == ".dds" ||
-                filePath.substr(filePath.size() - 4) == ".dxt");
+               filePath.substr(filePath.size() - 4) == ".dds";
 
   if (isDds) {
-    // Read file into memory and let D3DX handle format/pool/layout
     FILE *f = fopen(filePath.c_str(), "rb");
     if (f == NULL) {
       Debug::Print("LoadFromFile: fopen failed %s\n", filePath.c_str());
@@ -204,7 +161,7 @@ D3DTexture *TextureHelper::LoadFromFile(const std::string filePath) {
     return ddsTex;
   }
 
-  // Non-DDS (PNG, JPG for UI assets) -- use D3DX with filename directly
+  // Non-DDS (PNG, JPG for UI assets)
   D3DTexture *tex = NULL;
   HRESULT hr = D3DXCreateTextureFromFileEx(
       Context::GetD3dDevice(), filePath.c_str(),

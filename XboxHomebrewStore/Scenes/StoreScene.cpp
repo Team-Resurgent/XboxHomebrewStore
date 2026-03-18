@@ -68,15 +68,8 @@ void StoreScene::OnResume() {
     return;
   }
 
-  // No change -- just restore position
-  if (mHasSavedPosition) {
-    StoreManager::LoadAtOffset(mSavedWindowOffset);
-    int32_t maxIndex = StoreManager::GetWindowStoreItemOffset() +
-                       StoreManager::GetWindowStoreItemCount() - 1;
-    if (maxIndex < 0) maxIndex = 0;
-    mStoreIndex = mSavedStoreIndex > maxIndex ? maxIndex : mSavedStoreIndex;
-    mHasSavedPosition = false;
-  }
+  // Position restore is handled in Update when the MetaCache-ready
+  // transition fires, so mHasSavedPosition is checked there.
 }
 
 void StoreScene::RenderHeader() {
@@ -454,7 +447,16 @@ void StoreScene::Update() {
   if (metaNowReady && !mMetaReady) {
     mMetaReady = true;
     StoreManager::RefreshApplications();
-    mStoreIndex = 0;
+    if (mHasSavedPosition) {
+      StoreManager::LoadAtOffset(mSavedWindowOffset);
+      int32_t maxIndex = StoreManager::GetWindowStoreItemOffset() +
+                         StoreManager::GetWindowStoreItemCount() - 1;
+      if (maxIndex < 0) maxIndex = 0;
+      mStoreIndex = mSavedStoreIndex > maxIndex ? maxIndex : mSavedStoreIndex;
+      mHasSavedPosition = false;
+    } else {
+      mStoreIndex = 0;
+    }
     Debug::Print("StoreScene: MetaCache ready, window loaded\n");
   } else if (!metaNowReady) {
     mMetaReady = false; // reset when category changes and cache is purged

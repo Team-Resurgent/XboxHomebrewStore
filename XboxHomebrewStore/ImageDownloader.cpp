@@ -11,6 +11,7 @@
 #include "Defines.h"
 #include "WebManager.h"
 #include "Debug.h"
+#include "FileSystem.h"
 #include "String.h"
 
 // ---------------------------------------------------------------------------
@@ -127,6 +128,25 @@ int32_t ImageDownloader::GetCachedCoverCount() {
   return (int32_t)s_cachedCoverCount;
 }
 
+int32_t ImageDownloader::GetFailedCoverCount() {
+  std::string root = StoreList::GetActiveCacheRoot();
+  std::vector<std::pair<std::string, ULONGLONG> > files;
+  CollectFileWithTime((root + "\\Covers\\Failed").c_str(), &files);
+  CollectFileWithTime((root + "\\Screenshots\\Failed").c_str(), &files);
+  return (int32_t)files.size();
+}
+
+void ImageDownloader::ClearFailedCovers() {
+  std::string root = StoreList::GetActiveCacheRoot();
+  std::string coversFailed      = root + "\\Covers\\Failed";
+  std::string screenshotsFailed = root + "\\Screenshots\\Failed";
+  FileSystem::DirectoryDelete(coversFailed.c_str(), true);
+  FileSystem::DirectoryDelete(screenshotsFailed.c_str(), true);
+  FileSystem::DirectoryCreate(coversFailed.c_str());
+  FileSystem::DirectoryCreate(screenshotsFailed.c_str());
+  Debug::Print("ImageDownloader: cleared failed covers\n");
+}
+
 std::string ImageDownloader::GetCoverCachePath(const std::string appId) {
   std::string root = StoreList::GetActiveCacheRoot();
   uint32_t    crc  = CRC32(appId.c_str(), appId.size());
@@ -146,6 +166,22 @@ bool ImageDownloader::IsCoverCached(const std::string appId) {
     return false;
   }
   return true;
+}
+
+bool ImageDownloader::IsCoverFailed(const std::string appId) {
+  std::string ddsPath  = GetCoverCachePath(appId);
+  std::string failDir  = ddsPath.substr(0, ddsPath.rfind("\\") + 1) + "Failed";
+  std::string failName = ddsPath.substr(ddsPath.rfind("\\") + 1);
+  if (failName.size() > 4) failName = failName.substr(0, failName.size() - 4) + ".fail";
+  return FileExists((failDir + "\\" + failName).c_str());
+}
+
+void ImageDownloader::ClearFailedCover(const std::string appId) {
+  std::string ddsPath  = GetCoverCachePath(appId);
+  std::string failDir  = ddsPath.substr(0, ddsPath.rfind("\\") + 1) + "Failed";
+  std::string failName = ddsPath.substr(ddsPath.rfind("\\") + 1);
+  if (failName.size() > 4) failName = failName.substr(0, failName.size() - 4) + ".fail";
+  DeleteFileA((failDir + "\\" + failName).c_str());
 }
 
 std::string ImageDownloader::GetScreenshotCachePath(const std::string appId) {
@@ -231,7 +267,8 @@ void ImageDownloader::CancelAll() {
   EnterCriticalSection(&m_queueLock);
   m_queue.clear();
   LeaveCriticalSection(&m_queueLock);
-  m_failed.clear();
+  // NOTE: m_failed is intentionally NOT cleared here.
+  // Scrolling should not cause 404 covers to be retried.
 }
 
 void ImageDownloader::FlushQueue() {
@@ -303,11 +340,18 @@ void ImageDownloader::DownloadLoop() {
     m_busyType  = req.type;
     LeaveCriticalSection(&m_queueLock);
 
-    std::string failKey = req.appId;
-    failKey += (req.type == IMAGE_COVER) ? "_cover" : "_screenshot";
+    // A .fail marker in the Failed subfolder persists 404s across scrolls
+    // and restarts. Cleared via "Retry Failed Covers" in Settings, or
+    // when the full cache is wiped.
+    // e.g. Covers\Failed\AABB1234.fail
+    std::string failDir  = ddsPath.substr(0, ddsPath.rfind("\\") + 1) + "Failed";
+    std::string failName = ddsPath.substr(ddsPath.rfind("\\") + 1);
+    // Replace .dds extension with .fail
+    if (failName.size() > 4) failName = failName.substr(0, failName.size() - 4) + ".fail";
+    std::string failPath = failDir + "\\" + failName;
 
     bool alreadyCached    = FileExistsAndAvailable(ddsPath.c_str());
-    bool previouslyFailed = (m_failed.find(failKey) != m_failed.end());
+    bool previouslyFailed = FileExists(failPath.c_str());
 
     if (!alreadyCached && !previouslyFailed) {
       EnforceCacheLimit();
@@ -339,7 +383,12 @@ void ImageDownloader::DownloadLoop() {
 
       if (!ok) {
         DeleteFileA(ddsPath.c_str());
-        m_failed.insert(failKey);
+        // Write .fail marker for covers only -- screenshots are always
+        // retried since they are only fetched on demand in VersionScene.
+        if (req.type == IMAGE_COVER) {
+          FILE *ff = fopen(failPath.c_str(), "wb");
+          if (ff) fclose(ff);
+        }
         EnterCriticalSection(&m_queueLock);
         m_busyAppId = "";
         LeaveCriticalSection(&m_queueLock);

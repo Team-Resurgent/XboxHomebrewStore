@@ -45,6 +45,8 @@ private:
   StoreVersions mStoreVersions;
 
   bool mNeedsUpdate;
+  bool mCoverQueued;
+  bool mScreenshotQueued;
   bool mSideBarFocused;
   int32_t mHighlightedVersionIndex;
   int32_t mVersionIndex;
