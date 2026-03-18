@@ -672,7 +672,11 @@ void VersionScene::RenderListView() {
     } else {
       screenshot = TextureHelper::GetScreenshot();
       if (!mScreenshotQueued) {
-        mImageDownloader->Queue(&mStoreVersions.screenshot, mStoreVersions.appId, IMAGE_SCREENSHOT);
+        bool ssFailed = ImageDownloader::IsScreenshotFailed(mStoreVersions.appId);
+        if (!ssFailed || AppSettings::GetRetryFailedOnView()) {
+          if (ssFailed) ImageDownloader::ClearFailedScreenshot(mStoreVersions.appId);
+          mImageDownloader->Queue(&mStoreVersions.screenshot, mStoreVersions.appId, IMAGE_SCREENSHOT);
+        }
         mScreenshotQueued = true;
       }
     }
@@ -699,10 +703,11 @@ void VersionScene::RenderListView() {
     } else {
       cover = TextureHelper::GetCover();
       if (!mCoverQueued) {
-        if (ImageDownloader::IsCoverFailed(mStoreVersions.appId)) {
-          ImageDownloader::ClearFailedCover(mStoreVersions.appId);
+        bool coverFailed = ImageDownloader::IsCoverFailed(mStoreVersions.appId);
+        if (!coverFailed || AppSettings::GetRetryFailedOnView()) {
+          if (coverFailed) ImageDownloader::ClearFailedCover(mStoreVersions.appId);
+          mImageDownloader->Queue(&mStoreVersions.cover, mStoreVersions.appId, IMAGE_COVER);
         }
-        mImageDownloader->Queue(&mStoreVersions.cover, mStoreVersions.appId, IMAGE_COVER);
         mCoverQueued = true;
       }
     }

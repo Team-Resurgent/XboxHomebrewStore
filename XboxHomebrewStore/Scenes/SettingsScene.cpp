@@ -50,12 +50,13 @@ SettingsScene::SettingsScene()
     : mSelectedRow(0), mPickerOpen(false), mPickerSel(0),
       mCachePickerOpen(false), mCachePickerSel(0),
       mClearCacheConfirmOpen(false), mClearCacheDone(false),
-      mRetryFailedConfirmOpen(false), mRetryFailedDone(false),
+  mClearFailedConfirmOpen(false), mClearFailedDone(false),
       mScrollOffset(0.0f) {
   mDownloadPath = AppSettings::GetDownloadPath();
   mAfterInstallAction = AppSettings::GetAfterInstallAction();
   mShowCachePartitions = AppSettings::GetShowCachePartitions();
   mPreCacheOnIdle = AppSettings::GetPreCacheOnIdle();
+  mRetryFailedOnView = AppSettings::GetRetryFailedOnView();
   mCacheLocation = AppSettings::GetCacheLocation();
   mCachePath = AppSettings::GetCachePath();
 }
@@ -74,6 +75,7 @@ void SettingsScene::SaveAndPop() {
   AppSettings::SetAfterInstallAction(mAfterInstallAction);
   AppSettings::SetShowCachePartitions(mShowCachePartitions);
   AppSettings::SetPreCacheOnIdle(mPreCacheOnIdle);
+  AppSettings::SetRetryFailedOnView(mRetryFailedOnView);
 
   // If cache location or path is changing, capture the old meta dir BEFORE
   // the setting changes -- then purge it so stale files don't accumulate
@@ -127,9 +129,7 @@ static void ClearImageCache() {
   FileSystem::DirectoryDelete(coversDir.c_str(), true);
   FileSystem::DirectoryDelete(screenshotsDir.c_str(), true);
   FileSystem::DirectoryCreate(coversDir.c_str());
-  FileSystem::DirectoryCreate((coversDir + "\\\\Failed").c_str());
   FileSystem::DirectoryCreate(screenshotsDir.c_str());
-  FileSystem::DirectoryCreate((screenshotsDir + "\\\\Failed").c_str());
   ImageDownloader::ResetCachedCoverCount(); // resets to 0 (dirs now empty)
   StoreManager::InvalidateCovers();
 }
@@ -186,6 +186,22 @@ void SettingsScene::Update() {
     return;
   }
 
+  // ---- Clear failed confirm dialog ----
+  if (mClearFailedConfirmOpen) {
+    if (InputManager::ControllerPressed(ControllerY, -1)) {
+      ImageDownloader::ClearFailedCovers();
+      mClearFailedDone = true;
+      mClearFailedConfirmOpen = false;
+      return;
+    }
+    if (InputManager::ControllerPressed(ControllerB, -1) ||
+        InputManager::ControllerPressed(ControllerA, -1)) {
+      mClearFailedConfirmOpen = false;
+      return;
+    }
+    return;
+  }
+
   // ---- Clear cache confirm dialog ----
   if (mClearCacheConfirmOpen) {
     if (InputManager::ControllerPressed(ControllerY, -1)) {
@@ -197,22 +213,6 @@ void SettingsScene::Update() {
     if (InputManager::ControllerPressed(ControllerB, -1) ||
         InputManager::ControllerPressed(ControllerA, -1)) {
       mClearCacheConfirmOpen = false;
-      return;
-    }
-    return;
-  }
-
-  // ---- Retry failed confirm dialog ----
-  if (mRetryFailedConfirmOpen) {
-    if (InputManager::ControllerPressed(ControllerY, -1)) {
-      ImageDownloader::ClearFailedCovers();
-      mRetryFailedDone = true;
-      mRetryFailedConfirmOpen = false;
-      return;
-    }
-    if (InputManager::ControllerPressed(ControllerB, -1) ||
-        InputManager::ControllerPressed(ControllerA, -1)) {
-      mRetryFailedConfirmOpen = false;
       return;
     }
     return;
@@ -271,12 +271,15 @@ void SettingsScene::Update() {
       mPreCacheOnIdle = !mPreCacheOnIdle;
       break;
     case 6:
-      mClearCacheDone = false;
-      mClearCacheConfirmOpen = true;
+      mRetryFailedOnView = !mRetryFailedOnView;
       break;
     case 7:
-      mRetryFailedDone = false;
-      mRetryFailedConfirmOpen = true;
+      mClearFailedDone = false;
+      mClearFailedConfirmOpen = true;
+      break;
+    case 8:
+      mClearCacheDone = false;
+      mClearCacheConfirmOpen = true;
       break;
     }
     return;
@@ -400,7 +403,7 @@ void SettingsScene::Render() {
   float contentH = (SEC_HEAD_H + ROW_H + 2.0f) +
                    (SEC_GAP + SEC_HEAD_H + 2.0f * (ROW_H + 2.0f)) +
                    (SEC_GAP + SEC_HEAD_H + ROW_H + 2.0f) +
-                   (SEC_GAP + SEC_HEAD_H + 4.0f * (ROW_H + 2.0f));
+                   (SEC_GAP + SEC_HEAD_H + 5.0f * (ROW_H + 2.0f));
   float visibleH = footerY - BODY_TOP;
   float maxScroll = contentH - visibleH;
   if (maxScroll < 0.0f) {
@@ -450,7 +453,7 @@ void SettingsScene::Render() {
   y += SEC_GAP;
   DrawSection(rowX, y, rowW, "Install Behaviour");
   y += SEC_HEAD_H;
-  DrawRow(rowX, y, rowW, mSelectedRow == 3, "Keep Downloaded Files",
+  DrawRow(rowX, y, rowW, mSelectedRow == 3, "After Install Action",
       AfterInstallLabel(mAfterInstallAction),
       mSelectedRow == 3 ? "[ Change ]" : NULL);
   y += ROW_H + 2.0f;
@@ -458,31 +461,35 @@ void SettingsScene::Render() {
   y += SEC_GAP;
   DrawSection(rowX, y, rowW, "Advanced");
   y += SEC_HEAD_H;
-  DrawRow(rowX, y, rowW, mSelectedRow == 4, "Show Cache Partitions (X/Y/Z)",
+  DrawRow(rowX, y, rowW, mSelectedRow == 4, "Show Cache Partitions",
       mShowCachePartitions ? "Enabled" : "Disabled",
       mSelectedRow == 4 ? "[ Toggle ]" : NULL);
   y += ROW_H + 2.0f;
-  DrawRow(rowX, y, rowW, mSelectedRow == 5, "Pre-cache covers only when idle and in the All Apps section.",
+  DrawRow(rowX, y, rowW, mSelectedRow == 5, "Pre-Cache Covers on Idle",
       mPreCacheOnIdle ? "Enabled" : "Disabled",
       mSelectedRow == 5 ? "[ Toggle ]" : NULL);
   y += ROW_H + 2.0f;
-  DrawRow(rowX, y, rowW, mSelectedRow == 6, "Clear Image Cache",
-      mClearCacheDone ? "Cleared!"
-                      : "Deletes all cached covers and screenshots",
-      mSelectedRow == 6 ? "[ Clear ]" : NULL);
+  DrawRow(rowX, y, rowW, mSelectedRow == 6,
+      "Auto-Retry Failed Cover/Screenshot on App View",
+      mRetryFailedOnView ? "Enabled" : "Disabled",
+      mSelectedRow == 6 ? "[ Toggle ]" : NULL);
   y += ROW_H + 2.0f;
-
   {
     int32_t failCount = ImageDownloader::GetFailedCoverCount();
-    std::string failLabel = mRetryFailedDone
-        ? "Done! Covers will retry on next scroll"
+    std::string failDesc = mClearFailedDone
+        ? "Done - idle downloader will retry on next scroll"
         : (failCount > 0
-            ? String::Format("%d cover(s) failed to download", failCount)
-            : "No failed covers");
-    DrawRow(rowX, y, rowW, mSelectedRow == 7, "Retry Failed Covers",
-        failLabel,
-        (mSelectedRow == 7 && failCount > 0) ? "[ Retry ]" : NULL);
+            ? String::Format("%d failed cover(s) and screenshot(s)", failCount)
+            : "No failed downloads");
+    DrawRow(rowX, y, rowW, mSelectedRow == 7, "Clear Failed Cover/Screenshot Markers",
+        failDesc,
+        (mSelectedRow == 7 && failCount > 0) ? "[ Clear ]" : NULL);
   }
+  y += ROW_H + 2.0f;
+  DrawRow(rowX, y, rowW, mSelectedRow == 8, "Clear Image Cache",
+      mClearCacheDone ? "Done - all covers and screenshots removed"
+                      : "Deletes all covers, screenshots and failed markers",
+      mSelectedRow == 8 ? "[ Clear ]" : NULL);
   y += ROW_H + 2.0f;
 
   Drawing::EndStencil();
@@ -492,6 +499,7 @@ void SettingsScene::Render() {
       ((int)mAfterInstallAction != (int)AppSettings::GetAfterInstallAction()) ||
       (mShowCachePartitions != AppSettings::GetShowCachePartitions()) ||
       (mPreCacheOnIdle != AppSettings::GetPreCacheOnIdle()) ||
+      (mRetryFailedOnView != AppSettings::GetRetryFailedOnView()) ||
       ((int)mCacheLocation != (int)AppSettings::GetCacheLocation()) ||
       (mCachePath != AppSettings::GetCachePath());
   if (dirty) {
@@ -541,11 +549,11 @@ void SettingsScene::Render() {
   if (mPickerOpen) {
     RenderPicker();
   }
+  if (mClearFailedConfirmOpen) {
+    RenderClearFailedConfirm();
+  }
   if (mClearCacheConfirmOpen) {
     RenderClearCacheConfirm();
-  }
-  if (mRetryFailedConfirmOpen) {
-    RenderRetryFailedConfirm();
   }
 }
 
@@ -737,9 +745,9 @@ void SettingsScene::RenderClearCacheConfirm() {
 }
 
 // ==========================================================================
-// RenderRetryFailedConfirm
+// RenderClearFailedConfirm
 // ==========================================================================
-void SettingsScene::RenderRetryFailedConfirm() {
+void SettingsScene::RenderClearFailedConfirm() {
   float screenW = (float)Context::GetScreenWidth();
   float screenH = (float)Context::GetScreenHeight();
 
@@ -754,10 +762,11 @@ void SettingsScene::RenderRetryFailedConfirm() {
   Drawing::DrawFilledRect(COLOR_FOCUS_HIGHLIGHT, px, py, panelW, 4.0f);
 
   int32_t failCount = ImageDownloader::GetFailedCoverCount();
-  std::string title = String::Format("Retry %d failed cover(s)?", failCount);
+  std::string title = String::Format("Clear %d failed download(s)?", failCount);
   Font::DrawText(FONT_NORMAL, title.c_str(), COLOR_WHITE, px + 20.0f, py + 18.0f);
   Font::DrawTextWrapped(FONT_NORMAL,
-      "Clears the failed markers so covers will attempt\nto download again on next scroll.",
+      "Removes all .fail markers so covers and screenshots\n"
+      "can be re-attempted by the idle downloader.",
       COLOR_TEXT_GRAY, px + 20.0f, py + 44.0f, panelW - 40.0f);
 
   float iW   = (float)ASSET_CONTROLLER_ICON_WIDTH;

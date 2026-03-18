@@ -26,7 +26,9 @@ public:
   static std::string GetCoverCachePath(const std::string appId);
   static bool        IsCoverCached(const std::string appId);
   static bool        IsCoverFailed(const std::string appId);
-  static void        ClearFailedCover(const std::string appId); // delete single .fail so it retries
+  static void        ClearFailedCover(const std::string appId);
+  static bool        IsScreenshotFailed(const std::string appId);
+  static void        ClearFailedScreenshot(const std::string appId); // delete single .fail so it retries
   static std::string GetScreenshotCachePath(const std::string appId);
   static bool        IsScreenshotCached(const std::string appId);
   static int32_t     GetCachedCoverCount();

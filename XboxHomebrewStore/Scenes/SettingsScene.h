@@ -40,7 +40,7 @@ private:
   void RenderPicker();
   void RenderCacheLocationPicker();
   void RenderClearCacheConfirm();
-  void RenderRetryFailedConfirm();
+  void RenderClearFailedConfirm();
 
   int32_t mSelectedRow;
 
@@ -48,6 +48,7 @@ private:
   AfterInstallAction mAfterInstallAction;
   bool mShowCachePartitions;
   bool mPreCacheOnIdle;
+  bool mRetryFailedOnView;
   CacheLocation mCacheLocation;
   std::string mCachePath;
 
@@ -62,13 +63,11 @@ private:
   // Clear cache confirm dialog
   bool mClearCacheConfirmOpen;
   bool mClearCacheDone;
-
-  // Retry failed covers confirm dialog
-  bool mRetryFailedConfirmOpen;
-  bool mRetryFailedDone;
+  bool mClearFailedConfirmOpen;
+  bool mClearFailedDone;
 
   // Body scroll
   float mScrollOffset;
 
-  static const int ROW_COUNT = 8;
+  static const int ROW_COUNT = 9;
 };

@@ -8,6 +8,7 @@
 #include "ImageDownloader.h"
 #include "Context.h"
 #include "StoreList.h"
+#include "StoreManager.h"
 #include "Defines.h"
 #include "WebManager.h"
 #include "Debug.h"
@@ -144,7 +145,9 @@ void ImageDownloader::ClearFailedCovers() {
   FileSystem::DirectoryDelete(screenshotsFailed.c_str(), true);
   FileSystem::DirectoryCreate(coversFailed.c_str());
   FileSystem::DirectoryCreate(screenshotsFailed.c_str());
-  Debug::Print("ImageDownloader: cleared failed covers\n");
+  // Reset idle warmer so it re-scans and picks up the newly cleared covers
+  StoreManager::InvalidateCovers();
+  Debug::Print("ImageDownloader: cleared failed covers, idle warmer reset\n");
 }
 
 std::string ImageDownloader::GetCoverCachePath(const std::string appId) {
@@ -178,6 +181,22 @@ bool ImageDownloader::IsCoverFailed(const std::string appId) {
 
 void ImageDownloader::ClearFailedCover(const std::string appId) {
   std::string ddsPath  = GetCoverCachePath(appId);
+  std::string failDir  = ddsPath.substr(0, ddsPath.rfind("\\") + 1) + "Failed";
+  std::string failName = ddsPath.substr(ddsPath.rfind("\\") + 1);
+  if (failName.size() > 4) failName = failName.substr(0, failName.size() - 4) + ".fail";
+  DeleteFileA((failDir + "\\" + failName).c_str());
+}
+
+bool ImageDownloader::IsScreenshotFailed(const std::string appId) {
+  std::string ddsPath  = GetScreenshotCachePath(appId);
+  std::string failDir  = ddsPath.substr(0, ddsPath.rfind("\\") + 1) + "Failed";
+  std::string failName = ddsPath.substr(ddsPath.rfind("\\") + 1);
+  if (failName.size() > 4) failName = failName.substr(0, failName.size() - 4) + ".fail";
+  return FileExists((failDir + "\\" + failName).c_str());
+}
+
+void ImageDownloader::ClearFailedScreenshot(const std::string appId) {
+  std::string ddsPath  = GetScreenshotCachePath(appId);
   std::string failDir  = ddsPath.substr(0, ddsPath.rfind("\\") + 1) + "Failed";
   std::string failName = ddsPath.substr(ddsPath.rfind("\\") + 1);
   if (failName.size() > 4) failName = failName.substr(0, failName.size() - 4) + ".fail";
@@ -383,12 +402,11 @@ void ImageDownloader::DownloadLoop() {
 
       if (!ok) {
         DeleteFileA(ddsPath.c_str());
-        // Write .fail marker for covers only -- screenshots are always
-        // retried since they are only fetched on demand in VersionScene.
-        if (req.type == IMAGE_COVER) {
-          FILE *ff = fopen(failPath.c_str(), "wb");
-          if (ff) fclose(ff);
-        }
+        // Write .fail marker -- prevents retrying until explicitly cleared.
+        // Covers: never retried unless user hits "Retry Failed Covers" in Settings.
+        // Screenshots: retried based on RetryFailedOnView setting in VersionScene.
+        FILE *ff = fopen(failPath.c_str(), "wb");
+        if (ff) fclose(ff);
         EnterCriticalSection(&m_queueLock);
         m_busyAppId = "";
         LeaveCriticalSection(&m_queueLock);
