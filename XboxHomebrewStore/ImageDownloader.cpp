@@ -129,8 +129,10 @@ static bool WriteDxt1DDS( const std::string& path, D3DTexture* tex )
     // Clear ARCHIVE -- file is fully written, main thread can now load it
     SetFileAttributesA( path.c_str(), FILE_ATTRIBUTE_NORMAL );
 
-    // Increment stable cover count (read by main thread for UI counter)
-    InterlockedIncrement( (LPLONG)&s_cachedCoverCount );
+    // Only increment cover count -- not screenshots
+    if( path.find( "\\Covers\\" ) != std::string::npos ) {
+        InterlockedIncrement( (LPLONG)&s_cachedCoverCount );
+    }
 
     Debug::Print( "WriteDxt1DDS: wrote %s (%dx%d %d bytes)\n",
         path.c_str(), desc.Width, desc.Height, dataSize );
@@ -193,11 +195,19 @@ static void EnforceCacheLimit()
 
 void ImageDownloader::ResetCachedCoverCount()
 {
-    // Do a one-time scan at startup (before converter thread runs)
+    // Only count .dxt files -- .jpg files are pending conversion and
+    // will be counted by InterlockedIncrement when the converter finishes.
     std::string root = StoreList::GetActiveCacheRoot();
     std::vector<std::pair<std::string,ULONGLONG> > files;
     CollectFileWithTime( (root + "\\Covers").c_str(), &files );
-    InterlockedExchange( (LPLONG)&s_cachedCoverCount, (LONG)files.size() );
+    LONG count = 0;
+    for( uint32_t i = 0; i < files.size(); i++ ) {
+        const std::string& f = files[i].first;
+        if( f.size() >= 4 && f.substr( f.size() - 4 ) == ".dxt" ) {
+            count++;
+        }
+    }
+    InterlockedExchange( (LPLONG)&s_cachedCoverCount, count );
 }
 
 int32_t ImageDownloader::GetCachedCoverCount()
@@ -272,12 +282,12 @@ std::string ImageDownloader::GetCoverJpgPath( const std::string appId )
 
 bool ImageDownloader::IsCoverCached( const std::string appId )
 {
+    // Only .dxt means fully converted and ready -- .jpg means converter
+    // thread is still working on it, do not count or load it yet.
     std::string root = StoreList::GetActiveCacheRoot();
     uint32_t crc = CRC32( appId.c_str(), appId.size() );
     std::string dxtPath = String::Format( "%s\\Covers\\%08X.dxt", root.c_str(), crc );
-    if( FileExistsAndAvailable( dxtPath.c_str() ) ) return true;
-    std::string jpgPath = String::Format( "%s\\Covers\\%08X.jpg", root.c_str(), crc );
-    return FileExistsAndAvailable( jpgPath.c_str() );
+    return FileExistsAndAvailable( dxtPath.c_str() );
 }
 
 std::string ImageDownloader::GetScreenshotCachePath( const std::string appId )
@@ -524,6 +534,18 @@ void ImageDownloader::DownloadLoop()
 
         std::string failKey = req.appId;
         failKey += (req.type == IMAGE_COVER) ? "_cover" : "_screenshot";
+
+        // If .dxt already exists this cover is fully converted -- skip everything
+        if( req.type == IMAGE_COVER ) {
+            std::string dxtPath = jpgPath.substr( 0, jpgPath.size() - 4 ) + ".dxt";
+            if( FileExistsAndAvailable( dxtPath.c_str() ) ) {
+                EnterCriticalSection( &m_queueLock );
+                m_busyAppId = "";
+                LeaveCriticalSection( &m_queueLock );
+                m_busy = false;
+                continue;
+            }
+        }
 
         bool haveFile        = FileExists( jpgPath.c_str() );
         bool previouslyFailed = ( m_failed.find( failKey ) != m_failed.end() );

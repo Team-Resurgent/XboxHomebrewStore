@@ -64,6 +64,9 @@ void StoreScene::OnResume() {
     mHighlightedCategoryIndex = 0;
     mSideBarFocused = false;
     mHasSavedPosition = false;
+    // Rescan cover count for the new cache directory so idle warmer
+    // does not use the stale count from the previous store
+    ImageDownloader::ResetCachedCoverCount();
     StoreManager::Reset();
     return;
   }
