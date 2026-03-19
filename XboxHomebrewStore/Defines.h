@@ -54,3 +54,10 @@
 #define SCROLL_SPEED 40.0f
 #define SCROLL_PAUSE 1.5f
 #define SCROLL_GAP 48
+// ---------------------------------------------------------------------------
+// Server-side DDS: when defined, covers and screenshots are downloaded as DDS
+// directly from the server (appending &format=dds to the URL) and saved as
+// .dxt -- the converter thread is bypassed entirely.
+// Comment out to use the default JPG -> converter thread -> .dxt pipeline.
+// ---------------------------------------------------------------------------
+#define USE_SERVER_DDS

@@ -195,17 +195,14 @@ static void EnforceCacheLimit()
 
 void ImageDownloader::ResetCachedCoverCount()
 {
-    // Only count .dxt files -- .jpg files are pending conversion and
-    // will be counted by InterlockedIncrement when the converter finishes.
+    // Do a one-time scan at startup (before converter thread runs)
     std::string root = StoreList::GetActiveCacheRoot();
     std::vector<std::pair<std::string,ULONGLONG> > files;
     CollectFileWithTime( (root + "\\Covers").c_str(), &files );
     LONG count = 0;
     for( uint32_t i = 0; i < files.size(); i++ ) {
         const std::string& f = files[i].first;
-        if( f.size() >= 4 && f.substr( f.size() - 4 ) == ".dxt" ) {
-            count++;
-        }
+        if( f.size() >= 4 && f.substr( f.size() - 4 ) == ".dxt" ) { count++; }
     }
     InterlockedExchange( (LPLONG)&s_cachedCoverCount, count );
 }
@@ -227,19 +224,15 @@ static std::string FailPathFor( const std::string& cachedPath ) {
 bool ImageDownloader::IsCoverFailed( const std::string appId ) {
     return FileExists( FailPathFor( GetCoverCachePath( appId ) ).c_str() );
 }
-
 void ImageDownloader::ClearFailedCover( const std::string appId ) {
     DeleteFileA( FailPathFor( GetCoverCachePath( appId ) ).c_str() );
 }
-
 bool ImageDownloader::IsScreenshotFailed( const std::string appId ) {
     return FileExists( FailPathFor( GetScreenshotCachePath( appId ) ).c_str() );
 }
-
 void ImageDownloader::ClearFailedScreenshot( const std::string appId ) {
     DeleteFileA( FailPathFor( GetScreenshotCachePath( appId ) ).c_str() );
 }
-
 int32_t ImageDownloader::GetFailedCoverCount() {
     std::string root = StoreList::GetActiveCacheRoot();
     std::vector<std::pair<std::string,ULONGLONG> > files;
@@ -247,7 +240,6 @@ int32_t ImageDownloader::GetFailedCoverCount() {
     CollectFileWithTime( (root + "\\Screenshots\\Failed").c_str(), &files );
     return (int32_t)files.size();
 }
-
 void ImageDownloader::ClearFailedCovers() {
     std::string root = StoreList::GetActiveCacheRoot();
     std::string cf = root + "\\Covers\\Failed";
@@ -282,8 +274,6 @@ std::string ImageDownloader::GetCoverJpgPath( const std::string appId )
 
 bool ImageDownloader::IsCoverCached( const std::string appId )
 {
-    // Only .dxt means fully converted and ready -- .jpg means converter
-    // thread is still working on it, do not count or load it yet.
     std::string root = StoreList::GetActiveCacheRoot();
     uint32_t crc = CRC32( appId.c_str(), appId.size() );
     std::string dxtPath = String::Format( "%s\\Covers\\%08X.dxt", root.c_str(), crc );
@@ -535,10 +525,10 @@ void ImageDownloader::DownloadLoop()
         std::string failKey = req.appId;
         failKey += (req.type == IMAGE_COVER) ? "_cover" : "_screenshot";
 
-        // If .dxt already exists this cover is fully converted -- skip everything
+        // If .dxt already exists this cover is fully ready -- skip entirely
         if( req.type == IMAGE_COVER ) {
-            std::string dxtPath = jpgPath.substr( 0, jpgPath.size() - 4 ) + ".dxt";
-            if( FileExistsAndAvailable( dxtPath.c_str() ) ) {
+            std::string dxtCheck = jpgPath.substr( 0, jpgPath.size() - 4 ) + ".dxt";
+            if( FileExistsAndAvailable( dxtCheck.c_str() ) ) {
                 EnterCriticalSection( &m_queueLock );
                 m_busyAppId = "";
                 LeaveCriticalSection( &m_queueLock );
@@ -546,7 +536,6 @@ void ImageDownloader::DownloadLoop()
                 continue;
             }
         }
-
         bool haveFile        = FileExists( jpgPath.c_str() );
         bool previouslyFailed = ( m_failed.find( failKey ) != m_failed.end() );
 
@@ -555,6 +544,39 @@ void ImageDownloader::DownloadLoop()
             EnforceCacheLimit();
 
             bool ok = false;
+#ifdef USE_SERVER_DDS
+            // Server DDS mode: download pre-converted DDS, save as .dxt,
+            // skip converter thread entirely.
+            std::string dxtPath = jpgPath.substr( 0, jpgPath.size() - 4 ) + ".dxt";
+            if( req.type == IMAGE_COVER )
+            {
+                ok = WebManager::TryDownloadCoverDds(
+                    req.appId, 288, 408, dxtPath, NULL, NULL, &m_cancelRequested );
+            }
+            else
+            {
+                ok = WebManager::TryDownloadScreenshotDds(
+                    req.appId, 640, 360, dxtPath, NULL, NULL, &m_cancelRequested );
+            }
+            if( ok ) {
+                // Mark as available and count -- no converter needed
+                SetFileAttributesA( dxtPath.c_str(), FILE_ATTRIBUTE_NORMAL );
+                if( req.type == IMAGE_COVER ) {
+                    InterlockedIncrement( (LPLONG)&s_cachedCoverCount );
+                }
+                Debug::Print( "ImageDownloader: server DDS saved %s\n", dxtPath.c_str() );
+            } else {
+                DeleteFileA( dxtPath.c_str() );
+                std::string fp = FailPathFor( dxtPath );
+                FILE *ff = fopen( fp.c_str(), "wb" ); if( ff ) fclose( ff );
+                m_failed.insert( failKey );
+            }
+            EnterCriticalSection( &m_queueLock );
+            m_busyAppId = "";
+            LeaveCriticalSection( &m_queueLock );
+            m_busy = false;
+            continue;
+#else
             if( req.type == IMAGE_COVER )
             {
                 ok = WebManager::TryDownloadCover(
@@ -565,6 +587,7 @@ void ImageDownloader::DownloadLoop()
                 ok = WebManager::TryDownloadScreenshot(
                     req.appId, 640, 360, jpgPath, NULL, NULL, &m_cancelRequested );
             }
+#endif
 
             if( m_cancelRequested || m_quit )
             {

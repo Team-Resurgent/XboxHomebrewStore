@@ -955,6 +955,32 @@ bool WebManager::TryDownloadApiData(const std::string url,
   return true;
 }
 
+bool WebManager::TryDownloadCoverDds(const std::string id, int32_t width,
+    int32_t height, const std::string filePath,
+    DownloadProgressFn progressFn,
+    void *progressUserData,
+    volatile bool *pCancelRequested) {
+  NetworkLockScope lock;
+  if (id.empty()) { return false; }
+  std::string url = StoreList::GetActiveUrl() + "/api/Cover/" + id +
+      String::Format("?width=%u&height=%u&format=dds", width, height);
+  return TryDownloadApiData(url, filePath, progressFn, progressUserData,
+      pCancelRequested);
+}
+
+bool WebManager::TryDownloadScreenshotDds(const std::string id, int32_t width,
+    int32_t height, const std::string filePath,
+    DownloadProgressFn progressFn,
+    void *progressUserData,
+    volatile bool *pCancelRequested) {
+  NetworkLockScope lock;
+  if (id.empty()) { return false; }
+  std::string url = StoreList::GetActiveUrl() + "/api/Screenshot/" + id +
+      String::Format("?width=%u&height=%u&format=dds", width, height);
+  return TryDownloadApiData(url, filePath, progressFn, progressUserData,
+      pCancelRequested);
+}
+
 bool WebManager::TryDownloadCover(const std::string id, int32_t width,
     int32_t height, const std::string filePath,
     DownloadProgressFn progressFn,
