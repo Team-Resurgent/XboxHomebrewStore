@@ -168,7 +168,8 @@ DWORD WINAPI StoreManager::IdleWarmerThreadProc(LPVOID param) {
       break;
     }
     if (mIdleWarmerDownloader != NULL) {
-      if (!ImageDownloader::IsCoverCached(appIds[i])) {
+      if (!ImageDownloader::IsCoverCached(appIds[i]) &&
+          !ImageDownloader::IsCoverFailed(appIds[i])) {
         mIdleWarmerDownloader->WarmCache(appIds[i], IMAGE_COVER);
         queued++;
       }

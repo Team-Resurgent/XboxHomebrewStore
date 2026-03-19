@@ -64,15 +64,7 @@ VersionScene::VersionScene(const StoreVersions &storeVersions) {
   mWaitingForInstallPath = false;
   mShowAfterInstallDialog = false;
 
-  const float infoXPos = 350.0f;
-  float descMaxWidth = (float)Context::GetScreenWidth() - infoXPos - 20.0f;
-  Font::MeasureTextWrapped(FONT_NORMAL, mStoreVersions.description,
-      descMaxWidth, NULL, &mDescriptionHeight);
-  if (!mStoreVersions.versions.empty()) {
-    Font::MeasureTextWrapped(FONT_NORMAL, mStoreVersions.versions[0].changeLog,
-        descMaxWidth, NULL, &mChangeLogHeight);
-    mLastMeasuredVersionIndex = 0;
-  }
+  // Text measurement deferred to first RenderListView to avoid hitch on load
 }
 
 VersionScene::~VersionScene() {
@@ -626,6 +618,11 @@ void VersionScene::RenderListView() {
   StoreVersion *storeVersion =
       &mStoreVersions.versions[mHighlightedVersionIndex];
 
+  if (mLastMeasuredVersionIndex == -1) {
+    // First entry -- measure description once
+    Font::MeasureTextWrapped(FONT_NORMAL, mStoreVersions.description,
+        infoMaxWidth, NULL, &mDescriptionHeight);
+  }
   if (mHighlightedVersionIndex != mLastMeasuredVersionIndex) {
     Font::MeasureTextWrapped(FONT_NORMAL, storeVersion->changeLog, infoMaxWidth,
         NULL, &mChangeLogHeight);
@@ -660,9 +657,13 @@ void VersionScene::RenderListView() {
   D3DTexture *screenshot = mStoreVersions.screenshot;
   if (screenshot == NULL) {
     if (ImageDownloader::IsScreenshotCached(mStoreVersions.appId)) {
-      mStoreVersions.screenshot = TextureHelper::LoadFromFile(
-          ImageDownloader::GetScreenshotCachePath(mStoreVersions.appId));
-      screenshot = mStoreVersions.screenshot;
+      std::string ssPath = ImageDownloader::GetScreenshotCachePath(mStoreVersions.appId);
+      bool ssDxt = ssPath.size() >= 4 && ssPath.substr(ssPath.size() - 4) == ".dxt";
+      if (ssDxt) {
+        mStoreVersions.screenshot = TextureHelper::LoadFromFile(ssPath);
+        screenshot = mStoreVersions.screenshot;
+      }
+      if (screenshot == NULL) screenshot = TextureHelper::GetScreenshot();
     } else {
       screenshot = TextureHelper::GetScreenshot();
       mImageDownloader->Queue(&mStoreVersions.screenshot, mStoreVersions.appId, IMAGE_SCREENSHOT);
@@ -678,14 +679,19 @@ void VersionScene::RenderListView() {
     if (cover != NULL) {
       mStoreVersions.cover = cover;
     } else if (ImageDownloader::IsCoverCached(mStoreVersions.appId)) {
-      D3DTexture *loaded = TextureHelper::LoadFromFile(
-          ImageDownloader::GetCoverCachePath(mStoreVersions.appId));
-      if (loaded != NULL) {
-        TextureCache::Put(mStoreVersions.appId, loaded);
-        mStoreVersions.cover = loaded;
-        cover = loaded;
+      std::string cvPath = ImageDownloader::GetCoverCachePath(mStoreVersions.appId);
+      bool cvDxt = cvPath.size() >= 4 && cvPath.substr(cvPath.size() - 4) == ".dxt";
+      if (cvDxt) {
+        D3DTexture *loaded = TextureHelper::LoadFromFile(cvPath);
+        if (loaded != NULL) {
+          TextureCache::Put(mStoreVersions.appId, loaded);
+          mStoreVersions.cover = loaded;
+          cover = loaded;
+        } else {
+          cover = TextureHelper::GetCover();
+        }
       } else {
-        cover = TextureHelper::GetCover();
+        cover = TextureHelper::GetCover(); // .jpg present, converter not done yet
       }
     } else {
       cover = TextureHelper::GetCover();

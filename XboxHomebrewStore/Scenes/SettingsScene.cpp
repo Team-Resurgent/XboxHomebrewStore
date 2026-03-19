@@ -50,11 +50,14 @@ SettingsScene::SettingsScene()
     : mSelectedRow(0), mPickerOpen(false), mPickerSel(0),
       mCachePickerOpen(false), mCachePickerSel(0),
       mClearCacheConfirmOpen(false), mClearCacheDone(false),
+      mRetryFailedOnView(false),
+      mClearFailedConfirmOpen(false), mClearFailedDone(false),
       mScrollOffset(0.0f) {
   mDownloadPath = AppSettings::GetDownloadPath();
   mAfterInstallAction = AppSettings::GetAfterInstallAction();
   mShowCachePartitions = AppSettings::GetShowCachePartitions();
   mPreCacheOnIdle = AppSettings::GetPreCacheOnIdle();
+  mRetryFailedOnView = AppSettings::GetRetryFailedOnView();
   mCacheLocation = AppSettings::GetCacheLocation();
   mCachePath = AppSettings::GetCachePath();
 }
@@ -73,6 +76,7 @@ void SettingsScene::SaveAndPop() {
   AppSettings::SetAfterInstallAction(mAfterInstallAction);
   AppSettings::SetShowCachePartitions(mShowCachePartitions);
   AppSettings::SetPreCacheOnIdle(mPreCacheOnIdle);
+  AppSettings::SetRetryFailedOnView(mRetryFailedOnView);
 
   // If cache location or path is changing, capture the old meta dir BEFORE
   // the setting changes -- then purge it so stale files don't accumulate
@@ -126,7 +130,9 @@ static void ClearImageCache() {
   FileSystem::DirectoryDelete(coversDir.c_str(), true);
   FileSystem::DirectoryDelete(screenshotsDir.c_str(), true);
   FileSystem::DirectoryCreate(coversDir.c_str());
+  FileSystem::DirectoryCreate((coversDir + "\\Failed").c_str());
   FileSystem::DirectoryCreate(screenshotsDir.c_str());
+  FileSystem::DirectoryCreate((screenshotsDir + "\\Failed").c_str());
   ImageDownloader::ResetCachedCoverCount(); // resets to 0 (dirs now empty)
   StoreManager::InvalidateCovers();
 }
@@ -178,6 +184,22 @@ void SettingsScene::Update() {
     }
     if (InputManager::ControllerPressed(ControllerB, -1)) {
       mPickerOpen = false;
+      return;
+    }
+    return;
+  }
+
+  // ---- Clear failed markers confirm dialog ----
+  if (mClearFailedConfirmOpen) {
+    if (InputManager::ControllerPressed(ControllerY, -1)) {
+      ImageDownloader::ClearFailedCovers();
+      mClearFailedDone = true;
+      mClearFailedConfirmOpen = false;
+      return;
+    }
+    if (InputManager::ControllerPressed(ControllerB, -1) ||
+        InputManager::ControllerPressed(ControllerA, -1)) {
+      mClearFailedConfirmOpen = false;
       return;
     }
     return;
@@ -252,6 +274,13 @@ void SettingsScene::Update() {
       mPreCacheOnIdle = !mPreCacheOnIdle;
       break;
     case 6:
+      mRetryFailedOnView = !mRetryFailedOnView;
+      break;
+    case 7:
+      mClearFailedDone = false;
+      mClearFailedConfirmOpen = true;
+      break;
+    case 8:
       mClearCacheDone = false;
       mClearCacheConfirmOpen = true;
       break;
@@ -377,7 +406,7 @@ void SettingsScene::Render() {
   float contentH = (SEC_HEAD_H + ROW_H + 2.0f) +
                    (SEC_GAP + SEC_HEAD_H + 2.0f * (ROW_H + 2.0f)) +
                    (SEC_GAP + SEC_HEAD_H + ROW_H + 2.0f) +
-                   (SEC_GAP + SEC_HEAD_H + 3.0f * (ROW_H + 2.0f));
+                   (SEC_GAP + SEC_HEAD_H + 5.0f * (ROW_H + 2.0f));
   float visibleH = footerY - BODY_TOP;
   float maxScroll = contentH - visibleH;
   if (maxScroll < 0.0f) {
@@ -443,10 +472,22 @@ void SettingsScene::Render() {
       mPreCacheOnIdle ? "Enabled" : "Disabled",
       mSelectedRow == 5 ? "[ Toggle ]" : NULL);
   y += ROW_H + 2.0f;
-  DrawRow(rowX, y, rowW, mSelectedRow == 6, "Clear Image Cache",
+  DrawRow(rowX, y, rowW, mSelectedRow == 6, "Auto-Retry Failed Cover/Screenshot on App View",
+      mRetryFailedOnView ? "Enabled" : "Disabled",
+      mSelectedRow == 6 ? "[ Toggle ]" : NULL);
+  y += ROW_H + 2.0f;
+  {
+    int32_t failCount = ImageDownloader::GetFailedCoverCount();
+    std::string failVal = mClearFailedDone ? "Cleared!" :
+        String::Format("%d failed cover(s) and screenshot(s)", failCount);
+    DrawRow(rowX, y, rowW, mSelectedRow == 7, "Clear Failed Cover/Screenshot Markers",
+        failVal, mSelectedRow == 7 ? "[ Clear ]" : NULL);
+  }
+  y += ROW_H + 2.0f;
+  DrawRow(rowX, y, rowW, mSelectedRow == 8, "Clear Image Cache",
       mClearCacheDone ? "Cleared!"
-                      : "Deletes all cached covers and screenshots",
-      mSelectedRow == 6 ? "[ Clear ]" : NULL);
+                      : "Deletes all covers, screenshots and failed markers",
+      mSelectedRow == 8 ? "[ Clear ]" : NULL);
   y += ROW_H + 2.0f;
 
   Drawing::EndStencil();
@@ -456,6 +497,7 @@ void SettingsScene::Render() {
       ((int)mAfterInstallAction != (int)AppSettings::GetAfterInstallAction()) ||
       (mShowCachePartitions != AppSettings::GetShowCachePartitions()) ||
       (mPreCacheOnIdle != AppSettings::GetPreCacheOnIdle()) ||
+      (mRetryFailedOnView != AppSettings::GetRetryFailedOnView()) ||
       ((int)mCacheLocation != (int)AppSettings::GetCacheLocation()) ||
       (mCachePath != AppSettings::GetCachePath());
   if (dirty) {
@@ -487,10 +529,10 @@ void SettingsScene::Render() {
 
   if (mSelectedRow == 2) {
     DRAW_CTRL("ButtonA", "Change");
-  } else if (mSelectedRow == 3 || mSelectedRow == 4) {
+  } else if (mSelectedRow == 4 || mSelectedRow == 5 || mSelectedRow == 6) {
     DRAW_CTRL("ButtonA", "Toggle");
-  } else if (mSelectedRow == 5) {
-    DRAW_CTRL("ButtonA", "Clear Cache");
+  } else if (mSelectedRow == 7 || mSelectedRow == 8) {
+    DRAW_CTRL("ButtonA", "Clear");
   } else {
     DRAW_CTRL("ButtonA", mSelectedRow == 0 ? "Manage Stores" : "Browse");
   }
@@ -507,6 +549,9 @@ void SettingsScene::Render() {
   }
   if (mClearCacheConfirmOpen) {
     RenderClearCacheConfirm();
+  }
+  if (mClearFailedConfirmOpen) {
+    RenderClearFailedConfirm();
   }
 }
 
@@ -694,5 +739,40 @@ void SettingsScene::RenderClearCacheConfirm() {
     Drawing::DrawTexturedRect(iconB, 0xFFFFFFFF, hx, hy, iW, iH);
     hx += iW + 4.0f;
   }
+  Font::DrawText(FONT_NORMAL, "Cancel", COLOR_TEXT_GRAY, hx, hy + 2.0f);
+}
+// ==========================================================================
+// RenderClearFailedConfirm
+// ==========================================================================
+void SettingsScene::RenderClearFailedConfirm() {
+  float screenW = (float)Context::GetScreenWidth();
+  float screenH = (float)Context::GetScreenHeight();
+  Drawing::DrawFilledRect(0xCC000000, 0.0f, 0.0f, screenW, screenH);
+  const float panelW = 480.0f;
+  const float panelH = 130.0f;
+  float px = (screenW - panelW) * 0.5f;
+  float py = (screenH - panelH) * 0.5f;
+  Drawing::DrawFilledRect(COLOR_CARD_BG, px, py, panelW, panelH);
+  Drawing::DrawFilledRect(0xFFEF5350, px, py, panelW, 4.0f);
+  Font::DrawText(FONT_NORMAL, "Clear Failed Markers?", COLOR_WHITE,
+      px + 20.0f, py + 18.0f);
+  Font::DrawTextWrapped(FONT_NORMAL,
+      "This clears all failed cover and screenshot markers.\n"
+      "They will be retried on next view.",
+      COLOR_TEXT_GRAY, px + 20.0f, py + 44.0f, panelW - 40.0f);
+  float iW = (float)ASSET_CONTROLLER_ICON_WIDTH;
+  float iH = (float)ASSET_CONTROLLER_ICON_HEIGHT;
+  float confW = 0.0f, canW = 0.0f;
+  Font::MeasureText(FONT_NORMAL, "Confirm", &confW);
+  Font::MeasureText(FONT_NORMAL, "Cancel",  &canW);
+  float hintW = (iW + 4.0f + confW) + 16.0f + (iW + 4.0f + canW);
+  float hx = px + (panelW - hintW) * 0.5f;
+  float hy = py + panelH - iH - 10.0f;
+  D3DTexture *iconY = TextureHelper::GetControllerIcon("ButtonY");
+  if (iconY) { Drawing::DrawTexturedRect(iconY, 0xFFFFFFFF, hx, hy, iW, iH); hx += iW + 4.0f; }
+  Font::DrawText(FONT_NORMAL, "Confirm", COLOR_TEXT_GRAY, hx, hy + 2.0f);
+  hx += confW + 16.0f;
+  D3DTexture *iconB = TextureHelper::GetControllerIcon("ButtonB");
+  if (iconB) { Drawing::DrawTexturedRect(iconB, 0xFFFFFFFF, hx, hy, iW, iH); hx += iW + 4.0f; }
   Font::DrawText(FONT_NORMAL, "Cancel", COLOR_TEXT_GRAY, hx, hy + 2.0f);
 }

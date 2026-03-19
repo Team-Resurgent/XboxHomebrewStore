@@ -11,6 +11,8 @@
 #include "ImageDownloader.h"
 #include "Context.h"
 #include "StoreList.h"
+#include "StoreManager.h"
+#include "FileSystem.h"
 #include "Defines.h"
 #include "WebManager.h"
 #include "Debug.h"
@@ -203,6 +205,51 @@ int32_t ImageDownloader::GetCachedCoverCount()
     return (int32_t)s_cachedCoverCount;
 }
 
+static std::string FailPathFor( const std::string& cachedPath ) {
+    size_t slash = cachedPath.rfind( '\\' );
+    std::string dir  = cachedPath.substr( 0, slash + 1 ) + "Failed";
+    std::string name = cachedPath.substr( slash + 1 );
+    size_t dot = name.rfind( '.' );
+    if( dot != std::string::npos ) name = name.substr( 0, dot );
+    return dir + "\\" + name + ".fail";
+}
+
+bool ImageDownloader::IsCoverFailed( const std::string appId ) {
+    return FileExists( FailPathFor( GetCoverCachePath( appId ) ).c_str() );
+}
+
+void ImageDownloader::ClearFailedCover( const std::string appId ) {
+    DeleteFileA( FailPathFor( GetCoverCachePath( appId ) ).c_str() );
+}
+
+bool ImageDownloader::IsScreenshotFailed( const std::string appId ) {
+    return FileExists( FailPathFor( GetScreenshotCachePath( appId ) ).c_str() );
+}
+
+void ImageDownloader::ClearFailedScreenshot( const std::string appId ) {
+    DeleteFileA( FailPathFor( GetScreenshotCachePath( appId ) ).c_str() );
+}
+
+int32_t ImageDownloader::GetFailedCoverCount() {
+    std::string root = StoreList::GetActiveCacheRoot();
+    std::vector<std::pair<std::string,ULONGLONG> > files;
+    CollectFileWithTime( (root + "\\Covers\\Failed").c_str(),      &files );
+    CollectFileWithTime( (root + "\\Screenshots\\Failed").c_str(), &files );
+    return (int32_t)files.size();
+}
+
+void ImageDownloader::ClearFailedCovers() {
+    std::string root = StoreList::GetActiveCacheRoot();
+    std::string cf = root + "\\Covers\\Failed";
+    std::string sf = root + "\\Screenshots\\Failed";
+    FileSystem::DirectoryDelete( cf.c_str(), true );
+    FileSystem::DirectoryDelete( sf.c_str(), true );
+    FileSystem::DirectoryCreate( cf.c_str() );
+    FileSystem::DirectoryCreate( sf.c_str() );
+    StoreManager::InvalidateCovers();
+    Debug::Print( "ImageDownloader: cleared failed markers\n" );
+}
+
 // ---------------------------------------------------------------------------
 // Public path helpers
 // ---------------------------------------------------------------------------
@@ -235,7 +282,11 @@ bool ImageDownloader::IsCoverCached( const std::string appId )
 
 std::string ImageDownloader::GetScreenshotCachePath( const std::string appId )
 {
-    return CachePathFor( appId, IMAGE_SCREENSHOT );
+    std::string root = StoreList::GetActiveCacheRoot();
+    uint32_t crc = CRC32( appId.c_str(), appId.size() );
+    std::string dxtPath = String::Format( "%s\\Screenshots\\%08X.dxt", root.c_str(), crc );
+    if( FileExistsAndAvailable( dxtPath.c_str() ) ) return dxtPath;
+    return String::Format( "%s\\Screenshots\\%08X.jpg", root.c_str(), crc );
 }
 
 bool ImageDownloader::IsScreenshotCached( const std::string appId )
@@ -506,6 +557,11 @@ void ImageDownloader::DownloadLoop()
             if( !ok )
             {
                 DeleteFileA( jpgPath.c_str() ); // remove partial/corrupt file
+                {
+                    std::string fp = FailPathFor( jpgPath );
+                    FILE *ff = fopen( fp.c_str(), "wb" );
+                    if( ff ) fclose( ff );
+                }
                 m_failed.insert( failKey );
                 EnterCriticalSection( &m_queueLock );
                 m_busyAppId = "";
@@ -517,8 +573,7 @@ void ImageDownloader::DownloadLoop()
 
         // Download succeeded (or file already existed) -- push to converter queue.
         // Converter thread will do D3DX decode + DXT1 compress + write .dxt + delete .jpg.
-        // Only queue covers for now (screenshots loaded as jpg directly).
-        if( req.type == IMAGE_COVER )
+        // Queue both covers and screenshots for DXT conversion.
         {
             EnterCriticalSection( &m_convertLock );
             // Avoid duplicates

@@ -68,15 +68,7 @@ void StoreScene::OnResume() {
     return;
   }
 
-  // No change -- just restore position
-  if (mHasSavedPosition) {
-    StoreManager::LoadAtOffset(mSavedWindowOffset);
-    int32_t maxIndex = StoreManager::GetWindowStoreItemOffset() +
-                       StoreManager::GetWindowStoreItemCount() - 1;
-    if (maxIndex < 0) maxIndex = 0;
-    mStoreIndex = mSavedStoreIndex > maxIndex ? maxIndex : mSavedStoreIndex;
-    mHasSavedPosition = false;
-  }
+  // Position restore happens in Update when meta-ready fires
 }
 
 void StoreScene::RenderHeader() {
@@ -384,6 +376,7 @@ void StoreScene::RenderMainGrid() {
     // If cover still missing, add to pending list for SetVisibleQueue
     if (storeItem->cover == NULL && !storeItem->appId.empty() &&
         !ImageDownloader::IsCoverCached(storeItem->appId) &&
+        !ImageDownloader::IsCoverFailed(storeItem->appId) &&
         pendingCount < 32) {
       pendingOut[pendingCount] = &storeItem->cover;
       pendingIds[pendingCount] = storeItem->appId;
@@ -463,7 +456,16 @@ void StoreScene::Update() {
   if (metaNowReady && !mMetaReady) {
     mMetaReady = true;
     StoreManager::RefreshApplications();
-    mStoreIndex = 0;
+    if (mHasSavedPosition) {
+      StoreManager::LoadAtOffset(mSavedWindowOffset);
+      int32_t maxIndex = StoreManager::GetWindowStoreItemOffset() +
+                         StoreManager::GetWindowStoreItemCount() - 1;
+      if (maxIndex < 0) maxIndex = 0;
+      mStoreIndex = mSavedStoreIndex > maxIndex ? maxIndex : mSavedStoreIndex;
+      mHasSavedPosition = false;
+    } else {
+      mStoreIndex = 0;
+    }
     Debug::Print("StoreScene: MetaCache ready, window loaded\n");
   } else if (!metaNowReady) {
     mMetaReady = false; // reset when category changes and cache is purged

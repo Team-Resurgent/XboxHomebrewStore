@@ -40,6 +40,7 @@ private:
   void RenderPicker();
   void RenderCacheLocationPicker();
   void RenderClearCacheConfirm();
+  void RenderClearFailedConfirm();
 
   int32_t mSelectedRow;
 
@@ -61,9 +62,12 @@ private:
   // Clear cache confirm dialog
   bool mClearCacheConfirmOpen;
   bool mClearCacheDone;
+  bool mRetryFailedOnView;
+  bool mClearFailedConfirmOpen;
+  bool mClearFailedDone;
 
   // Body scroll
   float mScrollOffset;
 
-  static const int ROW_COUNT = 7;
+  static const int ROW_COUNT = 9;
 };

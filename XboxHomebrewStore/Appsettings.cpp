@@ -16,6 +16,7 @@ void AppSettings::ApplyDefaults() {
   mData.afterInstallAction = (uint32_t)AfterInstallAsk;
   mData.showCachePartitions = 0;
   mData.preCacheOnIdle = 0;
+  mData.retryFailedOnView = 0;
   mData.cacheLocation = (uint32_t)CacheLocationTemp;
   mData.cachePath[0] = '\0';
 }
@@ -111,6 +112,11 @@ bool AppSettings::GetPreCacheOnIdle() {
   return mData.preCacheOnIdle != 0;
 }
 
+bool AppSettings::GetRetryFailedOnView() {
+  if (!mLoaded) { Load(); }
+  return mData.retryFailedOnView != 0;
+}
+
 // ==========================================================================
 // Mutators
 // ==========================================================================
@@ -141,6 +147,11 @@ void AppSettings::SetPreCacheOnIdle(bool enabled) {
     Load();
   }
   mData.preCacheOnIdle = enabled ? 1 : 0;
+}
+
+void AppSettings::SetRetryFailedOnView(bool enabled) {
+  if (!mLoaded) { Load(); }
+  mData.retryFailedOnView = enabled ? 1 : 0;
 }
 
 CacheLocation AppSettings::GetCacheLocation() {
