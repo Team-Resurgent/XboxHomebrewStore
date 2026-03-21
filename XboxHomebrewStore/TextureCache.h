@@ -22,6 +22,7 @@ public:
   static void Put(const std::string &appId, D3DTexture *tex);
 
   // Removes a specific entry and releases its texture. No-op if not found.
+  static void Remove(const std::string &appId);
 
   // Releases all textures and clears the cache.
   static void Clear();

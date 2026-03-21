@@ -32,6 +32,7 @@ private:
   void RenderAfterInstallDialog();
 
   void BrowseInstallPath();
+  void RefreshCoverArt();
   void StartDownload();
   void HandleAfterInstall();
 
@@ -63,6 +64,7 @@ private:
 
   // ---- Download / unpack ----
   bool mDownloading;
+  bool mDownloadSucceeded;
   volatile bool mDownloadCancelRequested;
   volatile uint32_t mDownloadCurrent;
   volatile uint32_t mDownloadTotal;

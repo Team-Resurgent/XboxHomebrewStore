@@ -428,7 +428,10 @@ static void RunMultiSocketDownload(CURL *curl, FILE *fp,
   curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0");
   curl_easy_setopt(curl, CURLOPT_COOKIEFILE, "");
   curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
-  curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L); // 30s total -- avoids infinite hang on dead server
+  // No fixed total timeout -- large files need unlimited time.
+  // Instead timeout only if transfer stalls below 100 bytes/sec for 30s.
+  curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 100L);
+  curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 30L);
   curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1L);
 
   char *effective_url = nullptr;

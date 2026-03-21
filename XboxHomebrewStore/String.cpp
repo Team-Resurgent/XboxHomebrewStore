@@ -26,9 +26,9 @@ std::string String::FormatSize(uint32_t size) {
   } else if (size < MB) {
     return Format("%luKB", size / KB);
   } else if (size < GB) {
-    return Format("%luMB", size / MB);
+    return Format("%.1fMB", (float)size / (float)MB);
   } else {
-    return Format("%luGB", size / GB);
+    return Format("%.2fGB", (float)size / (float)GB);
   }
 }
 

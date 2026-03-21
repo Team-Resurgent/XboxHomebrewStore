@@ -6,6 +6,7 @@
 #include "..\Context.h"
 #include "..\Defines.h"
 #include "..\Drawing.h"
+#include "..\Debug.h"
 #include "..\FileSystem.h"
 #include "..\Font.h"
 #include "..\InputManager.h"
@@ -46,7 +47,10 @@ VersionScene::VersionScene(const StoreVersions &storeVersions) {
   mLastMeasuredVersionIndex = -1;
 
   mNeedsUpdate = false;
+  mCoverQueued = false;
+  mScreenshotQueued = false;
   mDownloading = false;
+  mDownloadSucceeded = false;
   mDownloadCancelRequested = false;
   mDownloadCurrent = 0;
   mDownloadTotal = 0;
@@ -179,6 +183,7 @@ void VersionScene::StartDownload() {
   mDownloadThread = CreateThread(NULL, 0, DownloadThreadProc, this, 0, NULL);
   if (mDownloadThread == NULL) {
     mDownloading = false;
+  mDownloadSucceeded = false;
   }
 }
 
@@ -396,6 +401,7 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param) {
     scene->HandleAfterInstall();
   }
 
+  scene->mDownloadSucceeded = downloadSucceeded;
   bool cancelled =
       scene->mDownloadCancelRequested || scene->mUnpackCancelRequested;
   bool failed = !downloadSucceeded || !unpackSucceeded;
@@ -432,6 +438,8 @@ void VersionScene::Render() {
       mStoreVersions.screenshot->Release();
       mStoreVersions.screenshot = NULL;
     }
+    mCoverQueued = false;
+    mScreenshotQueued = false;
     StoreManager::TryGetStoreVersions(mStoreVersions.appId, &mStoreVersions);
   }
 
@@ -517,6 +525,7 @@ void VersionScene::RenderFooter() {
     DrawFooterControl(x, footerY, "ButtonA", "Download");
     DrawFooterControl(x, footerY, "ButtonB", "Back");
     DrawFooterControl(x, footerY, "Dpad", "Move");
+    DrawFooterControl(x, footerY, "ButtonWhite", "Refresh");
   }
 }
 
@@ -610,6 +619,7 @@ void VersionScene::RenderVersionSidebar() {
 
 // --------------------------------------------------------------------------
 void VersionScene::RenderListView() {
+  bool mTextureLoadedThisFrame = false;
   const float titleXPos = 200.0f;
   const float infoXPos = 350.0f;
   const float infoMaxWidth =
@@ -619,7 +629,6 @@ void VersionScene::RenderListView() {
       &mStoreVersions.versions[mHighlightedVersionIndex];
 
   if (mLastMeasuredVersionIndex == -1) {
-    // First entry -- measure description once
     Font::MeasureTextWrapped(FONT_NORMAL, mStoreVersions.description,
         infoMaxWidth, NULL, &mDescriptionHeight);
   }
@@ -659,14 +668,22 @@ void VersionScene::RenderListView() {
     if (ImageDownloader::IsScreenshotCached(mStoreVersions.appId)) {
       std::string ssPath = ImageDownloader::GetScreenshotCachePath(mStoreVersions.appId);
       bool ssDxt = ssPath.size() >= 4 && ssPath.substr(ssPath.size() - 4) == ".dxt";
-      if (ssDxt) {
+      if (ssDxt && !mTextureLoadedThisFrame) {
         mStoreVersions.screenshot = TextureHelper::LoadFromFile(ssPath);
         screenshot = mStoreVersions.screenshot;
+        mTextureLoadedThisFrame = true;
       }
       if (screenshot == NULL) screenshot = TextureHelper::GetScreenshot();
     } else {
       screenshot = TextureHelper::GetScreenshot();
-      mImageDownloader->Queue(&mStoreVersions.screenshot, mStoreVersions.appId, IMAGE_SCREENSHOT);
+      if (!mScreenshotQueued) {
+        bool ssFailed = ImageDownloader::IsScreenshotFailed(mStoreVersions.appId);
+        if (!ssFailed || AppSettings::GetRetryFailedOnView()) {
+          if (ssFailed) ImageDownloader::ClearFailedScreenshot(mStoreVersions.appId);
+          mImageDownloader->Queue(&mStoreVersions.screenshot, mStoreVersions.appId, IMAGE_SCREENSHOT);
+        }
+        mScreenshotQueued = true;
+      }
     }
   }
   Drawing::DrawTexturedRect(screenshot, 0xFFFFFFFF, titleXPos, gridY,
@@ -681,21 +698,29 @@ void VersionScene::RenderListView() {
     } else if (ImageDownloader::IsCoverCached(mStoreVersions.appId)) {
       std::string cvPath = ImageDownloader::GetCoverCachePath(mStoreVersions.appId);
       bool cvDxt = cvPath.size() >= 4 && cvPath.substr(cvPath.size() - 4) == ".dxt";
-      if (cvDxt) {
+      if (cvDxt && !mTextureLoadedThisFrame) {
         D3DTexture *loaded = TextureHelper::LoadFromFile(cvPath);
         if (loaded != NULL) {
           TextureCache::Put(mStoreVersions.appId, loaded);
           mStoreVersions.cover = loaded;
           cover = loaded;
+          mTextureLoadedThisFrame = true;
         } else {
           cover = TextureHelper::GetCover();
         }
       } else {
-        cover = TextureHelper::GetCover(); // .jpg present, converter not done yet
+        cover = TextureHelper::GetCover();
       }
     } else {
       cover = TextureHelper::GetCover();
-      mImageDownloader->Queue(&mStoreVersions.cover, mStoreVersions.appId, IMAGE_COVER);
+      if (!mCoverQueued) {
+        bool coverFailed = ImageDownloader::IsCoverFailed(mStoreVersions.appId);
+        if (!coverFailed || AppSettings::GetRetryFailedOnView()) {
+          if (coverFailed) ImageDownloader::ClearFailedCover(mStoreVersions.appId);
+          mImageDownloader->Queue(&mStoreVersions.cover, mStoreVersions.appId, IMAGE_COVER);
+        }
+        mCoverQueued = true;
+      }
     }
   }
   Drawing::DrawTexturedRect(cover, 0xFFFFFFFF, 216 + ASSET_SCREENSHOT_WIDTH,
@@ -929,6 +954,57 @@ void VersionScene::RenderAfterInstallDialog() {
 // ==========================================================================
 // Update
 // ==========================================================================
+// RefreshCoverArt -- deletes cached cover and screenshot for this app,
+// removes from TextureCache, clears fail markers, queues fresh downloads.
+// ==========================================================================
+void VersionScene::RefreshCoverArt() {
+  std::string appId = mStoreVersions.appId;
+  if (appId.empty()) return;
+
+  // Cancel any in-flight downloads first so we dont race with the delete
+  mImageDownloader->CancelAll();
+
+  // Delete cached .dxt files from disk
+  std::string coverPath = ImageDownloader::GetCoverCachePath(appId);
+  std::string ssPath    = ImageDownloader::GetScreenshotCachePath(appId);
+  DeleteFileA(coverPath.c_str());
+  DeleteFileA(ssPath.c_str());
+
+  // Also delete .jpg if converter hasnt finished yet
+  std::string coverJpg = coverPath.substr(0, coverPath.size() - 4) + ".jpg";
+  std::string ssJpg    = ssPath.substr(0, ssPath.size() - 4) + ".jpg";
+  DeleteFileA(coverJpg.c_str());
+  DeleteFileA(ssJpg.c_str());
+
+  // Clear fail markers so they retry
+  ImageDownloader::ClearFailedCover(appId);
+  ImageDownloader::ClearFailedScreenshot(appId);
+
+  // Clear TextureCache and null all StoreScene cover pointers safely
+  StoreManager::InvalidateCovers();
+  mStoreVersions.cover = NULL;
+  if (mStoreVersions.screenshot != NULL) {
+    mStoreVersions.screenshot->Release();
+    mStoreVersions.screenshot = NULL;
+  }
+
+  // Reset queue flags so RenderListView re-queues both downloads
+  mCoverQueued = false;
+  mScreenshotQueued = false;
+
+  // Re-fetch app info so description/versions are up to date
+  mDescriptionHeight = 0.0f;
+  mChangeLogHeight = 0.0f;
+  mLastMeasuredVersionIndex = -1;
+  StoreManager::TryGetStoreVersions(appId, &mStoreVersions);
+
+  // Rescan cover count since we deleted one
+  ImageDownloader::ResetCachedCoverCount();
+
+  Debug::Print("VersionScene: RefreshCoverArt for %s\n", appId.c_str());
+}
+
+// ==========================================================================
 void VersionScene::Update() {
   // ---- After-install dialog ----
   if (mShowAfterInstallDialog) {
@@ -946,7 +1022,11 @@ void VersionScene::Update() {
   if (mShowFailedOverlay) {
     if (InputManager::ControllerPressed(ControllerA, -1)) {
       mShowFailedOverlay = false;
-      FileSystem::DirectoryDelete(mDownloadPath, true);
+      // Only wipe download folder if download failed (not unzip failure)
+      // so the zip can be reused on retry without re-downloading
+      if (!mDownloadSucceeded) {
+        FileSystem::DirectoryDelete(mDownloadPath, true);
+      }
     }
     return;
   }
@@ -992,6 +1072,8 @@ void VersionScene::Update() {
       BrowseInstallPath();
     } else if (InputManager::ControllerPressed(ControllerB, -1)) {
       Context::GetSceneManager()->PopScene();
+    } else if (InputManager::ControllerPressed(ControllerWhite, -1)) {
+      RefreshCoverArt();
     }
 
     ControllerState state;
