@@ -418,6 +418,66 @@ static bool ExtractGoogleFilename(const std::string &html,
   return !filename.empty();
 }
 
+// Parse file size from Google Drive confirm page HTML
+// The uc-name-size span contains e.g. "(99.3 MB)" after the filename anchor
+static bool ExtractGoogleFileSize(const std::string &html, uint64_t &outSize) {
+  outSize = 0;
+  // Try uc-name-size span first, fall back to scanning full HTML for (NNNm) pattern
+  size_t parenOpen = std::string::npos;
+  size_t parenClose = std::string::npos;
+  size_t spanPos = html.find("class=\"uc-name-size\"");
+  if (spanPos != std::string::npos) {
+    size_t closeAnchor = html.find("</a>", spanPos);
+    if (closeAnchor != std::string::npos) {
+      parenOpen = html.find("(", closeAnchor);
+      parenClose = (parenOpen != std::string::npos) ? html.find(")", parenOpen) : std::string::npos;
+    }
+  }
+  // Fallback: scan for first (NNNx) where x is a size unit letter
+  if (parenOpen == std::string::npos) {
+    size_t p = 0;
+    while ((p = html.find("(", p)) != std::string::npos) {
+      size_t cl = html.find(")", p);
+      if (cl == std::string::npos) break;
+      std::string candidate = html.substr(p + 1, cl - p - 1);
+      // Must start with a digit
+      if (!candidate.empty() && candidate[0] >= '0' && candidate[0] <= '9') {
+        char lastC = candidate[candidate.size()-1];
+        if (lastC == 'K' || lastC == 'M' || lastC == 'G' || lastC == 'T' ||
+            lastC == 'B') {
+          parenOpen = p;
+          parenClose = cl;
+          break;
+        }
+      }
+      p++;
+    }
+  }
+  if (parenOpen == std::string::npos || parenClose == std::string::npos) return false;
+  std::string sizeStr = html.substr(parenOpen + 1, parenClose - parenOpen - 1);
+  while (!sizeStr.empty() && sizeStr[0] == ' ') sizeStr.erase(0, 1);
+  while (!sizeStr.empty() && sizeStr[sizeStr.size()-1] == ' ') sizeStr.erase(sizeStr.size()-1);
+  float value = 0.0f;
+  char unit[8] = {0};
+  // Google Drive uses "264M" (no space, no B) -- try with space first, then without
+  int parsed = sscanf(sizeStr.c_str(), "%f %7s", &value, unit);
+  if (parsed < 1) return false;
+  if (parsed == 1) {
+    // No space -- unit is glued to number e.g. "264M"
+    sscanf(sizeStr.c_str(), "%f%7s", &value, unit);
+  }
+  std::string unitStr = unit;
+  uint64_t multiplier = 1;
+  if      (unitStr == "K" || unitStr == "KB" || unitStr == "KiB") multiplier = 1024ULL;
+  else if (unitStr == "M" || unitStr == "MB" || unitStr == "MiB") multiplier = 1024ULL * 1024;
+  else if (unitStr == "G" || unitStr == "GB" || unitStr == "GiB") multiplier = 1024ULL * 1024 * 1024;
+  else if (unitStr == "T" || unitStr == "TB" || unitStr == "TiB") multiplier = 1024ULL * 1024 * 1024 * 1024;
+  else multiplier = 1;
+  outSize = (uint64_t)(value * (float)multiplier);
+  return outSize > 0;
+}
+
+
 static void RunMultiSocketDownload(CURL *curl, FILE *fp,
     volatile bool *pCancelRequested,
     CURLcode *outRes, long *outHttpCode) {
@@ -1141,69 +1201,87 @@ bool WebManager::TrySyncTime() {
   return true;
 }
 
-bool WebManager::TryCheckUrl(const std::string &url) {
+
+bool WebManager::TryGetFileSize(const std::string &url, uint64_t &outSize) {
   NetworkLockScope lock;
   ResetCurlGlobal();
-
-  Debug::Print("=== TryCheckUrl ===\nURL: %s\n", url.c_str());
+  outSize = 0;
 
   CURL *curl = curl_easy_init();
-  if (!curl) {
-    Debug::Print("TryCheckUrl: curl_easy_init failed\n");
-    return false;
-  }
+  if (!curl) return false;
 
   ApplyCommonOptions(curl);
-
   curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-  curl_easy_setopt(curl, CURLOPT_NOBODY, 1L); // HEAD
+  curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);
   curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
   curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 5L);
-  curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L); // DNS + TCP handshake
-  curl_easy_setopt(curl, CURLOPT_TIMEOUT, 20L);        // total including redirects
-  curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT,
-      0L); // disable stall detection for checks
+  curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
+  curl_easy_setopt(curl, CURLOPT_TIMEOUT, 20L);
+  curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 0L);
   curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 0L);
 
   bool isGitHub = (url.find("raw.githubusercontent.com") != std::string::npos ||
                    url.find("github.com") != std::string::npos);
-  if (isGitHub) {
+  if (isGitHub)
     curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
-  }
 
   CURLcode res = curl_easy_perform(curl);
-
   long http_code = 0;
-  if (res == CURLE_OK) {
+  if (res == CURLE_OK)
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-  }
 
-  // 405 = server doesn't allow HEAD — retry with GET Range: bytes=0-0 (fetches
-  // 1 byte only)
+  // Some servers reject HEAD -- fall back to GET Range: bytes=0-0
   if (res == CURLE_OK && http_code == 405) {
-    Debug::Print("TryCheckUrl: HEAD returned 405, retrying with GET range\n");
     curl_easy_setopt(curl, CURLOPT_NOBODY, 0L);
     curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
     curl_easy_setopt(curl, CURLOPT_RANGE, "0-0");
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, NullWriteCallback);
-    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 20L);
     res = curl_easy_perform(curl);
     http_code = 0;
-    if (res == CURLE_OK) {
+    if (res == CURLE_OK)
       curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-    }
     curl_easy_setopt(curl, CURLOPT_RANGE, NULL);
   }
 
+  bool ok = (res == CURLE_OK && http_code >= 200 && http_code < 400);
+
+  if (ok) {
+    double cl = 0.0;
+    curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &cl);
+    if (cl > 0.0) outSize = (uint64_t)cl;
+  }
   curl_easy_cleanup(curl);
 
-  bool ok = (res == CURLE_OK && http_code >= 200 && http_code < 400);
-  Debug::Print("TryCheckUrl: CURLcode=%d HTTP=%ld result=%s\n", res, http_code,
-      ok ? "OK" : "FAILED");
+  // Google Drive does not return Content-Length on HEAD.
+  // Fetch the confirm page HTML and parse the size from it.
+  if (ok && outSize == 0 &&
+      (url.find("drive.google.com") != std::string::npos ||
+       url.find("drive.usercontent.google.com") != std::string::npos)) {
+    std::string htmlBuf;
+    ResetCurlGlobal();
+    CURL *curl2 = curl_easy_init();
+    if (curl2) {
+      ApplyCommonOptions(curl2);
+      curl_easy_setopt(curl2, CURLOPT_URL, url.c_str());
+      curl_easy_setopt(curl2, CURLOPT_HTTPGET, 1L);
+      curl_easy_setopt(curl2, CURLOPT_NOBODY, 0L);
+      curl_easy_setopt(curl2, CURLOPT_FOLLOWLOCATION, 1L);
+      curl_easy_setopt(curl2, CURLOPT_MAXREDIRS, 5L);
+      curl_easy_setopt(curl2, CURLOPT_CONNECTTIMEOUT, 10L);
+      curl_easy_setopt(curl2, CURLOPT_TIMEOUT, 20L);
+      curl_easy_setopt(curl2, CURLOPT_WRITEFUNCTION, StringWriteCallback);
+      curl_easy_setopt(curl2, CURLOPT_WRITEDATA, &htmlBuf);
+      CURLcode res2 = curl_easy_perform(curl2);
+      long hc2 = 0;
+      curl_easy_getinfo(curl2, CURLINFO_RESPONSE_CODE, &hc2);
+      curl_easy_cleanup(curl2);
+      ExtractGoogleFileSize(htmlBuf, outSize);
+    }
+  }
 
   return ok;
 }
+
 
 bool WebManager::TryGetLatestRelease(std::string &outTag,
     std::string &outZipUrl) {

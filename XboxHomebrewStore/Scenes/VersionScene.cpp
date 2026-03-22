@@ -258,6 +258,7 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param) {
 
   // Check all URLs are reachable before downloading
   scene->mCheckingLinks = true;
+  uint64_t totalDownloadSize = 0;
   for (size_t f = 0; f < ver->downloadFiles.size(); f++) {
     const std::string &entry = ver->downloadFiles[f];
     bool isUrl = (entry.size() >= 8 && entry.compare(0, 8, "https://") == 0) ||
@@ -272,7 +273,8 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param) {
                  String::Format("?fileIndex=%d", f);
     }
 
-    if (!WebManager::TryCheckUrl(checkUrl)) {
+    uint64_t fileSize = 0;
+    if (!WebManager::TryGetFileSize(checkUrl, fileSize)) {
       scene->mCheckingLinks = false;
       scene->mFailedMessage =
           "One or more download links are unavailable.\nPlease try again later "
@@ -281,6 +283,47 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param) {
       scene->mDownloading = false;
       scene->mNeedsUpdate = false;
       return 0;
+    }
+    totalDownloadSize += fileSize;
+  }
+
+  // Check free space against TOTAL of all files combined
+  if (totalDownloadSize > 0) {
+    std::string dlDrive = FileSystem::GetDriveLetter(downloadPath) + ":\\";
+    ULARGE_INTEGER dlFree = {0};
+    if (GetDiskFreeSpaceExA(dlDrive.c_str(), &dlFree, NULL, NULL)) {
+      if (dlFree.QuadPart < totalDownloadSize) {
+        scene->mCheckingLinks = false;
+        scene->mFailedMessage = String::Format(
+            "Not enough space on download drive %s\n"
+            "Need: %s  Available: %s",
+            dlDrive.c_str(),
+            String::FormatSize((uint32_t)totalDownloadSize).c_str(),
+            String::FormatSize((uint32_t)dlFree.QuadPart).c_str());
+        scene->mShowFailedOverlay = true;
+        scene->mDownloading = false;
+        scene->mNeedsUpdate = false;
+        return 0;
+      }
+    }
+    std::string instDrive = FileSystem::GetDriveLetter(installPath) + ":\\";
+    if (instDrive != dlDrive) {
+      ULARGE_INTEGER instFree = {0};
+      if (GetDiskFreeSpaceExA(instDrive.c_str(), &instFree, NULL, NULL)) {
+        if (instFree.QuadPart < totalDownloadSize) {
+          scene->mCheckingLinks = false;
+          scene->mFailedMessage = String::Format(
+              "Not enough space on install drive %s\n"
+              "Need: %s  Available: %s",
+              instDrive.c_str(),
+              String::FormatSize((uint32_t)totalDownloadSize).c_str(),
+              String::FormatSize((uint32_t)instFree.QuadPart).c_str());
+          scene->mShowFailedOverlay = true;
+          scene->mDownloading = false;
+          scene->mNeedsUpdate = false;
+          return 0;
+        }
+      }
     }
   }
   scene->mCheckingLinks = false;
