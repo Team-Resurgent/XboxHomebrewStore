@@ -60,6 +60,13 @@ private:
   // ---- Delete logic ----
   void DeleteOpen();
   void DeleteConfirm();
+  void RenderDeleteProgress();
+  static DWORD WINAPI DeleteThreadProc(LPVOID param);
+  static bool DeleteRecursive(const std::string &path,
+      volatile bool *pCancel,
+      volatile int32_t *pCurrent, volatile int32_t *pTotal,
+      char *pCurrentName, int32_t currentNameSize);
+  static int32_t CountFiles(const std::string &path);
 
   // ---- Helpers ----
   std::string GetDisplayName(int32_t index) const;
@@ -88,6 +95,14 @@ private:
   bool mDeleteOpen;
   std::string mDeletePath;
   std::string mDeleteName;
+
+  // ---- Delete progress state ----
+  bool mDeleting;
+  volatile bool mDeleteCancelRequested;
+  volatile int32_t mDeleteCurrent;
+  volatile int32_t mDeleteTotal;
+  char mDeleteCurrentName[256];
+  HANDLE mDeleteThread;
 
   // ---- Callback ----
   InstallPathConfirmedCb mCallback;

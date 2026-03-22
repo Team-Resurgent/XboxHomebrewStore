@@ -77,13 +77,26 @@ InstallPathScene::InstallPathScene(InstallPathConfirmedCb callback,
       mInitialized(false), mSelectedIndex(0), mRepeatNext_Down(0),
       mRepeatNext_Up(0), mRepeatNext_Left(0), mRepeatNext_Right(0),
       mRepeatNext_LT(0), mRepeatNext_RT(0), mKbPurpose(KbNone),
-      mDeleteOpen(false) {
+      mDeleteOpen(false),
+  mDeleting(false),
+  mDeleteCancelRequested(false),
+  mDeleteCurrent(0),
+  mDeleteTotal(0),
+  mDeleteThread(NULL) {
+  memset(mDeleteCurrentName, 0, sizeof(mDeleteCurrentName));
   mCurrentPath = "";
   RefreshList();
   mInitialized = true;
 }
 
-InstallPathScene::~InstallPathScene() {}
+InstallPathScene::~InstallPathScene() {
+  if (mDeleteThread != NULL) {
+    mDeleteCancelRequested = true;
+    WaitForSingleObject(mDeleteThread, INFINITE);
+    CloseHandle(mDeleteThread);
+    mDeleteThread = NULL;
+  }
+}
 
 // ==========================================================================
 // RefreshList
@@ -277,12 +290,13 @@ void InstallPathScene::DeleteOpen() {
 }
 
 void InstallPathScene::DeleteConfirm() {
-  FileSystem::DirectoryDelete(mDeletePath, true);
   mDeleteOpen = false;
-  int32_t prev = mSelectedIndex;
-  RefreshList();
-  int32_t count = (int32_t)mItems.size();
-  mSelectedIndex = (prev < count) ? prev : (count > 0 ? count - 1 : 0);
+  mDeleting = true;
+  mDeleteCancelRequested = false;
+  mDeleteCurrent = 0;
+  mDeleteTotal = 0; // updated live as files are deleted
+  memset(mDeleteCurrentName, 0, sizeof(mDeleteCurrentName));
+  mDeleteThread = CreateThread(NULL, 0, DeleteThreadProc, this, 0, NULL);
 }
 
 // ==========================================================================
@@ -300,6 +314,13 @@ void InstallPathScene::Update() {
   }
 
   // ---- Delete confirmation ----
+  if (mDeleting) {
+    if (InputManager::ControllerPressed(ControllerB, -1)) {
+      mDeleteCancelRequested = true;
+    }
+    return;
+  }
+
   if (mDeleteOpen) {
     if (InputManager::ControllerPressed(ControllerA, -1)) {
       DeleteConfirm();
@@ -409,6 +430,62 @@ void InstallPathScene::Update() {
 }
 
 // ==========================================================================
+int32_t InstallPathScene::CountFiles(const std::string &path) {
+  int32_t count = 0;
+  std::vector<FileInfoDetail> items = FileSystem::FileGetFileInfoDetails(path);
+  for (size_t i = 0; i < items.size(); i++) {
+    if (items[i].isDirectory)
+      count += CountFiles(items[i].path);
+    else
+      count++;
+  }
+  return count;
+}
+
+// ==========================================================================
+bool InstallPathScene::DeleteRecursive(const std::string &path,
+    volatile bool *pCancel,
+    volatile int32_t *pCurrent, volatile int32_t *pTotal,
+    char *pCurrentName, int32_t currentNameSize) {
+  std::vector<FileInfoDetail> items = FileSystem::FileGetFileInfoDetails(path);
+  for (size_t i = 0; i < items.size(); i++) {
+    if (*pCancel) return false;
+    const FileInfoDetail &item = items[i];
+    std::string name = FileSystem::GetFileName(item.path);
+    strncpy(pCurrentName, name.c_str(), currentNameSize - 1);
+    pCurrentName[currentNameSize - 1] = '\0';
+    if (item.isDirectory) {
+      DeleteRecursive(item.path, pCancel, pCurrent, pTotal, pCurrentName, currentNameSize);
+      RemoveDirectoryA(item.path.c_str());
+    } else {
+      FileSystem::FileDelete(item.path);
+      InterlockedIncrement((LPLONG)pCurrent);
+      InterlockedIncrement((LPLONG)pTotal);
+    }
+  }
+  return !(*pCancel);
+}
+
+// ==========================================================================
+DWORD WINAPI InstallPathScene::DeleteThreadProc(LPVOID param) {
+  InstallPathScene *scene = (InstallPathScene *)param;
+  if (scene == NULL) return 0;
+  DeleteRecursive(scene->mDeletePath, &scene->mDeleteCancelRequested,
+      &scene->mDeleteCurrent, &scene->mDeleteTotal,
+      scene->mDeleteCurrentName, sizeof(scene->mDeleteCurrentName));
+  if (!scene->mDeleteCancelRequested)
+    RemoveDirectoryA(scene->mDeletePath.c_str());
+  CloseHandle(scene->mDeleteThread);
+  scene->mDeleteThread = NULL;
+  scene->mDeleting = false;
+  int32_t prev = scene->mSelectedIndex;
+  scene->RefreshList();
+  int32_t count = (int32_t)scene->mItems.size();
+  scene->mSelectedIndex = (prev < count) ? prev : (count > 0 ? count - 1 : 0);
+  return 0;
+}
+
+// ==========================================================================
 // Render
 // ==========================================================================
 void InstallPathScene::Render() {
@@ -422,6 +499,8 @@ void InstallPathScene::Render() {
 
   if (mDeleteOpen) {
     RenderDeleteConfirm();
+  } else if (mDeleting) {
+    RenderDeleteProgress();
   }
   if (mKeyboard.IsOpen()) {
     mKeyboard.Render();
@@ -482,6 +561,51 @@ void InstallPathScene::RenderFooter() {
     DrawFooterControl(x, footerY, "ButtonBlack", "Delete");
     DrawFooterControl(x, footerY, "Dpad", "Navigate");
   }
+}
+
+// ==========================================================================
+void InstallPathScene::RenderDeleteProgress() {
+  const float w = (float)Context::GetScreenWidth();
+  const float h = (float)Context::GetScreenHeight();
+  Drawing::DrawFilledRect(0xCC000000, 0.0f, 0.0f, w, h);
+  const float panelW = 500.0f;
+  const float panelH = 130.0f;
+  float px = (w - panelW) * 0.5f;
+  float py = (h - panelH) * 0.5f;
+  Drawing::DrawFilledRect(COLOR_CARD_BG, px, py, panelW, panelH);
+  Drawing::DrawFilledRect(0xFFEF5350, px, py, panelW, 4.0f);
+  Font::DrawText(FONT_NORMAL, "Deleting...", COLOR_WHITE, px + 16.0f, py + 14.0f);
+  const float barX = px + 16.0f;
+  const float barY = py + 44.0f;
+  const float barW = panelW - 32.0f;
+  const float barH = 20.0f;
+  Drawing::DrawFilledRect(COLOR_SECONDARY, barX, barY, barW, barH);
+  int32_t total = mDeleteTotal;
+  int32_t current = mDeleteCurrent;
+  // Show progress - since we delete and count simultaneously
+  // just pulse the bar based on file count
+  if (current > 0) {
+    float pulse = (float)(current % 20) / 20.0f;
+    Drawing::DrawFilledRect(COLOR_DOWNLOAD, barX, barY, barW * pulse, barH);
+  }
+  std::string prog = String::Format("%d files deleted", current);
+  Font::DrawText(FONT_NORMAL, prog, COLOR_TEXT_GRAY, barX, barY + barH + 6.0f);
+  if (mDeleteCurrentName[0] != '\0') {
+    Font::DrawText(FONT_NORMAL, mDeleteCurrentName, COLOR_TEXT_GRAY,
+        barX, barY + barH + 22.0f);
+  }
+  float iW = (float)ASSET_CONTROLLER_ICON_WIDTH;
+  float iH = (float)ASSET_CONTROLLER_ICON_HEIGHT;
+  float lblW = 0.0f;
+  Font::MeasureText(FONT_NORMAL, "Cancel", &lblW);
+  float hx = px + (panelW - iW - 4.0f - lblW) * 0.5f;
+  float hy = py + panelH - 28.0f;
+  D3DTexture *iconB = TextureHelper::GetControllerIcon("ButtonB");
+  if (iconB != NULL) {
+    Drawing::DrawTexturedRect(iconB, 0xffffffff, hx, hy - 2.0f, iW, iH);
+    hx += iW + 4.0f;
+  }
+  Font::DrawText(FONT_NORMAL, "Cancel", COLOR_WHITE, hx, hy);
 }
 
 // --------------------------------------------------------------------------
