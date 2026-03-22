@@ -67,6 +67,11 @@ VersionScene::VersionScene(const StoreVersions &storeVersions) {
 
   mWaitingForInstallPath = false;
   mShowAfterInstallDialog = false;
+  mSizeFetchThread = NULL;
+  mSizeFetchDone = false;
+
+  // Start background size fetch for URL-based entries
+  mSizeFetchThread = CreateThread(NULL, 0, SizeFetchThreadProc, this, 0, NULL);
 
   // Text measurement deferred to first RenderListView to avoid hitch on load
 }
@@ -97,6 +102,11 @@ VersionScene::~VersionScene() {
     WaitForSingleObject(mDownloadThread, INFINITE);
     CloseHandle(mDownloadThread);
     mDownloadThread = NULL;
+  }
+  if (mSizeFetchThread != NULL) {
+    WaitForSingleObject(mSizeFetchThread, INFINITE);
+    CloseHandle(mSizeFetchThread);
+    mSizeFetchThread = NULL;
   }
 }
 
@@ -178,6 +188,11 @@ void VersionScene::StartDownload() {
   mProgressIndex = (mProgressCount > 0) ? 1 : 0;
   mShowFailedOverlay = false;
   mShowAfterInstallDialog = false;
+  mSizeFetchThread = NULL;
+  mSizeFetchDone = false;
+
+  // Start background size fetch for URL-based entries
+  mSizeFetchThread = CreateThread(NULL, 0, SizeFetchThreadProc, this, 0, NULL);
   mDownloading = true;
 
   mDownloadThread = CreateThread(NULL, 0, DownloadThreadProc, this, 0, NULL);
@@ -240,6 +255,36 @@ static bool EndsWithZip(const std::string &path) {
          (ext[3] == 'p' || ext[3] == 'P');
 }
 
+DWORD WINAPI VersionScene::SizeFetchThreadProc(LPVOID param) {
+  VersionScene *scene = (VersionScene *)param;
+  if (scene == NULL) return 0;
+
+  for (size_t v = 0; v < scene->mStoreVersions.versions.size(); v++) {
+    StoreVersion &ver = scene->mStoreVersions.versions[v];
+    if (ver.size != 0) continue; // already known
+    if (ver.downloadFiles.empty()) continue;
+
+    uint64_t total = 0;
+    bool allKnown = true;
+    for (size_t f = 0; f < ver.downloadFiles.size(); f++) {
+      const std::string &entry = ver.downloadFiles[f];
+      bool isUrl = (entry.size() >= 8 && entry.compare(0, 8, "https://") == 0) ||
+                   (entry.size() >= 7 && entry.compare(0, 7, "http://") == 0);
+      if (!isUrl) { allKnown = false; break; }
+      uint64_t fileSize = 0;
+      WebManager::TryGetFileSize(entry, fileSize);
+      if (fileSize == 0) { allKnown = false; }
+      total += fileSize;
+    }
+    if (total > 0) {
+      ver.size = (uint32_t)(total > 0xFFFFFFFFULL ? 0xFFFFFFFF : total);
+    }
+  }
+
+  scene->mSizeFetchDone = true;
+  return 0;
+}
+
 DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param) {
   VersionScene *scene = (VersionScene *)param;
   if (scene == NULL) {
@@ -273,6 +318,7 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param) {
                  String::Format("?fileIndex=%d", f);
     }
 
+    // Use cached size from SizeFetchThread if available, else fetch now
     uint64_t fileSize = 0;
     if (!WebManager::TryGetFileSize(checkUrl, fileSize)) {
       scene->mCheckingLinks = false;
@@ -287,7 +333,7 @@ DWORD WINAPI VersionScene::DownloadThreadProc(LPVOID param) {
     totalDownloadSize += fileSize;
   }
 
-  // Check free space against TOTAL of all files combined
+  // Check free space against total of all files combined
   if (totalDownloadSize > 0) {
     std::string dlDrive = FileSystem::GetDriveLetter(downloadPath) + ":\\";
     ULARGE_INTEGER dlFree = {0};
@@ -484,6 +530,12 @@ void VersionScene::Render() {
     mCoverQueued = false;
     mScreenshotQueued = false;
     StoreManager::TryGetStoreVersions(mStoreVersions.appId, &mStoreVersions);
+    if (mSizeFetchThread != NULL) {
+      CloseHandle(mSizeFetchThread);
+      mSizeFetchThread = NULL;
+    }
+    mSizeFetchDone = false;
+    mSizeFetchThread = CreateThread(NULL, 0, SizeFetchThreadProc, this, 0, NULL);
   }
 
   Drawing::DrawTexturedRect(TextureHelper::GetBackground(), 0xFFFFFFFF, 0.0f, 0.0f, (float)Context::GetScreenWidth(), (float)Context::GetScreenHeight());
@@ -805,8 +857,12 @@ void VersionScene::RenderListView() {
       infoXPos, gridY, infoMaxWidth);
   gridY += mChangeLogHeight + 8.0f;
   Font::DrawText(FONT_NORMAL, "Size:", COLOR_WHITE, titleXPos, gridY);
-  Font::DrawText(FONT_NORMAL, String::FormatSize(storeVersion->size),
-      COLOR_TEXT_GRAY, infoXPos, gridY);
+  {
+    std::string sizeStr = (storeVersion->size == 0 && !mSizeFetchDone)
+        ? "Calculating..."
+        : String::FormatSize(storeVersion->size);
+    Font::DrawText(FONT_NORMAL, sizeStr, COLOR_TEXT_GRAY, infoXPos, gridY);
+  }
 
   Drawing::EndStencil();
 }
@@ -1054,9 +1110,19 @@ void VersionScene::Update() {
     if (InputManager::ControllerPressed(ControllerA, -1)) {
       FileSystem::DirectoryDelete(mDownloadPath, true);
       mShowAfterInstallDialog = false;
+  mSizeFetchThread = NULL;
+  mSizeFetchDone = false;
+
+  // Start background size fetch for URL-based entries
+  mSizeFetchThread = CreateThread(NULL, 0, SizeFetchThreadProc, this, 0, NULL);
     } else if (InputManager::ControllerPressed(ControllerB, -1)) {
       // Keep do nothing
       mShowAfterInstallDialog = false;
+  mSizeFetchThread = NULL;
+  mSizeFetchDone = false;
+
+  // Start background size fetch for URL-based entries
+  mSizeFetchThread = CreateThread(NULL, 0, SizeFetchThreadProc, this, 0, NULL);
     }
     return;
   }

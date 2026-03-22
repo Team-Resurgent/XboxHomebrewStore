@@ -41,6 +41,7 @@ private:
   static bool UnpackProgressCb(int currentFile, int totalFiles,
       const char *currentFileName, void *userData);
   static DWORD WINAPI DownloadThreadProc(LPVOID param);
+  static DWORD WINAPI SizeFetchThreadProc(LPVOID param);
 
   ImageDownloader *mImageDownloader;
   StoreVersions mStoreVersions;
@@ -86,4 +87,8 @@ private:
 
   // ---- After-install "Ask" dialog ----
   bool mShowAfterInstallDialog;
+
+  // ---- Background URL size fetcher ----
+  HANDLE mSizeFetchThread;
+  volatile bool mSizeFetchDone;
 };
